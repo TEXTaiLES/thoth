@@ -48,18 +48,10 @@ class Label extends ATON.Node {
         this._sprite.raycast = (raycaster, intersects) => {
             originalRaycast(raycaster, intersects);
             
-            if (intersects.length > 0) {
-                // map sprite hit to the Label node so ATON picking finds node handlers
-                for (let it of intersects) {
-                    if (it.object === this._sprite) it.object = this;
-                }
-
-                if (this._bAlwaysPickable) {
-                    // keep making the label "closest" as before
-                    const lastIntersect = intersects[intersects.length - 1];
-                    if (lastIntersect.object === this) {
-                        lastIntersect.distance *= 0.0001;
-                    }
+            if (intersects.length > 0 && this._bAlwaysPickable) {
+                const lastIntersect = intersects[intersects.length - 1];
+                if (lastIntersect.object === this._sprite) {
+                    lastIntersect.distance *= 0.0001;
                 }
             }
         };

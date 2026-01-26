@@ -267,6 +267,61 @@ Events.setupWindowEL = () => {
 
 // Events
 
+Events.setupMeasurementEvents = () => {
+    THOTH.on("selectMeasure", () => {
+        THOTH.MSR.activate();
+        THOTH.Toolbox.deactivate();
+        THOTH.FE.handleElementHighlight('measure', THOTH.FE.toolMap);
+        // THOTH.FE.handleToolOptions('measure');
+        ATON.Nav.setUserControl(false);
+    });
+    THOTH.on("addMeasurementPoint", () => {
+        if (!THOTH.MSR.enabled || THOTH.MSR.paused) return;
+        if (THOTH._queryData === undefined) return;
+        
+        THOTH.MSR.addMeasurementPoint();
+    });
+    // Create measurement
+    THOTH.on("createMeasurement", () => {
+        const msrId = THOTH.Utils.getFirstUnusedKey(THOTH.MSR.msrMap);
+        const point1 = THOTH.MSR.points[0];
+        const point2 = THOTH.MSR.points[1];
+
+        // Local
+        THOTH.MSR.addMeasurement(msrId, point1, point2);
+        // Photon
+        THOTH.firePhoton("createMeasurement", {
+            id    : msrId,
+            point1: point1,
+            point2: point2
+        });
+        // History
+        THOTH.History.pushAction({
+            type  : THOTH.History.ACTIONS.ADD_MEASUREMENT,
+            id    : msrId,
+            value: {
+                point1: point1,
+                point2: point2
+            }
+        });
+    });
+    THOTH.on("deleteMeasurement", (msrId) => {
+        // Local
+        THOTH.MSR.deleteMeasurement(msrId);
+        // Photon
+        THOTH.firePhoton("deleteMeasurement", msrId);
+        // History
+        THOTH.History.pushAction({
+            type : THOTH.History.ACTIONS.DEL_MEASUREMENT,
+            id   : msrId,
+            value: {
+                point1: point1,
+                point2: point2,
+            }
+        }); 
+    });
+};
+
 Events.setupLayerEvents = () => {
     // Create/Delet
     THOTH.on("createLayer", () => {
@@ -505,13 +560,6 @@ Events.setupToolboxEvents = () => {
     });
     
     // Select tool
-    THOTH.on("selectMeasure", () => {
-        THOTH.MSR.activate();
-        THOTH.Toolbox.deactivate();
-        ATON.Nav.setUserControl(false);
-        THOTH.FE.handleElementHighlight('measure', THOTH.FE.toolMap);
-        // THOTH.FE.handleToolOptions('measure');
-    });
     THOTH.on("selectBrush", () => {
         THOTH.Toolbox.activateBrush();
         THOTH.MSR.deactivate();
@@ -542,12 +590,6 @@ Events.setupToolboxEvents = () => {
     });
 
     // Use tool
-    THOTH.on("addMeasurementPoint", () => {
-        if (!THOTH.MSR.enabled || THOTH.MSR.paused) return;
-        if (THOTH._queryData === undefined) return;
-        
-        THOTH.MSR.addMeasurementPoint();
-    });
     THOTH.on("useBrush", () => {
         if (!THOTH.Toolbox.enabled || THOTH.Toolbox.paused) return;
         
@@ -721,6 +763,14 @@ Events.setupPhotonEvents = () => {
     });
     THOTH.onPhoton("modelTransformRot", (l) => {
         THOTH.Models.modelTransformRot(l.modelName, l.value);
+    });
+
+    // Measurements
+    THOTH.onPhoton("createMeasurement", (l) => {
+        THOTH.MSR.createMeasurement(l.id, l.point1, l.point2);
+    });
+    THOTH.onPhoton("deleteMeasurement", (l) => {
+        THOTH.MSR.deleteMeasurement(l.id);
     });
 };
 

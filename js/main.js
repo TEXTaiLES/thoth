@@ -427,6 +427,7 @@ THOTH.onLogin = (u) => {
     THOTH.Events.setupPhotonEvents();
     THOTH.Events.setupLayerEvents();
     THOTH.Events.setupModelEvents();
+    THOTH.Events.setupMeasurementEvents();
     if (THOTH.config.toolbox) THOTH.Events.setupToolboxEvents();
     
     // Update FE

@@ -38,6 +38,9 @@ History.ACTIONS.TRANSFORM_MODEL_ROT = 8;
 History.ACTIONS.ADD_MODEL = 9;
 History.ACTIONS.DEL_MODEL = 10;
 
+History.ACTIONS.ADD_MEASUREMENT = 11;
+History.ACTIONS.DEL_MEASUREMENT = 12;
+
 // Setup
 
 History.setup = () => {
@@ -174,6 +177,20 @@ History.fireAndInverse = (action) => {
             THOTH.Models.addModelFromURL(id);
             THOTH.firePhoton("addModel");
             break; 
+        case History.ACTIONS.ADD_MEASUREMENT:
+            inverseType = History.ACTIONS.DEL_MEASUREMENT;
+            THOTH.MSR.deleteMeasurement(id);
+            THOTH.firePhoton("deleteMeasurement", id);
+            break;
+        case History.ACTIONS.DEL_MEASUREMENT:
+            inverseType = History.ACTIONS.ADD_MEASUREMENT;
+            THOTH.MSR.addMeasurement(id, value.point1, value.point2);
+            THOTH.firePhoton("createMeasurement", {
+                id    : id,
+                point1: value.point1,
+                point2: value.point2,
+            });
+            break;
 
         default:
             THOTH.UI.showToast("Invalid action type: " + type);

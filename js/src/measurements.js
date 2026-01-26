@@ -90,9 +90,7 @@ MSR.addMeasurementPoint = () => {
     MSR.addMeasurementPointSem(mPoint);
     
     if (MSR.points.length === 2) {
-        // TODO: Replace with event
-        const measurementId = THOTH.Utils.getFirstUnusedKey(THOTH.MSR.msrMap);
-        MSR.addMeasurement(measurementId, MSR.points[0], MSR.points[1]);
+        THOTH.fire("createMeasurement");
         MSR.clearMeasurementPoints();
     }
 };
@@ -148,7 +146,7 @@ MSR.resurrectMeasurement = (measurementId) => {
     if (!measurement.trash) return;
 
     measurement.trash = false;
-    MSR.showMeasurement(measurementid);
+    MSR.showMeasurement(measurementId);
 };
 
 
