@@ -451,6 +451,44 @@ UI.createMeshList = (modelName) => {
 
 // Options
 
+UI.createMeasureOptions = () => {
+    const elHeader = ATON.UI.createContainer({classes: "bg-body-secondary"});
+    elHeader.append(ATON.UI.createButton({
+        text: "Measure Options"
+    }));
+
+    const elBody = ATON.UI.createContainer();
+    
+    // Distance type map
+    const distanceTypeMap = new Map();
+    
+    const elBtnEuclidean = ATON.UI.createButton({
+        text: "Euclidean",
+        onpress: () => {
+            THOTH.FE.handleElementHighlight('euclidean', distanceTypeMap)
+        }
+    });
+    distanceTypeMap.set('euclidean', elBtnEuclidean);
+    const elBtnTest = ATON.UI.createButton({
+        text: "Test",
+        onpress: () => THOTH.FE.handleElementHighlight('test', distanceTypeMap)
+    });
+    distanceTypeMap.set('test', elBtnTest)
+    const elOptions = ATON.UI.createContainer();
+    elOptions.append(elBtnTest, elBtnEuclidean);
+
+    const elDistance = UI.createSplitRow({
+        colLeft: 7,
+        itemsLeft: ATON.UI.createButton({
+            text: "Distance",
+            tooltip: "Select type of distance for measurement",
+        }),
+        itemsRight: elOptions,
+    });
+    elBody.append(elHeader, elDistance)
+    return elBody;
+};
+
 UI.createBrushOptions = () => {
     const elHeader = ATON.UI.createContainer({classes: "bg-body-secondary"});
     elHeader.append(ATON.UI.createButton({

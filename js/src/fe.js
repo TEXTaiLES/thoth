@@ -69,6 +69,13 @@ FE.initLayerNameMap = () => {
 FE.initToolMap = () => {
     const toolMap = new Map();
 
+    // Measure
+    const elMeasure = ATON.UI.createButton({
+        icon: "measure",
+        tooltip: "Measure tool (M)",
+        onpress: () => THOTH.fire("selectMeasure"),
+    });
+    toolMap.set("measure", elMeasure);
     // Brush
     const elBrush = ATON.UI.createButton({
         icon   : THOTH.PATH_RES_ICONS + "brush.png",
@@ -90,13 +97,6 @@ FE.initToolMap = () => {
         onpress: () => THOTH.fire("selectLasso")
     });
     toolMap.set("lasso", elLasso);
-    // Measure
-    // const elMeasure = ATON.UI.createButton({
-    //     icon   : "measure",
-    //     tooltip: "Measure distance (M)",
-    //     onpress: () => THOTH.fire("selectMeasure")
-    // });
-    // toolMap.set("measure", elMeasure);
     // No tool
     const elNoTool  = ATON.UI.createButton({
         icon   : THOTH.PATH_RES_ICONS + "none.png",
@@ -134,6 +134,9 @@ FE.initToolMap = () => {
 FE.initToolOptMap = () => {
     const toolOptMap = new Map();
 
+    // Measure
+    const elMeasureOpt = THOTH.UI.createMeasureOptions();
+    toolOptMap.set("measure", elMeasureOpt);
     // Brush
     const elBrushOpt = THOTH.UI.createBrushOptions();
     toolOptMap.set("brush", elBrushOpt);

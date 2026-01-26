@@ -68,6 +68,10 @@ Events.setupInputEL = () => {
 Events.setupActiveEL = () => {
     // Mouse left click
     THOTH.on("MouseLeftDown", () =>{
+        // Measure
+        if (THOTH.MSR.enabled) {
+            THOTH.fire("addMeasurementPoint");
+        }
         // Brush
         if (THOTH.Toolbox.brushEnabled) {
             if (!Events.activeLayerExists()) {
@@ -93,10 +97,6 @@ Events.setupActiveEL = () => {
                 return;
             }
             THOTH.fire("startLasso");
-        }
-        // Measure
-        if (THOTH.Toolbox.measureEnabled) {
-            THOTH.fire("addMeasurement");
         }
     });
     THOTH.on("MouseLeftUp", () => {
@@ -162,7 +162,7 @@ Events.setupActiveEL = () => {
 
     // Mouse move
     THOTH.on("MouseMove", (e) => {
-        if (!THOTH.Toolbox.enabled) return;
+        if (!THOTH.Toolbox.enabled && !THOTH.MSR.enabled) return;
 
         if (e.preventDefault) e.preventDefault();
 
@@ -240,6 +240,10 @@ Events.setupActiveEL = () => {
             if (THOTH.Toolbox.paused) {
                 ATON.Nav.setUserControl(false);
                 THOTH.Toolbox.resume();
+            }
+            if (THOTH.MSR.paused) {
+                ATON.Nav.setUserControl(false);
+                THOTH.MSR.resume();
             }
         }
     });
@@ -455,6 +459,9 @@ Events.setupToolboxEvents = () => {
         if (ATON.UI._bModal) return;
 
         // Tools
+        if (k === "KeyM") {
+            THOTH.fire("selectMeasure");
+        }
         if (k === "KeyB") {
             THOTH.fire("selectBrush");
         }
@@ -473,11 +480,14 @@ Events.setupToolboxEvents = () => {
         }
 
         if (k === "Space") {
-            if (THOTH.Toolbox.enabled) {
+            if (THOTH.Toolbox.enabled || THOTH.MSR.enabled) {
                 ATON.Nav.setUserControl(true);
+
                 THOTH.Toolbox.pause();
                 THOTH.Toolbox.cleanupLasso();
-                THOTH.Toolbox.clearMeasure();
+
+                THOTH.MSR.pause();
+                THOTH.MSR.clearMeasurementPoints();
             }
         }
     });
@@ -487,44 +497,57 @@ Events.setupToolboxEvents = () => {
                 ATON.Nav.setUserControl(false);
                 THOTH.Toolbox.resume();
             }
+            if (THOTH.MSR.paused) {
+                ATON.Nav.setUserControl(false);
+                THOTH.MSR.resume();
+            }
         }
     });
-
+    
     // Select tool
+    THOTH.on("selectMeasure", () => {
+        THOTH.MSR.activate();
+        THOTH.Toolbox.deactivate();
+        ATON.Nav.setUserControl(false);
+        THOTH.FE.handleElementHighlight('measure', THOTH.FE.toolMap);
+        // THOTH.FE.handleToolOptions('measure');
+    });
     THOTH.on("selectBrush", () => {
         THOTH.Toolbox.activateBrush();
-        THOTH.Toolbox.cleanupLasso();
-        THOTH.Toolbox.clearMeasure();
+        THOTH.MSR.deactivate();
         ATON.Nav.setUserControl(false);
         THOTH.FE.handleToolOptions('brush');
         THOTH.FE.handleElementHighlight('brush', THOTH.FE.toolMap);
     });
     THOTH.on("selectEraser", () => {
         THOTH.Toolbox.activateEraser();
-        THOTH.Toolbox.cleanupLasso();
-        THOTH.Toolbox.clearMeasure();
+        THOTH.MSR.deactivate();
         ATON.Nav.setUserControl(false);
         THOTH.FE.handleToolOptions('eraser');
         THOTH.FE.handleElementHighlight('eraser', THOTH.FE.toolMap);
     });
     THOTH.on("selectLasso", () => {
         THOTH.Toolbox.activateLasso();
-        THOTH.Toolbox.cleanupLasso();
-        THOTH.Toolbox.clearMeasure();
+        THOTH.MSR.deactivate();
         ATON.Nav.setUserControl(false);
         THOTH.FE.handleToolOptions('lasso');
         THOTH.FE.handleElementHighlight('lasso', THOTH.FE.toolMap);
     });
     THOTH.on("selectNone", () => {
         THOTH.Toolbox.deactivate();
-        THOTH.Toolbox.cleanupLasso();
-        THOTH.Toolbox.clearMeasure();
+        THOTH.MSR.deactivate();
         ATON.Nav.setUserControl(true);
         THOTH.FE.handleToolOptions('no_tool');
         THOTH.FE.handleElementHighlight('no_tool', THOTH.FE.toolMap);
     });
 
     // Use tool
+    THOTH.on("addMeasurementPoint", () => {
+        if (!THOTH.MSR.enabled || THOTH.MSR.paused) return;
+        if (THOTH._queryData === undefined) return;
+        
+        THOTH.MSR.addMeasurementPoint();
+    });
     THOTH.on("useBrush", () => {
         if (!THOTH.Toolbox.enabled || THOTH.Toolbox.paused) return;
         

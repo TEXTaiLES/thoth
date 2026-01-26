@@ -17,6 +17,7 @@ import Models from "./src/models.js";
 import FE from "./src/fe.js";
 import MD from "./src/metadata.js";
 import Collab from "./src/collab.js";
+import MSR from "./src/measurements.js";
 
 
 // Realize 
@@ -36,6 +37,7 @@ THOTH.Layers  = Layers;
 THOTH.FE      = FE;
 THOTH.MD      = MD;
 THOTH.Collab  = Collab;
+THOTH.MSR     = MSR;
 
 
 THOTH.BASE_URL        = "../thoth";
@@ -45,6 +47,7 @@ THOTH.PATH_RES_SCHEMA = `${THOTH.BASE_URL}/js/res/schema/`;
 
 THOTH.sid = THOTH.params.get('s');
 THOTH.mid = THOTH.params.get('m');
+// THOTH.oid = THOTH.params.get('id');
 
 
 
@@ -66,6 +69,10 @@ THOTH.setup = () => {
     // Metadata parser
     ATON.SceneHub.addSceneParser("sceneMetadata", data => {
         THOTH.MD.parseSceneMetadata(data);
+    });
+    // Measurement parser
+    ATON.SceneHub.addSceneParser("measurements", measurements => {
+        THOTH.MSR.parseMeasurements(measurements);
     });
 
     // Load config
@@ -108,8 +115,18 @@ THOTH.setup = () => {
             THOTH.Events.setup();
             // Init toolbox
             THOTH.Toolbox.setup(THOTH.config.toolboxDefaults);
+            // Init measurements
+            THOTH.MSR.setup();
             // Init front end 
             THOTH.FE.setup();
+
+            // if (THOTH.oid) {
+            //     get({
+
+
+
+            //     }).then(scene)
+            // }
             
             if (THOTH.sid) {
                 ATON.SceneHub.load(
