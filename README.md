@@ -72,3 +72,36 @@ You can create a scene from the ATON front end (Shu) or through a post request t
 Additional documentation can be found here: 
 
 [https://textailes.github.io/thoth-documentation/](https://textailes.github.io/thoth-documentation/)
+
+## Citation
+
+If you use this software, please cite THOTH and ATON using the following BibTeX entries:
+
+```bibtex
+@software{Athena_Research_Center_THOTH_3D_Annotator_2025,
+author  = {{Athena Research Center}},
+license = {GNU},
+month   = nov,
+title   = {{THOTH 3D Viewer and Annotator}},
+url     = {https://github.com/TEXTaiLES/THOTH},
+version = {0.1.0},
+year    = {2025}
+}
+```
+
+```bibtex
+@article{fanini2021aton,
+  title     = {ATON: An Open-Source Framework for Creating Immersive, Collaborative and Liquid Web-Apps for Cultural Heritage},
+  author    = {Fanini, Bruno and Ferdani, Daniele and Demetrescu, Emanuel and Berto, Simone and d’Annibale, Enzo},
+  journal   = {Applied Sciences},
+  volume    = {11},
+  number    = {22},
+  pages     = {11062},
+  year      = {2021},
+  publisher = {Multidisciplinary Digital Publishing Institute}
+}
+```
+
+## License 
+
+This project is licensed under the GNU License. For more details, please refer to the [LICENSE](https://www.gnu.org/licenses/gpl-3.0.en.html).

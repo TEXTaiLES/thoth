@@ -1,0 +1,20 @@
+name: thoth
+
+services:
+  thothv2:
+    image: thoth
+    container_name: thothv2
+    ports:
+      - "8054:8080"
+    networks:
+      - textailes
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.thoth.rule=Host(`thoth.textailes.athenarc.gr`)"
+      - "traefik.http.routers.thoth.entrypoints=websecure"
+      - "traefik.http.routers.thoth.tls.certresolver=le"
+    restart: "always"
+
+networks:
+  textailes:
+    external: true
