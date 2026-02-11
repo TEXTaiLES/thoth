@@ -46,7 +46,6 @@ THOTH.PATH_RES_SCHEMA = `${THOTH.BASE_URL}/js/res/schema/`;
 
 
 THOTH.sid = THOTH.params.get('s');
-THOTH.mid = THOTH.params.get('m');
 // THOTH.oid = THOTH.params.get('id');
 
 
@@ -119,14 +118,6 @@ THOTH.setup = () => {
             THOTH.MSR.setup();
             // Init front end 
             THOTH.FE.setup();
-
-            // if (THOTH.oid) {
-            //     get({
-
-
-
-            //     }).then(scene)
-            // }
             
             if (THOTH.sid) {
                 ATON.SceneHub.load(
@@ -140,9 +131,6 @@ THOTH.setup = () => {
                         });
                     }
                 );
-            }
-            else if (THOTH.mid) {
-                //
             }
         })
     })

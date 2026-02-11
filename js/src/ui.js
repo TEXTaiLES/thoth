@@ -630,7 +630,8 @@ UI.modalExport = () => {
     // Footer
     const elFooter = UI.createModalFooter({
         onsuccess: () => {
-            THOTH.exportToHestia();
+            // THOTH.exportToHestia();
+            THOTH.exportChanges();
             ATON.UI.hideModal();
         },
         successText: "Export changes"
