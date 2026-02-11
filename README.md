@@ -1,7 +1,7 @@
 # THOTH Web App
 
 <p align="center">
-    <a href = "https://github.com/Xenobii/thoth_v2" target="_blank">
+    <a href = "https://github.com/Xenobii/thoth" target="_blank">
         <img src="res/thoth-logo.png" alt="THOTH" width="250"/>
     </a>
 </p>
@@ -31,9 +31,9 @@ git clone https://github.com/phoenixbf/aton.git
 
 
 ### Step 3
-Download a copy of THOTH from [Github](https://github.com/Xenobii/thoth_v2) and place it in the /wapps folder located directly inside the aton folder. Similarly to ATON, either download the [zip](https://github.com/Xenobii/thoth_v2) or clone the repository inside the wapps folder. 
+Download a copy of THOTH from [Github](https://github.com/Xenobii/thoth) and place it in the /wapps folder located directly inside the aton folder. Similarly to ATON, either download the [zip](https://github.com/Xenobii/thoth) or clone the repository inside the wapps folder. 
 ```
-git clone https://github.com/Xenobii/thoth_v2.git
+git clone https://github.com/Xenobii/thoth.git
 ```
 
 ### Step 4
@@ -60,7 +60,7 @@ To verify everything runs properly, navigate to [http://localhost:8080/](http://
 To open a scene using the THOTH web app, open the following url on your web browser.
 
 ```
-{base_url}/a/thoth_v2/?s={scene_url}
+{base_url}/a/thoth/?s={scene_url}
 ```
 
 where `base_url` is the base thoth uri and `scene_url` the uri of the scene. The default `base url` is [http://localhost:8080](http://localhost:8080).
