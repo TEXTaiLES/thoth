@@ -18,6 +18,7 @@ import FE from "./src/fe.js";
 import MD from "./src/metadata.js";
 import Collab from "./src/collab.js";
 import MSR from "./src/measurements.js";
+import SensorUI from "./src/sensor_ui.js";
 
 
 // Realize 
@@ -38,6 +39,7 @@ THOTH.FE      = FE;
 THOTH.MD      = MD;
 THOTH.Collab  = Collab;
 THOTH.MSR     = MSR;
+THOTH.SensorUI = SensorUI;
 
 
 THOTH.BASE_URL        = "../thoth";
@@ -118,7 +120,16 @@ THOTH.setup = () => {
             THOTH.MSR.setup();
             // Init front end 
             THOTH.FE.setup();
-            
+
+            const sensorDashboard = THOTH.SensorUI.createSensorDashboard("PREPEI_NA_STELNO_KATHE_15_LEPTA");
+            sensorDashboard.style.position = "absolute";
+            sensorDashboard.style.top = "50px";
+            sensorDashboard.style.left = "53px";
+            sensorDashboard.style.zIndex = "9999";
+            sensorDashboard.style.boxShadow = "0px 4px 10px rgba(0,0,0,0.5)";
+
+            document.body.appendChild(sensorDashboard);
+
             if (THOTH.sid) {
                 ATON.SceneHub.load(
                     THOTH.config.baseSceneUrl + THOTH.sid,
