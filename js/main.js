@@ -137,7 +137,7 @@ THOTH.setup = () => {
 };
 
 THOTH.update = () => {
-	if (THOTH._bPauseQuery) return;
+    if (THOTH._bPauseQuery) return;
     
     THOTH._queryData = ATON._queryDataScene;
     
@@ -258,7 +258,7 @@ THOTH.updateVisibility = () => {
 // TODO: update this for multi-mesh
 THOTH.updateNormalMap = (path, mesh, intensity = 10) => {
     if (!path) return false;
-	if (mesh === undefined) mesh = THOTH.Scene.mainMesh; 
+    if (mesh === undefined) mesh = THOTH.Scene.mainMesh;
 
     THOTH.textureLoader.load(path, (tex)=>{
         const mat = mesh.material;
@@ -294,7 +294,7 @@ THOTH.removeNormalMap = (mesh) => {
 
 THOTH.updateTextureMap = (path, mesh) => {
     if (!path) return false;
-	if (mesh === undefined) mesh = THOTH.Scene.mainMesh; 
+    if (mesh === undefined) mesh = THOTH.Scene.mainMesh;
 
     THOTH.textureLoader.load(path, (tex)=>{
         const mat = mesh.material;
