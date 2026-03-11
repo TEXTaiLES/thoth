@@ -18,6 +18,7 @@ import FE from "./src/fe.js";
 import MD from "./src/metadata.js";
 import Collab from "./src/collab.js";
 import MSR from "./src/measurements.js";
+import LinkedObjects from "./src/linked_objects.js";
 
 
 // Realize 
@@ -38,6 +39,7 @@ THOTH.FE      = FE;
 THOTH.MD      = MD;
 THOTH.Collab  = Collab;
 THOTH.MSR     = MSR;
+THOTH.LO      = LinkedObjects;
 
 
 THOTH.BASE_URL        = "../thoth";
@@ -77,6 +79,10 @@ THOTH.setup = () => {
     ATON.SceneHub.addSceneParser("measurements", measurements => {
         THOTH.MSR.parseMeasurements(measurements);
     });
+    // Linked objects parser
+    ATON.SceneHub.addSceneParser("linked_objects", linked_objects => {
+        THOTH.LO.parseLinkedObjects(linked_objects);
+    })
 
     // Load config
     ATON.REQ.get(
@@ -104,9 +110,11 @@ THOTH.setup = () => {
             THOTH.Toolbox.setup(THOTH.config.toolboxDefaults);
             // Init measurements
             THOTH.MSR.setup();
+            // Init linked objects
+            THOTH.LO.setup();
             // Init front end 
             THOTH.FE.setup();
-            
+
             if (THOTH.sid) {
                 ATON.SceneHub.load(
                     THOTH.config.baseSceneUrl + THOTH.sid,
