@@ -69,6 +69,10 @@ THOTH.setup = () => {
     ATON.SceneHub.addSceneParser("sceneMetadata", data => {
         THOTH.MD.parseSceneMetadata(data);
     });
+    // Init collaborative
+    ATON.SceneHub.addSceneParser("collaborative", data => {
+        THOTH.Collab.parseCollab(data);
+    });
     // Measurement parser
     ATON.SceneHub.addSceneParser("measurements", measurements => {
         THOTH.MSR.parseMeasurements(measurements);
@@ -83,22 +87,6 @@ THOTH.setup = () => {
         },
         err => ATON.UI.showModal("Error loading schema" + err)
     );
-    
-    ATON.SceneHub.addSceneParser("scenegraph", scenegraph => {
-        THOTH.Models.parseSceneGraph(scenegraph)
-    });
-    // Init layers
-    ATON.SceneHub.addSceneParser("layers", layers => {
-        THOTH.Layers.parseLayers(layers);
-    });
-    // Init scene metadata
-    ATON.SceneHub.addSceneParser("sceneMetadata", data => {
-        THOTH.MD.parseSceneMetadata(data);
-    });
-    // Init collaborative
-    ATON.SceneHub.addSceneParser("collaborative", data => {
-        THOTH.Collab.parseCollab(data);
-    });
 
     ATON.on("AllFlaresReady", () =>{
         ATON.on("ConfigLoaded", () => {
