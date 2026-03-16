@@ -68,6 +68,7 @@ UI.modelTransformControl = (options) => {
         }, "position");
         el.append(ATON.UI.elem("<label class='form-label hathor-text-block' for='"+elPos.id+"'>Position</label>") );
         el.append(elPos);
+        UI.activeTransformControls.position = elPos;//added this
     }
 
     // Scale
@@ -92,9 +93,43 @@ UI.modelTransformControl = (options) => {
         }, "rotation");
         el.append( ATON.UI.elem("<label class='form-label hathor-text-block' for='"+elRot.id+"'>Rotation</label>") );
         el.append( elRot );
+        UI.activeTransformControls.rotation = elRot;
     }
 
     return el;
+};
+//store active ui controls globally
+UI.activeTransformControls = {
+    position: null,
+    rotation: null,
+    scale: null
+};
+
+UI.syncTransformUI = (obj) => {
+
+    if (UI.activeTransformControls.position) {
+
+        const el = UI.activeTransformControls.position;
+        el.children[0].value = obj.position.x.toFixed(3);
+        el.children[1].value = obj.position.y.toFixed(3);
+        el.children[2].value = obj.position.z.toFixed(3);
+    }
+
+    if (UI.activeTransformControls.rotation) {
+
+        const el = UI.activeTransformControls.rotation;
+        el.children[0].value = obj.rotation.x.toFixed(3);
+        el.children[1].value = obj.rotation.y.toFixed(3);
+        el.children[2].value = obj.rotation.z.toFixed(3);
+    }
+
+    if (UI.activeTransformControls.scale) {
+
+        const el = UI.activeTransformControls.scale;
+        el.children[0].value = obj.scale.x.toFixed(3);
+        el.children[1].value = obj.scale.y.toFixed(3);
+        el.children[2].value = obj.scale.z.toFixed(3);
+    }
 };
 
 UI.createVectorControl = (options, transform)=>{
@@ -173,6 +208,7 @@ UI.createVectorControl = (options, transform)=>{
         else if (transform === "rotation") {
             THOTH.fire("modelTransformRot", l);
         }
+         
         if (options.onupdate) options.onupdate();
     };
 
@@ -186,11 +222,14 @@ UI.createVectorControl = (options, transform)=>{
             },
         }
         if (transform === "position") {
-            THOTH.fire("modelTransformPosInput", (l));
+            //THOTH.fire("modelTransformPosInput", (l));
+               THOTH.fire("modelTransformPos", (l));
         }
         else if (transform === "rotation") {
-            THOTH.fire("modelTransformRotInput", (l));
+          //  THOTH.fire("modelTransformRotInput", (l));
+            THOTH.fire("modelTransformRot", (l));
         }
+      
         if (options.onupdate) options.onupdate();
     };
 
@@ -204,14 +243,20 @@ UI.createVectorControl = (options, transform)=>{
             },
         }
         if (transform === "position") {
-            THOTH.fire("modelTransformPosInput", (l));
+            //THOTH.fire("modelTransformPosInput", (l));
+            THOTH.fire("modelTransformPos", (l));
         }
         else if (transform === "rotation") {
-            THOTH.fire("modelTransformRotInput", (l));
+            //THOTH.fire("modelTransformRotInput", (l));
+            THOTH.fire("modelTransformRot", (l));
         }
         if (options.onupdate) options.onupdate();
     };
-
+    /*
+      if (THOTH.transform) {
+            THOTH.transform.updateMatrixWorld(true);//update transformcontrols also
+            }
+            */
     return el;
 };
 
@@ -266,11 +311,14 @@ UI.createModelController = (modelName) => {
         ATON.UI.createButton({
             text   : modelName,
             size   : "small",
-            onpress: () => ATON.UI.showSidePanel({
-                header: modelName,
-                body  : UI.createModelEditor(modelName)
-            })
-        }),
+            onpress: ()=> {
+            THOTH.fire("selectModel", modelName);
+            ATON.UI.showSidePanel({
+             header: modelName,
+            body: UI.createModelEditor(modelName)
+            });
+            }
+        }),     
     );
     const elController = UI.createSplitRow({
         // classes   : "row g-0 align-items-center w-100 rounded-2 border px-2 py-1 mb-1",
@@ -403,7 +451,37 @@ UI.createModelEditor = (modelName) => {
             // onpress: () => THOTH.SVP.deleteSVPNodes(modelName),
         })
     ) 
-    
+     const elTransformOptions = ATON.UI.createContainer();
+        elTransformOptions.append(
+        ATON.UI.createButton({
+            text   : "Move",
+            size   : "medium",
+          onpress: () =>THOTH.transform.setMode("translate")
+        }),
+        ATON.UI.createButton({
+            text   : "Rotate",
+            size: "medium",
+             onpress: () =>THOTH.transform.setMode("rotate")
+        }),
+        ATON.UI.createButton({
+            text   : "Scale",
+            size: "medium",
+            onpress: () =>THOTH.transform.setMode("scale"),
+        })
+    )
+    const transformContent = ATON.UI.createContainer();
+
+    transformContent.append(
+    elTransformOptions,
+    UI.modelTransformControl({
+
+        node    : modelName,
+        position: true,
+        scale   : false,
+        rotation: true
+    })
+); 
+
     const elOptions = ATON.UI.createTreeGroup({
         items: [
             {
@@ -419,17 +497,11 @@ UI.createModelEditor = (modelName) => {
             {
                 title  : "Transform",
                 open   : true,
-                content: UI.modelTransformControl({
-                    node    : modelName,
-                    position: true,
-                    scale   : false,
-                    rotation: true,
-                })
-            }
+                content: transformContent
+            },
         ]
     });
     elBody.append(elModelHead, elOptions);
-
     return elBody;
 };
 

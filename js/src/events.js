@@ -6,6 +6,10 @@
     Author: steliosalvanos@gmail.com
 
 ===========================================================================*/
+//import * as THREE from "./three/three.module.js";
+//import { TransformControls } from "./three/addons/controls/TransformControls.js";
+import Models from "./models.js";
+import {TransformControls} from "./TransformControls.js";
 let Events = {};
 
 
@@ -17,11 +21,15 @@ Events.setup = () => {
     THOTH.onPhoton   = ATON.Photon.on;
     THOTH.firePhoton = ATON.Photon.fire;
 
+   // Events.setupTransformControls();
+    //Events.setupModelEvents();
+
     Events.setupInputEL();
     Events.setupActiveEL();
     Events.setupWindowEL();
 
     Events.setupCollaborativeEvents();
+    let transformStart = null;
 };
 
 
@@ -272,8 +280,9 @@ Events.setupMeasurementEvents = () => {
         THOTH.MSR.activate();
         THOTH.Toolbox.deactivate();
         THOTH.FE.handleElementHighlight('measure', THOTH.FE.toolMap);
-        // THOTH.FE.handleToolOptions('measure');
-        ATON.Nav.setUserControl(false);
+        THOTH.FE.handleToolOptions('measure');
+       // ATON.Nav.setUserControl(false);
+        
     });
     THOTH.on("addMeasurementPoint", () => {
         if (!THOTH.MSR.enabled || THOTH.MSR.paused) return;
@@ -501,8 +510,129 @@ Events.setupModelEvents = () => {
             prevValue: prevValue
         });
     }); 
+    //select model
+    THOTH.on("selectModel", (modelName) => {
+        const selmodel  = THOTH.Models.modelMap.get(modelName);
+        if (!selmodel) {
+            console.warn("model not found");
+        return;
+        }    
+        if (!THOTH.transform) {
+            THOTH.Models.addTransformControls(modelName);
+            Events.setupTransformControls(modelName);
+            //Disable camera controls while dragging
+            THOTH.transform.addEventListener("dragging-changed", (event) => {
+            ATON.Nav._controls.enabled = !event.value;
+            });
+        }
+        //THOTH.transform.attach(selmodel.children[0]);
+        THOTH.transform.attach(selmodel);
+        //prevent it from being hidden inside geometry
+        THOTH.transform.traverse(o => {
+            if (o.material) {
+                o.material.depthTest = false;
+                o.material.transparent = false;
+                o.material.opacity = 1;
+            }
+        });
+        THOTH.transform.visible = true;
+        THOTH.transform.setSize(1,1,1);
+        THOTH.transform.updateMatrixWorld(true);
+    });
 };
+//
+Events.setupTransformControls = (ModelName) => {
 
+    //let transformStart = null;
+
+    THOTH.transform.addEventListener("mouseDown", () => {
+
+        const obj = THOTH.transform.object;
+        if (!obj) return;
+
+        Events.transformStart = {
+            position: {
+                x: obj.position.x,
+                y: obj.position.y,
+                z: obj.position.z
+            },
+            rotation: {
+                x: obj.rotation.x,
+                y: obj.rotation.y,
+                z: obj.rotation.z
+            }
+        };
+    });
+
+    THOTH.transform.addEventListener("change", () => {
+
+        const obj = THOTH.transform.object;
+        if (!obj) return;
+
+        THOTH.UI.syncTransformUI(obj);
+    });
+
+    //MUSTFIX: HISTORY PUSHES AND UNDO DURING DRAGGING
+
+    THOTH.transform.addEventListener("mouseUp", () => {
+
+    const obj = THOTH.transform.object;
+    if (!obj || !Events.transformStart) return;
+
+    const modelName = obj.name;
+    const mode = THOTH.transform.getMode();
+
+    if (mode === "translate") {
+
+        const newPos = {
+            x: obj.position.x,
+            y: obj.position.y,
+            z: obj.position.z
+        };
+
+        THOTH.Models.modelTransformPos(modelName, newPos);
+
+        THOTH.firePhoton("modelTransformPos", {
+            modelName: modelName,
+            value: newPos
+        });
+
+        THOTH.History.pushAction({
+            type: THOTH.History.ACTIONS.TRANSFORM_MODEL_POS,
+            id: modelName,
+            value: newPos,
+            prevValue: transformStart.position
+        });
+
+    }
+    if (mode === "rotate") {
+
+        const newRot = {
+            x: obj.rotation.x,
+            y: obj.rotation.y,
+            z: obj.rotation.z
+        };
+
+        THOTH.Models.modelTransformRot(modelName, newRot);
+
+        THOTH.firePhoton("modelTransformRot", {
+            modelName: modelName,
+            value: newRot
+        });
+
+        THOTH.History.pushAction({
+            type: THOTH.History.ACTIONS.TRANSFORM_MODEL_ROT,
+            id: modelName,
+            value: newRot,
+            prevValue: transformStart.rotation
+        });
+    }
+    console.log("History push:", transformStart, obj.position);
+    transformStart = null;
+
+});
+
+};
 Events.setupToolboxEvents = () => {
     // Resize
     window.addEventListener('resize', () => {
@@ -796,6 +926,54 @@ Events.activeLayerExists = () => {
     if (THOTH.Layers.activeLayer === undefined) return false;
     else return true;
 };
+/*
+//set up tranfosrm controls
+Events.setupTransformControls = () => {
+
+    const camera   = ATON.Nav._camera;
+    const renderer = ATON._renderer;
+    const scene    = ATON._scene; // or whatever ATON uses internally
+
+    Events.transformControls = new TransformControls(
+        camera,
+        renderer.domElement
+    );
+
+    scene.add(Events.transformControls);
+
+    // Disable nav while dragging
+    Events.transformControls.addEventListener('dragging-changed', (e) => {
+        ATON.Nav.setUserControl(!e.value);
+    });
+
+    // When object changes
+    Events.transformControls.addEventListener('objectChange', () => {
+        const object = Events.transformControls.object;
+        if (!object) return;
+
+        const modelName = object.name;
+
+        THOTH.fire("modelTransformPos", {
+            modelName,
+            value: {
+                x: object.position.x,
+                y: object.position.y,
+                z: object.position.z
+            }
+        });
+
+        THOTH.fire("modelTransformRot", {
+            modelName,
+            value: {
+                x: object.rotation.x,
+                y: object.rotation.y,
+                z: object.rotation.z
+            }
+        });
+    });
+};
+
+*/
 
 
 export default Events;

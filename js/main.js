@@ -18,7 +18,9 @@ import FE from "./src/fe.js";
 import MD from "./src/metadata.js";
 import Collab from "./src/collab.js";
 import MSR from "./src/measurements.js";
-
+import gizmo from "./src/gizmo.js";
+//import { TransformControls } from "https://unpkg.com/three@0.160.0/examples/jsm/controls/TransformControls.js";
+import {TransformControls} from "./src/TransformControls.js";
 
 // Realize 
 let THOTH = ATON.App.realize();
@@ -38,6 +40,8 @@ THOTH.FE      = FE;
 THOTH.MD      = MD;
 THOTH.Collab  = Collab;
 THOTH.MSR     = MSR;
+THOTH.gizmo   =  gizmo;
+THOTH.TransformControls= TransformControls;
 
 
 THOTH.BASE_URL        = "../thoth";
@@ -55,6 +59,9 @@ THOTH.sid = THOTH.params.get('s');
 THOTH.setup = () => {
     // Realize base ATON and add base UI events
     ATON.realize();
+    // Force global THREE to match ATON
+   // window.THREE = ATON.THREE;
+   //
     ATON.UI.addBasicEvents();
     
     // Model parser
@@ -129,6 +136,7 @@ THOTH.setup = () => {
                             if (u === false) THOTH.UI.modalUser();
                             else THOTH.onLogin(u);
                         });
+
                     }
                 );
             }
@@ -424,3 +432,4 @@ THOTH.onLogin = (u) => {
     // Join collaborative
     if (THOTH.collaborative) ATON.Photon.connect();
 };
+

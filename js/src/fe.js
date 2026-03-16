@@ -452,7 +452,11 @@ FE.addModel = (modelName) => {
         return;
     }
     // Create new
-    const newModelController = THOTH.UI.createModelController(modelName);
+    //const newModelController = THOTH.UI.createModelController(modelName);
+    const newModelController = THOTH.UI.createModelController(
+        modelName,
+        () => THOTH.fire("selectModel", modelName)
+    );
     FE.modelMap.set(modelName, newModelController);
     FE.modelList.append(newModelController);
 };
