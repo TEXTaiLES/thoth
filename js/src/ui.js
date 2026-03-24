@@ -388,19 +388,20 @@ UI.createModelEditor = (modelName) => {
         ATON.UI.createButton({
             icon   : "visibility",
             size   : "small",
-            // onpress: () => THOTH.SVP.toggleVPNodes(vpVisible, modelName)
+             onpress: () => THOTH.SVP.toggleVPNodes(vpVisible, modelName)
+            // onpress: () => THOTH.SVP.toggleVPNodes(true, modelName)
         }),
         ATON.UI.createButton({
             text   : "Build Viewpoints",
             variant: "info",
             icon   : "pov",
-            // onpress: () => UI.modalBuildVP(modelName),
+            onpress: () => UI.modalBuildVP(modelName),
         }),
         ATON.UI.createButton({
             text   : "Delete All",
             variant: "secondary",
             icon   : "cancel",
-            // onpress: () => THOTH.SVP.deleteSVPNodes(modelName),
+             onpress: () => THOTH.SVP.deleteSVPNodes(modelName),
         })
     ) 
     
@@ -689,13 +690,8 @@ UI.modalBuildVP = (modelName) => {
         
         // Options
         const elOptions = ATON.UI.createContainer();
-        const elButtonsRow = UI.createSplitRow({
-            elLeft: 6,
-            itemsLeft: manualBtn,
-            itemsRight: uniformBtn
-        });
 
-        const manualBtn = ATON.UI.createButton({
+ const manualBtn = ATON.UI.createButton({
             text   : "Manual Sampling",
             classes: "w-100",
             onpress: () => {
@@ -711,6 +707,14 @@ UI.modalBuildVP = (modelName) => {
                 updateMode();
             }
         });
+
+        const elButtonsRow = UI.createSplitRow({
+            elLeft: 6,
+            itemsLeft: manualBtn,
+            itemsRight: uniformBtn
+        });
+
+       
         elOptions.append(elButtonsRow);
         
         const updateMode = () => {
