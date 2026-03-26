@@ -578,6 +578,7 @@ Events.setupTransformControls = (ModelName) => {
 
     const obj = THOTH.transform.object;
     if (!obj || !Events.transformStart) return;
+   // if (!obj) return;
 
     const modelName = obj.name;
     const mode = THOTH.transform.getMode();
@@ -601,7 +602,7 @@ Events.setupTransformControls = (ModelName) => {
             type: THOTH.History.ACTIONS.TRANSFORM_MODEL_POS,
             id: modelName,
             value: newPos,
-            prevValue: transformStart.position
+            prevValue: Events.transformStart.position
         });
 
     }
@@ -624,11 +625,11 @@ Events.setupTransformControls = (ModelName) => {
             type: THOTH.History.ACTIONS.TRANSFORM_MODEL_ROT,
             id: modelName,
             value: newRot,
-            prevValue: transformStart.rotation
+            prevValue: Events.transformStart.rotation
         });
     }
-    console.log("History push:", transformStart, obj.position);
-    transformStart = null;
+    console.log("History push:", Events.transformStart, obj.position);
+    Events.transformStart = null;
 
 });
 

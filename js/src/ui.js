@@ -177,10 +177,12 @@ UI.createVectorControl = (options, transform)=>{
                     },
                 }
                 if (transform === "position") {
-                    THOTH.fire("modelTransformPosInput", (l));
+                    //THOTH.fire("modelTransformPosInput", (l));
+                    THOTH.fire("modelTransformPos", (l));
                 }
                 else if (transform === "rotation") {
-                    THOTH.fire("modelTransformRotInput", (l)); 
+                    //THOTH.fire("modelTransformRotInput", (l)); 
+                    THOTH.fire("modelTransformRot", (l)); 
                 }
                 if (options.onupdate) options.onupdate();
             }

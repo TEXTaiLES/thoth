@@ -18,7 +18,6 @@ import FE from "./src/fe.js";
 import MD from "./src/metadata.js";
 import Collab from "./src/collab.js";
 import MSR from "./src/measurements.js";
-import gizmo from "./src/gizmo.js";
 //import { TransformControls } from "https://unpkg.com/three@0.160.0/examples/jsm/controls/TransformControls.js";
 import {TransformControls} from "./src/TransformControls.js";
 
@@ -40,7 +39,6 @@ THOTH.FE      = FE;
 THOTH.MD      = MD;
 THOTH.Collab  = Collab;
 THOTH.MSR     = MSR;
-THOTH.gizmo   =  gizmo;
 THOTH.TransformControls= TransformControls;
 
 
