@@ -39,16 +39,18 @@ LinkedObjects.setupLinkedObjectsLists = () => {
         ATON.checkAuth(
             (u) => {
                 // On logged-in user case
-                if (linkedParentObject) {
+                if (linkedParentObject && linkedParentObject.scene_id) {
                     elLinkedParentObject.append(ATON.UI.createButton({
-                        text: linkedParentObject.name ?? "Object 0",
+                        text: linkedParentObject.name ?? "Parent Object",
                         onpress: () => window.open(`?s=${u.username}/${linkedParentObject.scene_id}`, "_blank"),
                         tooltip: "Open scene in new tab",
                     }));
                 }
+                let children_counter = 1;
                 for (const child_object of linkedChildObjectsList) {
+                    if (!child_object.scene_id) continue;
                     elLinkedChildObjects.append(ATON.UI.createButton({
-                        text: child_object.name ?? "Child Object",
+                        text: child_object.name ?? `Child Object ${children_counter++}`,
                         onpress: () => window.open(`?s=${u.username}/${child_object.scene_id}`, "_blank"),
                         tooltip: "Open scene in new tab",
                     }));
