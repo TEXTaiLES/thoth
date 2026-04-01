@@ -15,27 +15,39 @@ LinkedObjects.setup = () => {
 LinkedObjects.parseLinkedObjects = (linked_objects) => {
     if (!linked_objects) return;
 
+    LinkedObjects.linkedObjectsMap.set("parent_object", linked_objects.parent_object);
     LinkedObjects.linkedObjectsMap.set("child_objects", linked_objects.child_objects);
 }
 
-LinkedObjects.setupLinkedObjectsList = () => {
-    const elLinkedObjects = ATON.UI.createContainer();
+LinkedObjects.setupLinkedObjectsLists = () => {
+    const elLinkedParentObject = ATON.UI.createContainer();
+    const elLinkedChildObjects = ATON.UI.createContainer();
 
     const renderList = () => {
-        elLinkedObjects.replaceChildren();
+        elLinkedParentObject.replaceChildren();
+        elLinkedChildObjects.replaceChildren();
 
-        const linkedObjectsList = LinkedObjects.linkedObjectsMap?.get("child_objects");
+        const linkedParentObject = LinkedObjects.linkedObjectsMap?.get("parent_object");
+        if (!linkedParentObject) console.log("Parent object is not loaded yet or empty.");
 
-        if (!linkedObjectsList || !Array.isArray(linkedObjectsList)) {
-            console.warn("Child objects are not loaded yet or empty.");
-            return;
-        }
+        const linkedChildObjectsList = LinkedObjects.linkedObjectsMap?.get("child_objects");
+        const isLinkedChildObjectsListOK = linkedChildObjectsList && Array.isArray(linkedChildObjectsList);
+        if (!isLinkedChildObjectsListOK) console.log("Child objects are not loaded yet or empty.");
+
+        if (!linkedParentObject && !isLinkedChildObjectsListOK) return;
 
         ATON.checkAuth(
             (u) => {
                 // On logged-in user case
-                for (const child_object of linkedObjectsList) {
-                    elLinkedObjects.append(ATON.UI.createButton({
+                if (linkedParentObject) {
+                    elLinkedParentObject.append(ATON.UI.createButton({
+                        text: linkedParentObject.name ?? "Object 0",
+                        onpress: () => window.open(`?s=${u.username}/${linkedParentObject.scene_id}`, "_blank"),
+                        tooltip: "Open scene in new tab",
+                    }));
+                }
+                for (const child_object of linkedChildObjectsList) {
+                    elLinkedChildObjects.append(ATON.UI.createButton({
                         text: child_object.name ?? "Child Object",
                         onpress: () => window.open(`?s=${u.username}/${child_object.scene_id}`, "_blank"),
                         tooltip: "Open scene in new tab",
@@ -54,7 +66,7 @@ LinkedObjects.setupLinkedObjectsList = () => {
 
     renderList();
 
-    return elLinkedObjects;
+    return [ elLinkedParentObject, elLinkedChildObjects ];
 }
 
 export default LinkedObjects;
