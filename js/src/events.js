@@ -272,8 +272,8 @@ Events.setupMeasurementEvents = () => {
         THOTH.MSR.activate();
         THOTH.Toolbox.deactivate();
         THOTH.FE.handleElementHighlight('measure', THOTH.FE.toolMap);
-        // THOTH.FE.handleToolOptions('measure');
-        ATON.Nav.setUserControl(false);
+        THOTH.FE.handleToolOptions('measure');
+        //ATON.Nav.setUserControl(false);
     });
     THOTH.on("addMeasurementPoint", () => {
         if (!THOTH.MSR.enabled || THOTH.MSR.paused) return;

@@ -6,6 +6,7 @@
     Author: steliosalvanos@gmail.com
 
 ===========================================================================*/
+import MSR from "./measurements.js";
 let UI = {};
 
 
@@ -465,27 +466,39 @@ UI.createMeasureOptions = () => {
     const elBtnEuclidean = ATON.UI.createButton({
         text: "Euclidean",
         onpress: () => {
-            THOTH.FE.handleElementHighlight('euclidean', distanceTypeMap)
+            MSR.distanceType = 'euclidean';
+            THOTH.FE.handleElementHighlight('euclidean', distanceTypeMap);
+            MSR.recomputeLastMeasurement();
         }
     });
     distanceTypeMap.set('euclidean', elBtnEuclidean);
-    const elBtnTest = ATON.UI.createButton({
-        text: "Test",
-        onpress: () => THOTH.FE.handleElementHighlight('test', distanceTypeMap)
+
+    const elBtnGeodesic = ATON.UI.createButton({
+        text: "Geodesic",
+        onpress: () => {         
+            MSR.distanceType = 'geodesic';
+            THOTH.FE.handleElementHighlight('geodesic', distanceTypeMap);
+            MSR.recomputeLastMeasurement();
+        }
     });
-    distanceTypeMap.set('test', elBtnTest)
+    distanceTypeMap.set('geodesic', elBtnGeodesic);
+
     const elOptions = ATON.UI.createContainer();
-    elOptions.append(elBtnTest, elBtnEuclidean);
+    elOptions.append(elBtnEuclidean,elBtnGeodesic);
 
     const elDistance = UI.createSplitRow({
         colLeft: 7,
         itemsLeft: ATON.UI.createButton({
-            text: "Distance",
+            text: "Type of distance:",
             tooltip: "Select type of distance for measurement",
         }),
         itemsRight: elOptions,
     });
-    elBody.append(elHeader, elDistance)
+    const elResult = ATON.UI.createContainer({ classes: "bg-body-tertiary p-2" });
+    elResult.textContent = "Distance: ";  // default text
+    MSR.elResult = elResult; 
+    elBody.append(elHeader, elDistance, elResult);
+
     return elBody;
 };
 
