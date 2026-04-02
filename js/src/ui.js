@@ -104,7 +104,7 @@ UI.activeTransformControls = {
     rotation: null,
     scale: null
 };
-
+// update and sync values with the ui panel
 UI.syncTransformUI = (obj) => {
 
     if (UI.activeTransformControls.position) {
@@ -464,12 +464,13 @@ UI.createModelEditor = (modelName) => {
             text   : "Rotate",
             size: "medium",
              onpress: () =>THOTH.transform.setMode("rotate")
-        }),
+        }),/*
         ATON.UI.createButton({
             text   : "Scale",
             size: "medium",
             onpress: () =>THOTH.transform.setMode("scale"),
         })
+            */
     )
     const transformContent = ATON.UI.createContainer();
 

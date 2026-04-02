@@ -1,4 +1,7 @@
-//const THREE = ATON.THREE;
+/*
+Modified threes js transform controls so as to work with ATON
+*/
+
 const {
 	BoxGeometry,
 	BufferGeometry,
