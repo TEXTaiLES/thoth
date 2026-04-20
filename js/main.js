@@ -20,6 +20,8 @@ import Collab from "./src/collab.js";
 import MSR from "./src/measurements.js";
 import {TransformControls} from "./src/TransformControls.js";
 import LinkedObjects from "./src/linked_objects.js";
+import SensorUI from "./src/sensor_ui.js";
+
 
 // Realize 
 let THOTH = ATON.App.realize();
@@ -41,6 +43,7 @@ THOTH.Collab  = Collab;
 THOTH.MSR     = MSR;
 THOTH.TransformControls= TransformControls;
 THOTH.LO      = LinkedObjects;
+THOTH.SensorUI = SensorUI;
 
 
 THOTH.BASE_URL        = "../thoth";
@@ -119,6 +122,15 @@ THOTH.setup = () => {
             // Init front end 
             THOTH.FE.setup();
 
+            const sensorDashboard = THOTH.SensorUI.createSensorDashboard("PREPEI_NA_STELNO_KATHE_15_LEPTA");
+            sensorDashboard.style.position = "absolute";
+            sensorDashboard.style.top = "50px";
+            sensorDashboard.style.left = "53px";
+            sensorDashboard.style.zIndex = "9999";
+            sensorDashboard.style.boxShadow = "0px 4px 10px rgba(0,0,0,0.5)";
+
+            document.body.appendChild(sensorDashboard);
+
             if (THOTH.sid) {
                 ATON.SceneHub.load(
                     THOTH.config.baseSceneUrl + THOTH.sid,
@@ -138,7 +150,7 @@ THOTH.setup = () => {
 };
 
 THOTH.update = () => {
-	if (THOTH._bPauseQuery) return;
+    if (THOTH._bPauseQuery) return;
     
     THOTH._queryData = ATON._queryDataScene;
     
@@ -259,7 +271,7 @@ THOTH.updateVisibility = () => {
 // TODO: update this for multi-mesh
 THOTH.updateNormalMap = (path, mesh, intensity = 10) => {
     if (!path) return false;
-	if (mesh === undefined) mesh = THOTH.Scene.mainMesh; 
+    if (mesh === undefined) mesh = THOTH.Scene.mainMesh;
 
     THOTH.textureLoader.load(path, (tex)=>{
         const mat = mesh.material;
@@ -295,7 +307,7 @@ THOTH.removeNormalMap = (mesh) => {
 
 THOTH.updateTextureMap = (path, mesh) => {
     if (!path) return false;
-	if (mesh === undefined) mesh = THOTH.Scene.mainMesh; 
+    if (mesh === undefined) mesh = THOTH.Scene.mainMesh;
 
     THOTH.textureLoader.load(path, (tex)=>{
         const mat = mesh.material;
