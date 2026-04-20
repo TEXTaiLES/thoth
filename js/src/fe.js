@@ -361,7 +361,8 @@ FE.setupSettingsPanel = () => {
 FE.setupModelsPanel = (elModelList) => {
     const elBody       = ATON.UI.createContainer();
     const elTopOptions = ATON.UI.createContainer({classes: "row g-0 align-items-center w-100 rounded-2 px-2 py-1 mb-1"});
-    
+    const [ elParentObject, elChildObjects ] = THOTH.LO.setupLinkedObjectsLists();
+
     // Top buttons
     elTopOptions.append(
         ATON.UI.createButton({
@@ -377,6 +378,20 @@ FE.setupModelsPanel = (elModelList) => {
             variant: "info",
             onpress: () => THOTH.UI.modalAddModel(),
         }),
+        ATON.UI.createTreeGroup({
+            items: [{
+                title: "Parent Object",
+                open: true,
+                content: elParentObject,
+            }]
+        }),
+        ATON.UI.createTreeGroup({
+            items: [{
+                title: "Child Objects",
+                open: true,
+                content: elChildObjects,
+            }]
+        })
     );
     elBody.append(elTopOptions, elModelList);
     

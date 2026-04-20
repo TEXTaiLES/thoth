@@ -18,8 +18,8 @@ import FE from "./src/fe.js";
 import MD from "./src/metadata.js";
 import Collab from "./src/collab.js";
 import MSR from "./src/measurements.js";
-//import { TransformControls } from "https://unpkg.com/three@0.160.0/examples/jsm/controls/TransformControls.js";
 import {TransformControls} from "./src/TransformControls.js";
+import LinkedObjects from "./src/linked_objects.js";
 
 // Realize 
 let THOTH = ATON.App.realize();
@@ -40,6 +40,7 @@ THOTH.MD      = MD;
 THOTH.Collab  = Collab;
 THOTH.MSR     = MSR;
 THOTH.TransformControls= TransformControls;
+THOTH.LO      = LinkedObjects;
 
 
 THOTH.BASE_URL        = "../thoth";
@@ -74,10 +75,18 @@ THOTH.setup = () => {
     ATON.SceneHub.addSceneParser("sceneMetadata", data => {
         THOTH.MD.parseSceneMetadata(data);
     });
+    // Init collaborative
+    ATON.SceneHub.addSceneParser("collaborative", data => {
+        THOTH.Collab.parseCollab(data);
+    });
     // Measurement parser
     ATON.SceneHub.addSceneParser("measurements", measurements => {
         THOTH.MSR.parseMeasurements(measurements);
     });
+    // Linked objects parser
+    ATON.SceneHub.addSceneParser("linked_objects", linked_objects => {
+        THOTH.LO.parseLinkedObjects(linked_objects);
+    })
 
     // Load config
     ATON.REQ.get(
@@ -88,22 +97,6 @@ THOTH.setup = () => {
         },
         err => ATON.UI.showModal("Error loading schema" + err)
     );
-    
-    ATON.SceneHub.addSceneParser("scenegraph", scenegraph => {
-        THOTH.Models.parseSceneGraph(scenegraph)
-    });
-    // Init layers
-    ATON.SceneHub.addSceneParser("layers", layers => {
-        THOTH.Layers.parseLayers(layers);
-    });
-    // Init scene metadata
-    ATON.SceneHub.addSceneParser("sceneMetadata", data => {
-        THOTH.MD.parseSceneMetadata(data);
-    });
-    // Init collaborative
-    ATON.SceneHub.addSceneParser("collaborative", data => {
-        THOTH.Collab.parseCollab(data);
-    });
 
     ATON.on("AllFlaresReady", () =>{
         ATON.on("ConfigLoaded", () => {
@@ -121,9 +114,11 @@ THOTH.setup = () => {
             THOTH.Toolbox.setup(THOTH.config.toolboxDefaults);
             // Init measurements
             THOTH.MSR.setup();
+            // Init linked objects
+            THOTH.LO.setup();
             // Init front end 
             THOTH.FE.setup();
-            
+
             if (THOTH.sid) {
                 ATON.SceneHub.load(
                     THOTH.config.baseSceneUrl + THOTH.sid,
