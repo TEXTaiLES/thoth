@@ -57,29 +57,35 @@ UI.createSensorDashboard = (sensorId) => {
     const uvIntensitySpan = elUVIntensity.querySelector(`.${uvIntensityClass}`);
     const timeSpan = elTime.querySelector(`.${timeClass}`);
 
+    const clearDashboard = () => {
+        atmosphericPressureSpan.textContent = "";
+        elevationSpan.textContent = "";
+        humiditySpan.textContent = "";
+        luminositySpan.textContent = "";
+        temperatureSpan.textContent = "";
+        uvIntensitySpan.textContent = "";
+        timeSpan.textContent = "";
+    };
+
     const updateDashboard = async () => {
-        if (!sensorId) return null;
+        if (!sensorId) {
+            clearDashboard();
+            return;
+        }
 
         const data = await Sensor.fetchSensorData(sensorId);
-        if (data) {
-            atmosphericPressureSpan.textContent = data.atmospheric_pressure ?? "NaN";
-            elevationSpan.textContent = data.elevation ?? "NaN";
-            humiditySpan.textContent = data.humidity ?? "NaN";
-            luminositySpan.textContent = data.luminosity ?? "NaN";
-            temperatureSpan.textContent = data.temperature ?? "NaN";
-            uvIntensitySpan.textContent = data.uv_intensity ?? "NaN";
-
-            const readingDate = new Date(data.timestamp);
-            timeSpan.textContent = readingDate.toLocaleString();
-        } else {
-            atmosphericPressureSpan.textContent = "--";
-            elevationSpan.textContent = "--";
-            humiditySpan.textContent = "--";
-            luminositySpan.textContent = "--";
-            temperatureSpan.textContent = "--";
-            uvIntensitySpan.textContent = "--";
-            timeSpan.textContent = "Data unavailable";
+        if (!data) {
+            clearDashboard();
+            return;
         }
+
+        atmosphericPressureSpan.textContent = data.atmospheric_pressure ?? "";
+        elevationSpan.textContent = data.elevation ?? "";
+        humiditySpan.textContent = data.humidity ?? "";
+        luminositySpan.textContent = data.luminosity ?? "";
+        temperatureSpan.textContent = data.temperature ?? "";
+        uvIntensitySpan.textContent = data.uv_intensity ?? "";
+        timeSpan.textContent = data.timestamp ? new Date(data.timestamp).toLocaleString() : "";
     };
 
     updateDashboard();

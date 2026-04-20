@@ -84,7 +84,6 @@ MSR.createMeasurementNodes = () => {
 MSR.addMeasurementPoint = () => {
     // Get face id from ATON
     if (!ATON._hitsScene || ATON._hitsScene.length === 0) return undefined;
-console.log("MSR click", MSR.enabled, MSR.paused);
     const hit    = ATON._hitsScene[0];
     const idx    = hit.faceIndex;
     const coords = hit.point;

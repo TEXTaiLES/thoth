@@ -63,7 +63,7 @@ Toolbox.createSelectorMesh = (radius) => {
     let selectorMesh = new THREE.Mesh(selectorGeometry, selectorMaterial);
     selectorMesh.scale.setScalar(radius);
     selectorMesh.visible = false;
-    
+    selectorMesh.raycast = () => {};
     return selectorMesh;
 };
 

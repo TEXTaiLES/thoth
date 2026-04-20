@@ -6,9 +6,6 @@
     Author: steliosalvanos@gmail.com
 
 ===========================================================================*/
-//import * as THREE from "./three/three.module.js";
-//import { TransformControls } from "./three/addons/controls/TransformControls.js";
-import Models from "./models.js";
 import {TransformControls} from "./transform_controls.js";
 let Events = {};
 
@@ -627,12 +624,12 @@ Events.setupTransformControls = (ModelName) => {
             prevValue: Events.transformStart.rotation
         });
     }
-    console.log("History push:", Events.transformStart, obj.position);
     Events.transformStart = null;
 
 });
 
 };
+
 Events.setupToolboxEvents = () => {
     // Resize
     window.addEventListener('resize', () => {
@@ -926,54 +923,6 @@ Events.activeLayerExists = () => {
     if (THOTH.Layers.activeLayer === undefined) return false;
     else return true;
 };
-/*
-//set up tranfosrm controls
-Events.setupTransformControls = () => {
-
-    const camera   = ATON.Nav._camera;
-    const renderer = ATON._renderer;
-    const scene    = ATON._scene; // or whatever ATON uses internally
-
-    Events.transformControls = new TransformControls(
-        camera,
-        renderer.domElement
-    );
-
-    scene.add(Events.transformControls);
-
-    // Disable nav while dragging
-    Events.transformControls.addEventListener('dragging-changed', (e) => {
-        ATON.Nav.setUserControl(!e.value);
-    });
-
-    // When object changes
-    Events.transformControls.addEventListener('objectChange', () => {
-        const object = Events.transformControls.object;
-        if (!object) return;
-
-        const modelName = object.name;
-
-        THOTH.fire("modelTransformPos", {
-            modelName,
-            value: {
-                x: object.position.x,
-                y: object.position.y,
-                z: object.position.z
-            }
-        });
-
-        THOTH.fire("modelTransformRot", {
-            modelName,
-            value: {
-                x: object.rotation.x,
-                y: object.rotation.y,
-                z: object.rotation.z
-            }
-        });
-    });
-};
-
-*/
 
 
 export default Events;

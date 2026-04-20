@@ -1,0 +1,5 @@
+- [ ] BRUSH BUGFIX ASAP
+- [ ] REMAKE ALL GEODESIC MEASUREMENTS, TS IS CURRENTLY UNUSABLE
+- [ ] Make sensors togglable (we don't want it there all the time). Make empty if there is no access to the data stream.
+- [ ] Align sensor data style with the rest of the web app.
+- [ ] Formatting consistency and removing bload would be nice.

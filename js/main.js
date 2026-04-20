@@ -29,21 +29,21 @@ window.THOTH = THOTH;
 
 
 // Import
-THOTH.UI                = UI;
-THOTH.Utils             = Utils;
-THOTH.Toolbox           = Toolbox;
-THOTH.History           = History;
-THOTH.Events            = Events;
-THOTH.SVP               = SVP;
-THOTH.Models            = Models;
-THOTH.Layers            = Layers;
-THOTH.FE                = FE;
-THOTH.MD                = MD;
-THOTH.Collab            = Collab;
-THOTH.MSR               = MSR;
-THOTH.TransformControls = TransformControls;
-THOTH.LO                = LinkedObjects;
-THOTH.SensorUI          = SensorUI;
+THOTH.UI       = UI;
+THOTH.Utils    = Utils;
+THOTH.Toolbox  = Toolbox;
+THOTH.History  = History;
+THOTH.Events   = Events;
+THOTH.SVP      = SVP;
+THOTH.Models   = Models;
+THOTH.Layers   = Layers;
+THOTH.FE       = FE;
+THOTH.MD       = MD;
+THOTH.Collab   = Collab;
+THOTH.MSR      = MSR;
+THOTH.TC       = TransformControls;
+THOTH.LO       = LinkedObjects;
+THOTH.SensorUI = SensorUI;
 
 
 THOTH.BASE_URL        = "../thoth";

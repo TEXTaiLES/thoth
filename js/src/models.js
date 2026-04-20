@@ -266,7 +266,7 @@ Models.modelTransformPos = (modelName, value) => {
     if (modelName === undefined) return;
 
     const model = Models.modelMap.get(modelName);
-    model.position.set(value.x, value.y, value.z);
+    model.position.set(Number(value.x), Number(value.y), Number(value.z));
       if (THOTH.transform && THOTH.transform.object === model) {
         THOTH.transform.updateMatrixWorld(true);
     }
@@ -276,14 +276,14 @@ Models.modelTransformRot = (modelName, value) => {
     if (modelName === undefined) return;
 
     const model = Models.modelMap.get(modelName);
-    model.rotation.set(value.x, value.y, value.z);
+    model.rotation.set(Number(value.x), Number(value.y), Number(value.z));
       if (THOTH.transform && THOTH.transform.object === model) {
         THOTH.transform.updateMatrixWorld(true);
     }
 };
 
 //add transform controls to scene node
-Models.addTransformControls=()=> {
+Models.addTransformControls = () => {
     THOTH.transform = new TransformControls(
             ATON.Nav._camera,
             ATON._renderer.domElement
@@ -291,21 +291,7 @@ Models.addTransformControls=()=> {
 
    const gizmoNode = new ATON.Node("transformGizmo");
    ATON._mainRoot.add(gizmoNode);
-   // ATON._RootUI.add(gizmoNode);
-   // gizmoNode.attachToRoot();
-    gizmoNode.add(THOTH.transform);
-
-    console.log("ATON._mainRoot",ATON._mainRoot);
-    console.log("ATON._mainRoot.children",ATON._mainRoot.children);
-    console.log("TRansform:",THOTH.transform);
-    console.log("Transforms parent",THOTH.transform.parent);
-     console.log("Transforms children",THOTH.transform.children);
-    console.log("gizmo position:", THOTH.transform.position);
-};
-
-Models.setTransformControlsMode=(mode)=> {
-    
-
+   gizmoNode.add(THOTH.transform);
 };
 
 

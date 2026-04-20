@@ -6,9 +6,13 @@
     Author: steliosalvanos@gmail.com
 
 ===========================================================================*/
-import MSR from "./measurements.js";
 let UI = {};
 
+UI.activeTransformControls = {
+    position: null,
+    rotation: null,
+    scale: null
+};
 
 
 // Modules
@@ -99,13 +103,7 @@ UI.modelTransformControl = (options) => {
 
     return el;
 };
-//store active ui controls globally
-UI.activeTransformControls = {
-    position: null,
-    rotation: null,
-    scale: null
-};
-// update and sync values with the ui panel
+
 UI.syncTransformUI = (obj) => {
 
     if (UI.activeTransformControls.position) {
@@ -427,7 +425,7 @@ UI.createModelEditor = (modelName) => {
         }),
         itemsRight: ATON.UI.createButton({
             text   : "Focus",
-            icon   : ATON.PATH_RES + "icons/focus.png",
+            icon   : ATON.PATH_RES + "icons/.png",
             classes: "btn-default",
             onpress: () => ATON.Nav.requestPOVbyNode(model, 0.2)
         }),
@@ -542,9 +540,9 @@ UI.createMeasureOptions = () => {
     const elBtnEuclidean = ATON.UI.createButton({
         text: "Euclidean",
         onpress: () => {
-            MSR.distanceType = 'euclidean';
+            THOTH.MSR.distanceType = 'euclidean';
             THOTH.FE.handleElementHighlight('euclidean', distanceTypeMap);
-            MSR.recomputeLastMeasurement();
+            THOTH.MSR.recomputeLastMeasurement();
         }
     });
     distanceTypeMap.set('euclidean', elBtnEuclidean);
@@ -552,9 +550,9 @@ UI.createMeasureOptions = () => {
     const elBtnGeodesic = ATON.UI.createButton({
         text: "Geodesic",
         onpress: () => {         
-            MSR.distanceType = 'geodesic';
+            THOTH.MSR.distanceType = 'geodesic';
             THOTH.FE.handleElementHighlight('geodesic', distanceTypeMap);
-            MSR.recomputeLastMeasurement();
+            THOTH.MSR.recomputeLastMeasurement();
         }
     });
     distanceTypeMap.set('geodesic', elBtnGeodesic);
@@ -572,7 +570,7 @@ UI.createMeasureOptions = () => {
     });
     const elResult = ATON.UI.createContainer({ classes: "bg-body-tertiary p-2" });
     elResult.textContent = "Distance: ";  // default text
-    MSR.elResult = elResult; 
+    THOTH.MSR.elResult = elResult; 
     elBody.append(elHeader, elDistance, elResult);
 
     return elBody;
