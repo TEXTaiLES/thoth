@@ -244,7 +244,7 @@ FE.setupUserToolbar = () => {
     userToolbar.append(
         THOTH.UI.createUserButton(),
         ATON.UI.createButton({
-            icon    : "vrc",
+            icon   : ATON.PATH_RES + "icons/vrc.png",
             onpress : () => {},
             tooltip : "Connect to Photon"
         })

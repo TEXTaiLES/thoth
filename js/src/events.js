@@ -9,7 +9,7 @@
 //import * as THREE from "./three/three.module.js";
 //import { TransformControls } from "./three/addons/controls/TransformControls.js";
 import Models from "./models.js";
-import {TransformControls} from "./TransformControls.js";
+import {TransformControls} from "./transform_controls.js";
 let Events = {};
 
 

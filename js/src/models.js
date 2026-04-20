@@ -6,7 +6,7 @@
     Author: steliosalvanos@gmail.com
 
 ===========================================================================*/
-import {TransformControls} from "./TransformControls.js";
+import {TransformControls} from "./transform_controls.js";
 let Models = {};
 
 // Setup

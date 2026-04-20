@@ -283,7 +283,7 @@ UI.createSplitRow = (options) => {
     return elRow;
 };
 
-UI.createUserButton = ()=>{
+UI.createUserButton = () => {
     UI._elUserBTN = ATON.UI.createButton({
         icon    : "user",
         onpress : () => UI.modalUser(),
@@ -328,7 +328,7 @@ UI.createModelController = (modelName) => {
         colLeft   : 7,
         itemsLeft : elLeft,
         itemsRight: ATON.UI.createButton({
-            icon   : "trash",
+            icon   : ATON.PATH_RES + "icons/trash.png",
             onpress: () => THOTH.fire("deleteModel", modelName),
         }),
     });
@@ -391,7 +391,7 @@ UI.createLayerController = (layerId) => {
         }),
         // Delete
         ATON.UI.createButton({
-            icon   : "trash",
+            icon   : ATON.PATH_RES + "icons/trash.png",
             size   : "small",
             onpress: () => THOTH.fire("deleteLayer", (layerId))
         }),
@@ -419,7 +419,7 @@ UI.createModelEditor = (modelName) => {
     const elModelHead = UI.createSplitRow({
         colLeft  : 4,
         itemsLeft: ATON.UI.createButton({
-            icon   : "back",
+            icon   : ATON.PATH_RES + "icons/back.png",
             onpress: () => ATON.UI.showSidePanel({
                 header: "Scene",
                 body  : THOTH.FE.modelsPanel
@@ -427,7 +427,7 @@ UI.createModelEditor = (modelName) => {
         }),
         itemsRight: ATON.UI.createButton({
             text   : "Focus",
-            icon   : "focus",
+            icon   : ATON.PATH_RES + "icons/focus.png",
             classes: "btn-default",
             onpress: () => ATON.Nav.requestPOVbyNode(model, 0.2)
         }),
@@ -1103,7 +1103,8 @@ UI.modalLayerDetails = (layerId, data_temp) => {
         }),
         itemsRight: ATON.UI.createButton({
             text   : "Delete Layer",
-            icon   : "trash",
+            tooltip: "Delete Layer",
+            icon   : ATON.PATH_RES + "icons/trash.png",
             onpress: () => {
                 THOTH.fire("deleteLayer", (layerId));
                 ATON.UI.hideModal();

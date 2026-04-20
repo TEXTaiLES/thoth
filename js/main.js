@@ -18,7 +18,7 @@ import FE from "./src/fe.js";
 import MD from "./src/metadata.js";
 import Collab from "./src/collab.js";
 import MSR from "./src/measurements.js";
-import {TransformControls} from "./src/TransformControls.js";
+import {TransformControls} from "./src/transform_controls.js";
 import LinkedObjects from "./src/linked_objects.js";
 import SensorUI from "./src/sensor_ui.js";
 
@@ -29,21 +29,21 @@ window.THOTH = THOTH;
 
 
 // Import
-THOTH.UI      = UI;
-THOTH.Utils   = Utils;
-THOTH.Toolbox = Toolbox;
-THOTH.History = History;
-THOTH.Events  = Events;
-THOTH.SVP     = SVP;
-THOTH.Models  = Models;
-THOTH.Layers  = Layers;
-THOTH.FE      = FE;
-THOTH.MD      = MD;
-THOTH.Collab  = Collab;
-THOTH.MSR     = MSR;
-THOTH.TransformControls= TransformControls;
-THOTH.LO      = LinkedObjects;
-THOTH.SensorUI = SensorUI;
+THOTH.UI                = UI;
+THOTH.Utils             = Utils;
+THOTH.Toolbox           = Toolbox;
+THOTH.History           = History;
+THOTH.Events            = Events;
+THOTH.SVP               = SVP;
+THOTH.Models            = Models;
+THOTH.Layers            = Layers;
+THOTH.FE                = FE;
+THOTH.MD                = MD;
+THOTH.Collab            = Collab;
+THOTH.MSR               = MSR;
+THOTH.TransformControls = TransformControls;
+THOTH.LO                = LinkedObjects;
+THOTH.SensorUI          = SensorUI;
 
 
 THOTH.BASE_URL        = "../thoth";
