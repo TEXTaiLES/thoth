@@ -15,8 +15,13 @@ LinkedObjects.setup = () => {
 LinkedObjects.parseLinkedObjects = (linked_objects) => {
     if (!linked_objects) return;
 
-    LinkedObjects.linkedObjectsMap.set("parent_object", linked_objects.parent_object);
-    LinkedObjects.linkedObjectsMap.set("child_objects", linked_objects.child_objects);
+    const parent_object = linked_objects.parent_object;
+    const is_parent_object_set = parent_object && typeof(parent_object) === "object" && Object.keys(parent_object).length > 0;
+    if (is_parent_object_set) LinkedObjects.linkedObjectsMap.set("parent_object", parent_object);
+
+    const child_objects = linked_objects.child_objects;
+    const is_child_objects_set = Array.isArray(child_objects) && child_objects.length > 0;
+    if (is_child_objects_set) LinkedObjects.linkedObjectsMap.set("child_objects", child_objects);
 }
 
 LinkedObjects.setupLinkedObjectsLists = () => {
@@ -39,7 +44,7 @@ LinkedObjects.setupLinkedObjectsLists = () => {
         ATON.checkAuth(
             (u) => {
                 // On logged-in user case
-                if (linkedParentObject && linkedParentObject.scene_id) {
+                if (linkedParentObject?.scene_id) {
                     elLinkedParentObject.append(ATON.UI.createButton({
                         text: linkedParentObject.name ?? "Parent Object",
                         onpress: () => window.open(`?s=${u.username}/${linkedParentObject.scene_id}`, "_blank"),
@@ -48,7 +53,7 @@ LinkedObjects.setupLinkedObjectsLists = () => {
                 }
                 let children_counter = 1;
                 for (const child_object of linkedChildObjectsList) {
-                    if (!child_object.scene_id) continue;
+                    if (!child_object?.scene_id) continue;
                     elLinkedChildObjects.append(ATON.UI.createButton({
                         text: child_object.name ?? `Child Object ${children_counter++}`,
                         onpress: () => window.open(`?s=${u.username}/${child_object.scene_id}`, "_blank"),
@@ -61,7 +66,6 @@ LinkedObjects.setupLinkedObjectsLists = () => {
                 return;
             }
         );
-
     };
 
     ATON.on("SceneJSONLoaded", renderList);
