@@ -61,9 +61,6 @@ THOTH.sid = THOTH.params.get('s');
 THOTH.setup = () => {
     // Realize base ATON and add base UI events
     ATON.realize();
-    // Force global THREE to match ATON
-   // window.THREE = ATON.THREE;
-   //
     ATON.UI.addBasicEvents();
     
     // Model parser
@@ -122,14 +119,14 @@ THOTH.setup = () => {
             // Init front end 
             THOTH.FE.setup();
 
-            const sensorDashboard = THOTH.SensorUI.createSensorDashboard("PREPEI_NA_STELNO_KATHE_15_LEPTA");
-            sensorDashboard.style.position = "absolute";
-            sensorDashboard.style.top = "50px";
-            sensorDashboard.style.left = "53px";
-            sensorDashboard.style.zIndex = "9999";
-            sensorDashboard.style.boxShadow = "0px 4px 10px rgba(0,0,0,0.5)";
+            // const sensorDashboard = THOTH.SensorUI.createSensorDashboard("PREPEI_NA_STELNO_KATHE_15_LEPTA");
+            // sensorDashboard.style.position = "absolute";
+            // sensorDashboard.style.top = "50px";
+            // sensorDashboard.style.left = "53px";
+            // sensorDashboard.style.zIndex = "9999";
+            // sensorDashboard.style.boxShadow = "0px 4px 10px rgba(0,0,0,0.5)";
 
-            document.body.appendChild(sensorDashboard);
+            // document.body.appendChild(sensorDashboard);
 
             if (THOTH.sid) {
                 ATON.SceneHub.load(

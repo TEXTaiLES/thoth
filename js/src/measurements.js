@@ -21,18 +21,18 @@ MSR.setup = () => {
 
     MSR.line  = MSR.createMeasurementLine();
     MSR.nodes = MSR.createMeasurementNodes();
-    
+
     MSR.tempNode = null;
     MSR.points   = [];
-    
+
     MSR.enabled = false;
     MSR.paused  = false;
 
     MSR.meshCache = new WeakMap();  //cache meshes
     MSR.pathCache = new WeakMap();  //cache paths
 
-   // MSR.distanceType = "euclidean"; // default
-   // MSR.distanceType = MSR.distanceType || "euclidean";
+    // MSR.distanceType = "euclidean"; // default
+    // MSR.distanceType = MSR.distanceType || "euclidean";
     MSR.distanceType = "geodesic";
     MSR.lastMeasurementId = null;
     MSR.lastMeasurementPoints = null;
@@ -41,13 +41,13 @@ MSR.setup = () => {
 
 MSR.update = () => {
     if (MSR.points.length === 0) return;
-    
+
     //
 };
 
 MSR.parseMeasurements = (measurements) => {
     if (measurements === undefined) return;
-    
+
     for (const id in measurements) {
         const measurement = measurements[id];
         MSR.msrMap.set(Number(id), measurement);
@@ -55,24 +55,24 @@ MSR.parseMeasurements = (measurements) => {
     }
 };
 
-  
+
 // Geometries
 
 MSR.createMeasurementLine = () => {
     const line_ = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
     const mline = new THREE.Line(line_, ATON.MatHub.getMaterial("measurement"));
-    
+
     mline.renderOrder = ATON.RO_SUI;
     mline.visible     = false;
-    
+
     ATON._rootUI.add(mline);
-    
+
     return mline;
 };
 
 MSR.createMeasurementNodes = () => {
     const nodes = new ATON.Node("test", ATON.NTYPES.UI);
-    
+
     ATON._mainRoot.add(nodes);
 
     return nodes;
@@ -87,18 +87,18 @@ MSR.addMeasurementPoint = () => {
     const hit    = ATON._hitsScene[0];
     const idx    = hit.faceIndex;
     const coords = hit.point;
-   // const mesh   = THOTH.hoveredMesh;
-    const mesh = hit.object;
+    const mesh   = hit.object;
+    // const mesh   = THOTH.hoveredMesh;
 
     const mPoint = {
         "mesh"  : mesh,
         "faceId": idx,
         "coords": coords
     };
-    
+
     MSR.points.push(mPoint);
     MSR.addMeasurementPointSem(mPoint);
-    
+
     if (MSR.points.length === 2) {
         THOTH.fire("createMeasurement");
         MSR.clearMeasurementPoints();
@@ -108,17 +108,17 @@ MSR.addMeasurementPoint = () => {
 MSR.addMeasurement = (measurementId, point1, point2) => {
     if (measurementId === undefined) return;
     if (point1 === undefined || point2 === undefined) return;
-    
+
     const measurement = MSR.msrMap.get(measurementId);
-    
+
     // Resolve id conflict
     if (measurement !== undefined) {
         if (measurement.trash === true) MSR.resurrectMeasurement(measurementId);
         else alert(`Measurement id conflict ${measurementId}`);
-        
+
         return;
     }
-    
+
     // Build measurement data
     /*
     const description   = "description";
@@ -133,35 +133,35 @@ MSR.addMeasurement = (measurementId, point1, point2) => {
         trash       : false
     };
     */
-    const distanceType = MSR.distanceType; 
-    let measurementData = null; 
-   
-if (distanceType === "euclidean") {
+    const distanceType = MSR.distanceType;
+    let measurementData = null;
 
-    const description   = "description";
-   // const distanceType  = "euclidean";
+    if (distanceType === "euclidean") {
 
-    const distance = MSR.getEuclideanDistance(point1, point2);
+        const description = "description";
+        // const distanceType  = "euclidean";
 
-    measurementData = {
-        id          : measurementId,
-        description : description,
-        distanceType: distanceType,
-        distance    : distance,
-        points      : [point1, point2],
-        trash       : false
-    };
-    MSR.updateResultUI(distance, distanceType);  
-}
-else if (distanceType === "geodesic") {
-    const mesh = point1.mesh;
+        const distance = MSR.getEuclideanDistance(point1, point2);
 
-   const { vertices } = MSR.buildMeshGraph(mesh);
+        measurementData = {
+            id: measurementId,
+            description: description,
+            distanceType: distanceType,
+            distance: distance,
+            points: [point1, point2],
+            trash: false
+        };
+        MSR.updateResultUI(distance, distanceType);
+    }
+    else if (distanceType === "geodesic") {
+        const mesh = point1.mesh;
 
-    //const startVertex = point1.faceId;
-    //const endVertex   = point2.faceId;
+        const { vertices } = MSR.buildMeshGraph(mesh);
 
-     const startVertex = MSR.getNearestVertexIndex(
+        //const startVertex = point1.faceId;
+        //const endVertex   = point2.faceId;
+
+        const startVertex = MSR.getNearestVertexIndex(
             mesh,
             point1.coords
         );
@@ -171,44 +171,42 @@ else if (distanceType === "geodesic") {
             point2.coords
         );
         if (startVertex === -1 || endVertex === -1) {
-    console.warn("Invalid vertex indices");
-    return;
-}
-//Only allow geodesic when both points are on the same mesh
-    if (point1.mesh !== point2.mesh) {
-    console.warn("Geodesic requires both points on the same mesh");
-    //added this, else fallback to euclidian
-    console.warn("should fallback to euclidian");
-    return;
-}
-        console.log("Start face:", point1.faceId, "End face:", point2.faceId);
-        console.log("Vertices count:", vertices.length);
-        console.log(point1.mesh.uuid, point2.mesh.uuid);
-    const path = MSR.getGeodesicPath(mesh, startVertex, endVertex);
-    if (!path || path.length === 0) {
-        console.warn("Geodesic path not found");
-        return;
-    }
-    if (path) {
-        const distance = MSR.computePathLength(vertices, path);
-        const description   = "description";
-        //const distanceType  = "geodesic";
-        measurementData = {
-        id          : measurementId,
-        description : description,
-        distanceType: distanceType,
-        distance    : distance,
-        points      : [point1, point2],
-        trash       : false
-    };
-        // draw geodesic line in scene
-        const worldPoints = MSR.pathToPoints(mesh, path);
-        //const geoLine = MSR.drawGeodesicPath(node, worldPoints); // attach to node
-        MSR.drawGeodesicPath(ATON._mainRoot, worldPoints);
-        MSR.updateResultUI(distance, distanceType);  
+            console.warn("Invalid vertex indices");
+            return;
+        }
+        // Only allow geodesic when both points are on the same mesh
+        if (point1.mesh !== point2.mesh) {
+            THOTH.FE.showToast("Geodesic requires both points on the same mesh");
+            
+            console.warn("Geodesic requires both points on the same mesh");
+            console.warn("should fallback to euclidian");``
+            return;
+        }
+        const path = MSR.getGeodesicPath(mesh, startVertex, endVertex);
+        if (!path || path.length === 0) {
+            console.warn("Geodesic path not found");
+            return;
+        }
+        if (path) {
+            const distance = MSR.computePathLength(vertices, path);
+            const description = "description";
+            //const distanceType  = "geodesic";
+            measurementData = {
+                id: measurementId,
+                description: description,
+                distanceType: distanceType,
+                distance: distance,
+                points: [point1, point2],
+                trash: false
+            };
+            // draw geodesic line in scene
+            const worldPoints = MSR.pathToPoints(mesh, path);
+            //const geoLine = MSR.drawGeodesicPath(node, worldPoints); // attach to node
+            MSR.drawGeodesicPath(ATON._mainRoot, worldPoints);
+            MSR.updateResultUI(distance, distanceType);
 
+        }
     }
-}
 
     // Append to Map
     MSR.msrMap.set(measurementId, measurementData);
@@ -216,37 +214,46 @@ else if (distanceType === "geodesic") {
     // Update SUI
     MSR.addMeasurementSem(measurementId);
 
+    // Update FE
+    THOTH.FE.addMsr(measurementId);
+
     // attach new SUI node
-/*    const node = MSR.addMeasurementSem(measurementId);
-    // If geodesic, draw line on that node
-if (distanceType === "geodesic" && path && path.length > 0) {
-    const worldPoints = MSR.pathToPoints(mesh, path);
-    MSR.drawGeodesicPath(node, worldPoints);}
-    */
+    /*    const node = MSR.addMeasurementSem(measurementId);
+        // If geodesic, draw line on that node
+    if (distanceType === "geodesic" && path && path.length > 0) {
+        const worldPoints = MSR.pathToPoints(mesh, path);
+        MSR.drawGeodesicPath(node, worldPoints);}
+        */
     //added this
     // store last measurement for recompute
     MSR.lastMeasurementId = measurementId;
-   // MSR.lastMeasurementNode = node;
+    // MSR.lastMeasurementNode = node;
     MSR.lastMeasurementPoints = [point1, point2];
 };
 
 MSR.deleteMeasurement = (measurementId) => {
-    if (measurementId === undefined ) return;
+    if (measurementId === undefined) return;
 
     const measurement = MSR.msrMap.get(measurementId);
-    
+
     measurement.trash = true;
     MSR.hideMeasurement(measurementId);
+
+    // Update FE
+    THOTH.FE.deleteMsr(measurementId);
 };
 
 MSR.resurrectMeasurement = (measurementId) => {
     if (measurementId === undefined) return;
-    
+
     const measurement = MSR.msrMap.get(measurementId);
     if (!measurement.trash) return;
 
     measurement.trash = false;
     MSR.showMeasurement(measurementId);
+
+    // Update FE
+    THOTH.FE.addMsr(measurementId);
 };
 
 MSR.recomputeLastMeasurement = () => {
@@ -276,7 +283,7 @@ MSR.recomputeLastMeasurement = () => {
         const { vertices } = MSR.buildMeshGraph(mesh);
 
         const vStart = MSR.getNearestVertexIndex(mesh, p1.coords);
-        const vEnd   = MSR.getNearestVertexIndex(mesh, p2.coords);
+        const vEnd = MSR.getNearestVertexIndex(mesh, p2.coords);
 
         if (vStart === -1 || vEnd === -1) return;
 
@@ -330,7 +337,7 @@ MSR.updateMeasurementLabel = (measurementId, distance) => {
 
 MSR.createPointSem = (point) => {
     const s = 0.1;
-    
+
     const pointSem = new THREE.Mesh(ATON.Utils.geomUnitCube, ATON.MatHub.getMaterial("measurement"));
     pointSem.renderOrder = ATON.RO_SUI;
     pointSem.position.copy(point.coords);
@@ -340,19 +347,19 @@ MSR.createPointSem = (point) => {
 };
 
 MSR.createLineSem = (point1, point2) => {
-    let line_ = null; 
+    let line_ = null;
     if (point1 === undefined || point2 === undefined) {
         line_ = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
     }
     else {
         line_ = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...point1.coords), new THREE.Vector3(...point2.coords)]);
-    } 
+    }
 
     const mline = new THREE.Line(line_, ATON.MatHub.getMaterial("measurement"));
-    
+
     mline.renderOrder = ATON.RO_SUI;
     mline.visible = true;
-    
+
     return mline;
 };
 
@@ -360,7 +367,7 @@ MSR.addMeasurementPointSem = (point) => {
     if (point === undefined) return;
 
     const pointSem = MSR.createPointSem(point);
-    
+
     if (MSR.tempNode === null) {
         MSR.tempNode = pointSem;
         MSR.nodes.add(MSR.tempNode)
@@ -371,63 +378,62 @@ MSR.addMeasurementPointSem = (point) => {
     }
 };
 
-
 MSR.createLabelSem = (measurementId) => {
     if (measurementId === undefined) return;
-    
+
     const measurement = MSR.msrMap.get(measurementId);
-    
+
     if (measurement === undefined) return;
 
-    const point1   = measurement.points[ 0];
-    const point2   = measurement.points[1];
+    const point1 = measurement.points[0];
+    const point2 = measurement.points[1];
     const distance = measurement.distance;
-    
+
     const label = new Label("", distance.toString());
     label.setPosition(
         (point1.coords.x + point2.coords.x) * 0.5,
         (point1.coords.y + point2.coords.y) * 0.5,
         (point1.coords.z + point2.coords.z) * 0.5,
     );
-    label.setScale(1.0); 
-     
+    label.setScale(1.0);
+
     return label;
 };
 
 MSR.addMeasurementSem = (measurementId) => {
     if (measurementId === undefined) return;
-    
+
     const measurement = MSR.msrMap.get(measurementId);
-    
+
     if (!measurement) {
         console.warn("Measurement not found in msrMap:", measurementId);
         return;
     }
     if (measurement === undefined) return;
-    
+
     // Nodes
     const point1 = measurement.points[0];
     const point2 = measurement.points[1];
     const semPoint1 = MSR.createPointSem(point1);
     const semPoint2 = MSR.createPointSem(point2);
-    
+
     // Line
     const line = MSR.createLineSem(point1, point2);
-/*
-    //adding geodesic line recomputaiton
-    let line;
-
-if (measurement.distanceType === "geodesic" && measurement.path) {
-    const geom = new THREE.BufferGeometry().setFromPoints(measurement.path);
-    line = new THREE.Line(geom, ATON.MatHub.getMaterial("measurement"));
-    line.renderOrder = ATON.RO_SUI;
-} else {
-    line = MSR.createLineSem(point1, point2);
-}
-*/
+    /*
+        //adding geodesic line recomputaiton
+        let line;
+    
+    if (measurement.distanceType === "geodesic" && measurement.path) {
+        const geom = new THREE.BufferGeometry().setFromPoints(measurement.path);
+        line = new THREE.Line(geom, ATON.MatHub.getMaterial("measurement"));
+        line.renderOrder = ATON.RO_SUI;
+    } else {
+        line = MSR.createLineSem(point1, point2);
+    }
+    */
     // Label
     const label = MSR.createLabelSem(measurementId);
-    
+
     // Add to node
     const node = new ATON.Node(`measurement${measurementId}`, ATON.NTYPES.UI);
     node.add(semPoint1);
@@ -446,10 +452,10 @@ if (measurement.distanceType === "geodesic" && measurement.path) {
         label.setScale(10);
         label.setOpacity(0.5);
     });
-    
+
     // Add to map
     MSR.msrSemMap.set(measurementId, node);
-    
+
     // Add to SUI
     node.attachTo(MSR.nodes);
     return node; //added this
@@ -662,15 +668,15 @@ MSR.hideMeasurement = (measurementId) => {
     if (measurementId === undefined) return;
 
     const node = MSR.msrSemMap.get(measurementId);
-    
+
     node.hide();
 };
 
 MSR.showMeasurement = (measurementId) => {
     if (measurementId === undefined) return;
-    
+
     const node = MSR.msrSemMap.get(measurementId);
-    
+
     node.show();
 };
 
@@ -687,8 +693,7 @@ MSR.toggleVisibility = (measurementId) => {
     else {
         MSR.showMeasurement(measurementId);
     }
-};  
-
+};
 
 
 // Export 
@@ -729,7 +734,7 @@ MSR.deactivate = () => {
 };
 
 
-MSR.pause  = () => MSR.paused = true;
+MSR.pause = () => MSR.paused = true;
 MSR.resume = () => MSR.paused = false;
 
 
