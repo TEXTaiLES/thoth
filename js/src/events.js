@@ -3,7 +3,8 @@
     THOTH
     Event handling
 
-    Author: steliosalvanos@gmail.com
+    Authors: 
+        Stelios Alvanos (steliosalvanos@gmail.com)
 
 ===========================================================================*/
 import {TransformControls} from "./transform_controls.js";

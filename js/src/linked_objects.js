@@ -3,7 +3,8 @@
     THOTH
     Linked Objects
 
-    Author: Ioannis Giannoukos
+    Authors:
+        Ioannis Giannoukos
 
 ===========================================================================*/
 let LinkedObjects = {};

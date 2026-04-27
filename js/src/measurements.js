@@ -3,7 +3,9 @@
     THOTH
     Measurement functionalities
 
-    Author: steliosalvanos@gmail.com
+    Authors: 
+        Stelios Alvanos (steliosalvanos@gmail.com)
+        Apostolos Kastritsis
 
 ===========================================================================*/
 import Label from "./measurements.label.js"

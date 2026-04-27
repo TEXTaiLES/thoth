@@ -3,7 +3,8 @@
     THOTH
     Front End
 
-    Author: steliosalvanos@gmail.com
+    Authors: 
+        Stelios Alvanos (steliosalvanos@gmail.com)
 
 ===========================================================================*/
 let FE = {};
@@ -17,6 +18,7 @@ FE.setup = () => {
     FE.topToolbar    = FE.setupTopToolbar();
     FE.userToolbar   = FE.setupUserToolbar();
     FE.settingsPanel = FE.setupSettingsPanel();
+    FE.sensorPanel   = FE.setupSensorPanel();
 
     FE.setupLayerElements();
     FE.setupModelElements();
@@ -226,6 +228,16 @@ FE.setupTopToolbar = () => {
             }),
             tooltop : "Layers"
         }),
+        // Sensors
+        ATON.UI.createButton({
+            icon   : "light",
+            text   : "Sensors ",
+            onpress: () => ATON.UI.showSidePanel({
+                header: "Sensor Stream",
+                body  : FE.sensorPanel
+            }),
+            tooltop : "Sensor Data"
+        }), 
         // Info
         ATON.UI.createButton({
             icon   : "info",
@@ -423,6 +435,15 @@ FE.setupLayersPanel = (elLayerList) => {
         }),
     );
     elBody.append(elTopOptions, elSceneController, elLayerList);
+
+    return elBody;
+};
+
+FE.setupSensorPanel = () => {
+    const elBody = ATON.UI.createContainer();
+    
+    const sensorDashboard = THOTH.UI.createSensorDashboard("PREPEI_NA_STELNO_KATHE_15_LEPTA");
+    elBody.append(sensorDashboard);
 
     return elBody;
 };

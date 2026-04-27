@@ -3,24 +3,27 @@
     THOTH
     Launch Point
 
-    Author: steliosalvanos@gmail.com
+    Authors: 
+        Stelios Alvanos (steliosalvanos@gmail.com)
+        Ioannis Giannoukos
+        Apostolos Kastritsis
 
 ===========================================================================*/
-import UI from "./src/ui.js";
-import Utils from "./src/utils.js";
-import Toolbox from "./src/toolbox.js";
-import History from "./src/history.js";
-import Events from "./src/events.js";
-import SVP from "./src/svp.js";
-import Layers from "./src/layers.js";
-import Models from "./src/models.js";
-import FE from "./src/fe.js";
-import MD from "./src/metadata.js";
-import Collab from "./src/collab.js";
-import MSR from "./src/measurements.js";
+import UI                  from "./src/ui.js";
+import Utils               from "./src/utils.js";
+import Toolbox             from "./src/toolbox.js";
+import History             from "./src/history.js";
+import Events              from "./src/events.js";
+import SVP                 from "./src/svp.js";
+import Layers              from "./src/layers.js";
+import Models              from "./src/models.js";
+import FE                  from "./src/fe.js";
+import MD                  from "./src/metadata.js";
+import Collab              from "./src/collab.js";
+import MSR                 from "./src/measurements.js";
+import Sensor              from "./src/sensor.js";
 import {TransformControls} from "./src/transform_controls.js";
-import LinkedObjects from "./src/linked_objects.js";
-import SensorUI from "./src/sensor_ui.js";
+import LinkedObjects       from "./src/linked_objects.js";
 
 
 // Realize 
@@ -29,21 +32,21 @@ window.THOTH = THOTH;
 
 
 // Import
-THOTH.UI       = UI;
-THOTH.Utils    = Utils;
-THOTH.Toolbox  = Toolbox;
-THOTH.History  = History;
-THOTH.Events   = Events;
-THOTH.SVP      = SVP;
-THOTH.Models   = Models;
-THOTH.Layers   = Layers;
-THOTH.FE       = FE;
-THOTH.MD       = MD;
-THOTH.Collab   = Collab;
-THOTH.MSR      = MSR;
-THOTH.TC       = TransformControls;
-THOTH.LO       = LinkedObjects;
-THOTH.SensorUI = SensorUI;
+THOTH.UI      = UI;
+THOTH.Utils   = Utils;
+THOTH.Toolbox = Toolbox;
+THOTH.History = History;
+THOTH.Events  = Events;
+THOTH.SVP     = SVP;
+THOTH.Models  = Models;
+THOTH.Layers  = Layers;
+THOTH.FE      = FE;
+THOTH.MD      = MD;
+THOTH.Collab  = Collab;
+THOTH.MSR     = MSR;
+THOTH.TC      = TransformControls;
+THOTH.LO      = LinkedObjects;
+THOTH.Sensor  = Sensor;
 
 
 THOTH.BASE_URL        = "../thoth";
@@ -61,9 +64,6 @@ THOTH.sid = THOTH.params.get('s');
 THOTH.setup = () => {
     // Realize base ATON and add base UI events
     ATON.realize();
-    // Force global THREE to match ATON
-   // window.THREE = ATON.THREE;
-   //
     ATON.UI.addBasicEvents();
     
     // Model parser
@@ -121,15 +121,6 @@ THOTH.setup = () => {
             THOTH.LO.setup();
             // Init front end 
             THOTH.FE.setup();
-
-            const sensorDashboard = THOTH.SensorUI.createSensorDashboard("PREPEI_NA_STELNO_KATHE_15_LEPTA");
-            sensorDashboard.style.position = "absolute";
-            sensorDashboard.style.top = "50px";
-            sensorDashboard.style.left = "53px";
-            sensorDashboard.style.zIndex = "9999";
-            sensorDashboard.style.boxShadow = "0px 4px 10px rgba(0,0,0,0.5)";
-
-            document.body.appendChild(sensorDashboard);
 
             if (THOTH.sid) {
                 ATON.SceneHub.load(
@@ -225,8 +216,8 @@ THOTH.highlightSelection = (selection, highlightColor, modelName, meshName) => {
 THOTH.highlightAllLayers = () => {
     // All layers
     for (const [ , layer] of THOTH.Layers.layerMap) {
-        if (layer.trash) return;
-        if (layer.visible === false) return;
+        if (layer.trash) continue;
+        if (layer.visible === false) continue;
         
         const selection      = layer.selection;
         const highlightColor = THOTH.Utils.hex2rgb(layer.highlightColor);

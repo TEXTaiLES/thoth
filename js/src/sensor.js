@@ -3,7 +3,8 @@
     THOTH
     Sensor Data Fetcher
 
-    Author: Ioannis Giannoukos
+    Authors: 
+        Ioannis Giannoukos
 
 ===========================================================================*/
 let Sensor = {};
@@ -50,7 +51,8 @@ Sensor.fetchSensorData = async (sensorId) => {
         //  }
 
     } catch (error) {
-        console.error("Failed to fetch sensor data:", error);
+        console.warn("No sensor data stream found");
+        // console.error("Failed to fetch sensor data:", error);
         return null;
     }
 }

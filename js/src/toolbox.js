@@ -3,7 +3,8 @@
     THOTH
     Toolbox Functalities
 
-    Author: steliosalvanos@gmail.com
+    Author: 
+        Stelios Alvanos (steliosalvanos@gmail.com)
 
 ===========================================================================*/
 const { INTERSECTED, NOT_INTERSECTED, CONTAINED } = window.ThreeMeshBVH;

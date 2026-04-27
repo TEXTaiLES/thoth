@@ -3,7 +3,8 @@
     THOTH
     Metadata management
 
-    Author: steliosalvanos@gmail.com
+    Authors: 
+        Stelios Alvanos (steliosalvanos@gmail.com)
 
 ===========================================================================*/
 let MD = {};

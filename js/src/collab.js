@@ -1,9 +1,10 @@
 /*===========================================================================
 
     THOTH
-    Collaborative handling
+    Collaborative utilites
 
-    Author: steliosalvanos@gmail.com
+    Author: 
+        Stelios Alvanos (steliosalvanos@gmail.com)
 
 ===========================================================================*/
 let Collab = {};

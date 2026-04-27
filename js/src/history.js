@@ -1,9 +1,11 @@
 /*===========================================================================
 
     THOTH
-    History Functionalities
+    History management
 
-    Author: steliosalvanos@gmail.com
+    Authors: 
+        Stelios Alvanos (steliosalvanos@gmail.com)
+        Apostolos Kastritsis
 
 ===========================================================================*/
 let History = {};
