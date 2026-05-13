@@ -253,9 +253,13 @@ MSR.updateMeasurementLabel = (measurementId, distance) => {
 // SUI
 
 MSR.createPointSem = (point) => {
-    const s = 0.1;
+    
+    const modelScale = THOTH.Utils.getModelScale(point.mesh);
+    // s = modelscale * percentage_factor
+    const s = modelScale * 0.01;
 
     const pointSem = new THREE.Mesh(ATON.Utils.geomUnitCube, ATON.MatHub.getMaterial("measurement"));
+
     pointSem.renderOrder = ATON.RO_SUI;
     pointSem.position.copy(point.coords);
     pointSem.scale.set(s, s, s);
