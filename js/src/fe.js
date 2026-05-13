@@ -552,7 +552,13 @@ FE.addMsr = (msrId) => {
     // Create new name button
     const newMsrNameBtn = ATON.UI.createButton({
         text   : THOTH.MSR.msrMap.get(msrId).name,
-        onpress: () => {} // highilight {}
+        onpress: () => {
+           // THOTH.FE.handleElementHighlight('msrname',THOTH.MSR.msrMap.get(msrId));
+           //THOTH.MSR.SetActiveMsr(msrId);
+           //THOTH.MSR.set
+                //THOTH.MSR.SetActiveMsr();
+
+        } // highilight {}
     });
     FE.msrNameMap.set(msrId, newMsrNameBtn);
 

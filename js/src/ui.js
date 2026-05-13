@@ -412,6 +412,16 @@ UI.createMsrController = (msrId) => {
     
     const msr = THOTH.MSR.msrMap.get(msrId);
 
+    const nameBtn = ATON.UI.createButton({
+    text   : msr.name || `Measurement ${msrId}`,
+    size   : "small",
+    tooltip: "Select measurement",
+    onpress: () => {
+        THOTH.FE.handleElementHighlight(msrId, THOTH.FE.msrMap);
+        THOTH.MSR.highlightMeasurement(msrId);
+    },
+});
+
     // Name
     elLeft.append(
         // Visibility
@@ -420,9 +430,10 @@ UI.createMsrController = (msrId) => {
             size   : "small",
             onpress: () => THOTH.MSR.toggleVisibility(msrId),
         }),
-        THOTH.FE.msrNameMap.get(msrId),
+         nameBtn,
     );
     elRight.append(
+
         // Details
         ATON.UI.createButton({
             icon   : "list",
@@ -435,7 +446,16 @@ UI.createMsrController = (msrId) => {
         ATON.UI.createButton({
             icon   : ATON.PATH_RES + "icons/trash.png",
             size   : "small",
-            onpress: () => THOTH.fire("deleteMeasurement", (msrId))
+            tooltip: "Delete measurement",
+            onpress: () => {
+                const msr = THOTH.MSR.msrMap.get(msrId);
+                //THOTH.fire("deleteMeasurement", (msrId))
+                THOTH.fire("deleteMeasurement", {
+                    id: msrId,
+                    point1: msr.points[0],
+                    point2: msr.points[1]
+             });
+}
         }),
     );
 
@@ -444,6 +464,8 @@ UI.createMsrController = (msrId) => {
         itemsLeft : elLeft,
         itemsRight: elRight
     });
+
+    elController.nameBtn = nameBtn;
 
     return elController;
 };
@@ -579,13 +601,13 @@ UI.createMeasureOptions = () => {
     
     // Distance type map
     const distanceTypeMap = new Map();
-    
+    THOTH.MSR.distanceType = 'euclidean';
+    THOTH.FE.handleElementHighlight('euclidean', distanceTypeMap);//highlight default
     const elBtnEuclidean = ATON.UI.createButton({
         text: "Euclidean",
         onpress: () => {
             THOTH.MSR.distanceType = 'euclidean';
             THOTH.FE.handleElementHighlight('euclidean', distanceTypeMap);
-            THOTH.MSR.recomputeLastMeasurement();
         }
     });
     distanceTypeMap.set('euclidean', elBtnEuclidean);
@@ -595,7 +617,7 @@ UI.createMeasureOptions = () => {
         onpress: () => {         
             THOTH.MSR.distanceType = 'geodesic';
             THOTH.FE.handleElementHighlight('geodesic', distanceTypeMap);
-            THOTH.MSR.recomputeLastMeasurement();
+
         }
     });
     distanceTypeMap.set('geodesic', elBtnGeodesic);
@@ -612,8 +634,8 @@ UI.createMeasureOptions = () => {
         itemsRight: elOptions,
     });
     const elResult = ATON.UI.createContainer({ classes: "bg-body-tertiary p-2" });
-    elResult.textContent = "Distance: ";  // default text
-    THOTH.MSR.elResult = elResult; 
+  //  elResult.textContent = "Distance: ";  // default text
+   // THOTH.MSR.elResult = elResult; 
     elBody.append(elHeader, elDistance, elResult);
 
     return elBody;
@@ -1020,7 +1042,7 @@ UI.modalMsrDetails = (msrId) => {
             }
         }),
     })
-
+    const oldName = msr.name || "";
     const elBody = ATON.UI.createTreeGroup({
         items: [
             // Name
@@ -1032,8 +1054,9 @@ UI.modalMsrDetails = (msrId) => {
                     value   : msr.name,
                     onchange: (v) => THOTH.fire("renameMeasurement", {
                         id      : msrId,
-                        data    : v,
-                        prevData: structuredClone(msr.name) || ""
+                        value    : v,
+                        //prevData: structuredClone(msr.name) || ""
+                       // prevValue: oldName
                     }),
                 })
             },

@@ -40,6 +40,7 @@ History.ACTIONS.DEL_MODEL = 10;
 
 History.ACTIONS.ADD_MEASUREMENT = 11;
 History.ACTIONS.DEL_MEASUREMENT = 12;
+History.ACTIONS.RENAME_MEASUREMENT = 2;
 
 // Setup
 
@@ -190,6 +191,16 @@ History.fireAndInverse = (action) => {
                 point1: value.point1,
                 point2: value.point2,
             });
+        /*case History.ACTIONS.RENAME_MEASUREMENT:
+            inverseType = History.ACTIONS.RENAME_MEASUREMENT;
+            // Swap
+            [value, prevValue] = [prevValue, value];
+            THOTH.MSR.renameMeasurement(id, value);
+            THOTH.firePhoton("renameMeasurement", {
+                id    : id,
+                value: value, 
+                prevValue: prevValue               
+            });*/
             break;
 
         default:
