@@ -455,7 +455,7 @@ UI.createMsrController = (msrId) => {
                     point1: msr.points[0],
                     point2: msr.points[1]
              });
-}
+            }
         }),
     );
 
@@ -1037,7 +1037,14 @@ UI.modalMsrDetails = (msrId) => {
             tooltip: "Delete Measurement",
             icon   : ATON.PATH_RES + "icons/trash.png",
             onpress: () => {
-                THOTH.fire("deleteMeasurement", (msrId));
+               // THOTH.fire("deleteMeasurement", (msrId));
+               const msr = THOTH.MSR.msrMap.get(msrId);
+               THOTH.fire("deleteMeasurement", {
+                    id: msrId,
+                    point1: msr.points[0],
+                    point2: msr.points[1]
+             });
+
                 ATON.UI.hideModal();
             }
         }),
