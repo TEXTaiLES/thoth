@@ -119,15 +119,6 @@ THOTH.setup = () => {
             // Init front end 
             THOTH.FE.setup();
 
-            // const sensorDashboard = THOTH.SensorUI.createSensorDashboard("PREPEI_NA_STELNO_KATHE_15_LEPTA");
-            // sensorDashboard.style.position = "absolute";
-            // sensorDashboard.style.top = "50px";
-            // sensorDashboard.style.left = "53px";
-            // sensorDashboard.style.zIndex = "9999";
-            // sensorDashboard.style.boxShadow = "0px 4px 10px rgba(0,0,0,0.5)";
-
-            // document.body.appendChild(sensorDashboard);
-
             if (THOTH.sid) {
                 ATON.SceneHub.load(
                     THOTH.config.baseSceneUrl + THOTH.sid,
@@ -154,6 +145,7 @@ THOTH.update = () => {
     THOTH.hoveredMesh  = THOTH._queryData?.o?.name;
     THOTH.hoveredModel = THOTH.Models.getParent(THOTH._queryData?.o);
 };
+
 
 // Visualization
 
@@ -260,6 +252,19 @@ THOTH.clearHighlights = () => {
 THOTH.updateVisibility = () => {
     THOTH.clearHighlights();
     THOTH.highlightAllLayers();
+};
+
+THOTH.updateSceneScale = (model) => {
+    const newModelScale = THOTH.Utils.getModelScale(model);
+    
+    // Naive computation
+    if (THOTH.sceneScale === undefined) {
+        THOTH.sceneScale = newModelScale;
+    }
+    else {
+        THOTH.sceneScale = (THOTH.sceneScale + newModelScale) / 2;
+    }
+    console.log("Average object scale: " + THOTH.sceneScale);
 };
 
 

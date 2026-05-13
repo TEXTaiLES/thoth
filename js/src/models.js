@@ -16,7 +16,6 @@ Models.setup = () => {
     Models.modelMap = new Map();
     Models.tempNode = null;
     Models.gizNode;
-
 };
 
 Models.parseSceneGraph = (sg) => {
@@ -73,6 +72,7 @@ Models.onLoad = (model) => {
             Models.initMeshColors(N);
         }
     });
+    THOTH.updateSceneScale(model);
     THOTH.FE.addModel(model.name);
     THOTH.updateVisibility();
 };
