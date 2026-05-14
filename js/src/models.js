@@ -294,6 +294,16 @@ Models.addTransformControls = () => {
    gizmoNode.add(THOTH.transform);
 };
 
+Models.deactivateTransformControls = () => {
+
+    if (!THOTH.transform) return;
+
+    THOTH.transform.detach();
+
+    THOTH.transform.visible = false;
+
+};
+
 
 // Export
 

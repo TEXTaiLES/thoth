@@ -253,11 +253,7 @@ UI.createVectorControl = (options, transform)=>{
         }
         if (options.onupdate) options.onupdate();
     };
-    /*
-      if (THOTH.transform) {
-            THOTH.transform.updateMatrixWorld(true);//update transformcontrols also
-            }
-            */
+
     return el;
 };
 
@@ -316,8 +312,8 @@ UI.createModelController = (modelName) => {
             onpress: ()=> {
             THOTH.fire("selectModel", modelName);
             ATON.UI.showSidePanel({
-             header: modelName,
-            body: UI.createModelEditor(modelName)
+                header: modelName,
+                body: UI.createModelEditor(modelName)
             });
             }
         }),     
@@ -328,7 +324,12 @@ UI.createModelController = (modelName) => {
         itemsLeft : elLeft,
         itemsRight: ATON.UI.createButton({
             icon   : ATON.PATH_RES + "icons/trash.png",
-            onpress: () => THOTH.fire("deleteModel", modelName),
+            onpress: () => 
+                {
+                    THOTH.Models.deactivateTransformControls();
+                    THOTH.fire("deleteModel", modelName);}
+
+            
         }),
     });
     
@@ -483,10 +484,14 @@ UI.createModelEditor = (modelName) => {
         colLeft  : 4,
         itemsLeft: ATON.UI.createButton({
             icon   : ATON.PATH_RES + "icons/back.png",
-            onpress: () => ATON.UI.showSidePanel({
-                header: "Scene",
-                body  : THOTH.FE.modelsPanel
-            })
+           onpress: () => {
+
+                THOTH.Models.deactivateTransformControls();
+                ATON.UI.showSidePanel({
+                    header: "Scene",
+                    body  : THOTH.FE.modelsPanel
+                    });
+            }
         }),
         itemsRight: ATON.UI.createButton({
             text   : "Focus",

@@ -27,6 +27,14 @@ FE.setup = () => {
     
     // VP
     FE.viewpointCard = FE.setupVPCard();
+    //gizmos state
+    const originalHideSidePanel = ATON.UI.hideSidePanel;
+    ATON.UI.hideSidePanel = (options) => {
+    if (THOTH.transform) {
+            THOTH.transform.detach();
+        }
+    return originalHideSidePanel(options);
+    };
 };
 
 FE.setupLayerElements = () => {
@@ -402,6 +410,8 @@ FE.setupModelsPanel = (elModelList) => {
     const elBody       = ATON.UI.createContainer();
     const elTopOptions = ATON.UI.createContainer({classes: "row g-0 align-items-center w-100 rounded-2 px-2 py-1 mb-1"});
     const [ elParentObject, elChildObjects ] = THOTH.LO.setupLinkedObjectsLists();
+
+
 
     // Top buttons
     elTopOptions.append(

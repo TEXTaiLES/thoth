@@ -479,6 +479,7 @@ Events.setupModelEvents = () => {
     });
     THOTH.on("deleteModel", (id) => {
         // Local
+        
         THOTH.Models.deleteModel(id);
         // Photon
         THOTH.firePhoton("deleteModels", id);
