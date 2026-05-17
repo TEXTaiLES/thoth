@@ -292,12 +292,6 @@ FE.setupTopToolbar = () => {
             text   : "Info",
             onpress: () => window.open("https://textailes.github.io/thoth-documentation/", "_blank"),
             tooltip: "Open documentation"
-        }),
-        ATON.UI.createButton({
-            text: "test",
-            onpress: () => {
-                console.log(THOTH.MSR.msrMap)
-            }
         })
     );
 
