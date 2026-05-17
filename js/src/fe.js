@@ -266,7 +266,6 @@ FE.setupTopToolbar = () => {
             }),
             tooltop : "Layers"
         }),
-<<<<<<< HEAD
         // Sensors
         ATON.UI.createButton({
             icon   : "light",
@@ -277,7 +276,6 @@ FE.setupTopToolbar = () => {
             }),
             tooltop : "Sensor Data"
         }), 
-=======
         // msr
         ATON.UI.createButton({
             icon   : "measure",
@@ -288,7 +286,6 @@ FE.setupTopToolbar = () => {
             }),
             tooltip: "Measurements"
         }),
->>>>>>> origin/msr_ui
         // Info
         ATON.UI.createButton({
             icon   : "info",
@@ -296,6 +293,12 @@ FE.setupTopToolbar = () => {
             onpress: () => window.open("https://textailes.github.io/thoth-documentation/", "_blank"),
             tooltip: "Open documentation"
         }),
+        ATON.UI.createButton({
+            text: "test",
+            onpress: () => {
+                console.log(THOTH.MSR.msrMap)
+            }
+        })
     );
 
     return topToolbar;
@@ -492,13 +495,15 @@ FE.setupLayersPanel = (elLayerList) => {
     return elBody;
 };
 
-<<<<<<< HEAD
 FE.setupSensorPanel = () => {
     const elBody = ATON.UI.createContainer();
     
     const sensorDashboard = THOTH.UI.createSensorDashboard("PREPEI_NA_STELNO_KATHE_15_LEPTA");
     elBody.append(sensorDashboard);
-=======
+
+    return elBody;
+};
+
 FE.setupMsrPanel = (elMsrList) => {
     const elBody       = ATON.UI.createContainer();
     const elTopOptions = ATON.UI.createContainer({classes: "row g-0 align-items-center w-100 rounded-2 px-2 py-1 mb-1"});
@@ -514,7 +519,6 @@ FE.setupMsrPanel = (elMsrList) => {
         }),
     );
     elBody.append(elTopOptions, elMsrList);
->>>>>>> origin/msr_ui
 
     return elBody;
 };

@@ -27,11 +27,11 @@ Models.parseSceneGraph = (sg) => {
 
     // nodes
     for (const nid in nodes) {
-
+        
         const N = nodes[nid];
         const G = ATON.getOrCreateSceneNode(nid).removeChildren();
         ATON.SceneHub._applyJSONTransformToNode(N.transform, G);
-
+        
         let urls = N.urls;
         if (urls) {
             if (Array.isArray(urls)) {
@@ -73,6 +73,7 @@ Models.onLoad = (model) => {
             Models.initMeshColors(N);
         }
     });
+    
     THOTH.updateSceneScale(model);
     THOTH.FE.addModel(model.name);
     THOTH.updateVisibility();
@@ -128,6 +129,7 @@ Models.getModelTransforms = (modelName) => {
             Number(model.position.y), 
             Number(model.position.z)
         ],
+        scale: [1, 1, 1],
         rotation: [
             Number(model.rotation.x),
             Number(model.rotation.y), 

@@ -268,6 +268,7 @@ THOTH.updateSceneScale = (model) => {
         THOTH.sceneScale = (THOTH.sceneScale + newModelScale) / 2;
     }
     console.log("Average object scale: " + THOTH.sceneScale);
+    THOTH.MSR?.refreshLabelScales();
 };
 
 
@@ -419,9 +420,12 @@ THOTH.getExportData = () => {
     A.scenegraph = THOTH.Models.getExportData();
     // Layer data
     A.layers = THOTH.Layers.getExportData();
+    // Measurements
+    A.measurements = THOTH.MSR.getExportData();
     // Scene metadata
     A.sceneMetadata = structuredClone(THOTH.sceneMetadata);
-
+    
+    console.log(A)
     return A;
 };
 

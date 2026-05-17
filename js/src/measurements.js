@@ -33,6 +33,10 @@ MSR.setup = () => {
     MSR.meshCache = new WeakMap();  //cache meshes
     MSR.pathCache = new WeakMap();  //cache paths
 
+    MSR.labelScaleFactor = 0.05;
+    MSR.lastSceneScale = null;
+    MSR.isSceneLoading = true;
+
     // MSR.distanceType = MSR.distanceType || "euclidean";
     MSR.distanceType = "euclidean";//default
     MSR.lastMeasurementId = null;
@@ -40,10 +44,61 @@ MSR.setup = () => {
     MSR.currentMeasurementLine =null;
     MSR.defaultEuclideanLineColor  = 0xffffff; //white
     MSR.defaultGeodesicLineColor  = 0xffffff; // white
-     MSR.selectedLineColor = 0xff0000;//red
+    MSR.selectedLineColor = 0xff0000;//red
     //MSR.selectedLineColor = 0xffff00; // highlight color (yellow)
-//0xff0000 red
+    //0xff0000 red
     //MSR.lastMeasurementPoints = [];
+
+    ATON.on("SceneJSONLoaded", () => {
+        MSR.isSceneLoading = true;
+        MSR.refreshMeasurementVisibility();
+    });
+
+    ATON.on("AllNodeRequestsCompleted", () => {
+        MSR.isSceneLoading = false;
+        MSR.refreshMeasurementVisibility();
+    });
+};
+
+MSR.getLabelScale = () => {
+    const sceneScale = THOTH.sceneScale;
+    if (!Number.isFinite(sceneScale)) return null;
+    return sceneScale * MSR.labelScaleFactor;
+};
+
+MSR.applyLabelScale = (label) => {
+    if (!label) return;
+    const scale = MSR.getLabelScale();
+    if (scale === null) {
+        label.setScale(0);
+        label.setOpacity(0);
+        return;
+    }
+    label.setScale(scale);
+    label.setOpacity(1);
+};
+
+MSR.refreshLabelScales = () => {
+    const sceneScale = THOTH.sceneScale;
+    if (!Number.isFinite(sceneScale)) return;
+    if (MSR.lastSceneScale === sceneScale) return;
+    MSR.lastSceneScale = sceneScale;
+
+    for (const node of MSR.msrSemMap.values()) {
+        const label = node.children.find(child => child instanceof Label);
+        if (label) MSR.applyLabelScale(label);
+    }
+};
+
+MSR.refreshMeasurementVisibility = () => {
+    for (const [id, measurement] of MSR.msrMap.entries()) {
+        const node = MSR.msrSemMap.get(id);
+        if (!node || !measurement) continue;
+
+        const shouldShow = !MSR.isSceneLoading && measurement.trash !== true && measurement.visible !== false;
+        if (shouldShow) node.show();
+        else node.hide();
+    }
 };
 
 MSR.update = () => {
@@ -57,9 +112,55 @@ MSR.parseMeasurements = (measurements) => {
 
     for (const id in measurements) {
         const measurement = measurements[id];
+        if (measurement?.points?.length) {
+            measurement.points = measurement.points.map(MSR.normalizePoint);
+        }
         MSR.msrMap.set(Number(id), measurement);
         MSR.addMeasurementSem(Number(id));
     }
+};
+
+MSR.normalizePoint = (point) => {
+    if (!point) return point;
+    if (!point.meshId && point.mesh) {
+        const meshId = THOTH.Models?.getParent(point.mesh) ?? point.mesh.name;
+        point.meshId = meshId;
+        point.meshName = point.mesh.name;
+        delete point.mesh;
+    }
+    return point;
+};
+
+MSR.getPointModel = (point) => {
+    if (!point?.meshId) return null;
+    return THOTH.Models?.modelMap?.get(point.meshId) ?? null;
+};
+
+MSR.getPointMesh = (point) => {
+    if (!point) return null;
+    if (point.mesh) return point.mesh;
+
+    const model = MSR.getPointModel(point);
+    if (!model) return null;
+    if (model.isMesh) return model;
+
+    if (point.meshName) {
+        let found = null;
+        model.traverse(node => {
+            if (!found && node.isMesh && node.name === point.meshName) {
+                found = node;
+            }
+        });
+        if (found) return found;
+    }
+
+    let first = null;
+    model.traverse(node => {
+        if (!first && node.isMesh) {
+            first = node;
+        }
+    });
+    return first;
 };
 
 
@@ -99,8 +200,11 @@ MSR.addMeasurementPoint = () => {
     const mesh   = hit.object;
     // const mesh   = THOTH.hoveredMesh;
 
+    const meshId = THOTH.Models?.getParent(mesh) ?? mesh.name;
+
     const mPoint = {
-        "mesh"  : mesh,
+        "meshId": meshId,
+        "meshName": mesh.name,
         "faceId": idx,
         "coords": coords
     };
@@ -151,7 +255,13 @@ MSR.addMeasurement = (measurementId, point1, point2) => {
         };
     }
     else if (distanceType === "geodesic") {
-        const mesh = point1.mesh;
+        const mesh = MSR.getPointMesh(point1);
+        const mesh2 = MSR.getPointMesh(point2);
+
+        if (!mesh || !mesh2) {
+            THOTH.FE.showToast("Invalid mesh for geodesic");
+            return;
+        }
 
         const { vertices } = MSR.buildMeshGraph(mesh);
 
@@ -170,7 +280,7 @@ MSR.addMeasurement = (measurementId, point1, point2) => {
             return;
         }
         // Only allow geodesic when both points are on the same mesh
-        if (point1.mesh !== point2.mesh) {
+        if (mesh !== mesh2) {
             THOTH.FE.showToast("Geodesic requires both points on the same mesh");        
             return;
         }
@@ -255,8 +365,8 @@ MSR.updateMeasurementLabel = (measurementId, distance) => {
 // SUI
 
 MSR.createPointSem = (point) => {
-    
-    const modelScale = THOTH.Utils.getModelScale(point.mesh);
+    const model = MSR.getPointModel(point) ?? MSR.getPointMesh(point);
+    const modelScale = model ? THOTH.Utils.getModelScale(model) : 1;
     // s = modelscale * percentage_factor
     const s = modelScale * 0.01;
 
@@ -275,7 +385,10 @@ MSR.createLineSem = (point1, point2) => {
         line_ = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
     }
     else {
-        line_ = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...point1.coords), new THREE.Vector3(...point2.coords)]);
+        line_ = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(point1.coords.x, point1.coords.y, point1.coords.z),
+            new THREE.Vector3(point2.coords.x, point2.coords.y, point2.coords.z)
+        ]);
     }
     const baseMat = ATON.MatHub.getMaterial("measurement");
     const mat = baseMat.clone();
@@ -322,6 +435,8 @@ MSR.createLabelSem = (measurementId) => {
         (point1.coords.y + point2.coords.y) * 0.5,
         (point1.coords.z + point2.coords.z) * 0.5,
     );
+
+    MSR.applyLabelScale(label);
   
     return label;
 };
@@ -363,8 +478,11 @@ MSR.addMeasurementSem = (measurementId) => {
     node.add(line);
     node.setPickable(true);
     node.setOnHover(() => {
-        label.setScale(0.05);
-        label.setOpacity(0.8);
+        const hoverScale = MSR.getLabelScale();
+        if (hoverScale !== null) {
+            label.setScale(hoverScale);
+            label.setOpacity(0.8);
+        }
         //label.setOpacity(0.0);
     });
     node.setOnSelect(() => {
@@ -379,6 +497,7 @@ MSR.addMeasurementSem = (measurementId) => {
 
     // Add to SUI
     node.attachTo(MSR.nodes);
+    MSR.refreshMeasurementVisibility();
     return node; //added this
 };
 
