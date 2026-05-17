@@ -17,7 +17,6 @@ Models.setup = () => {
     Models.modelMap = new Map();
     Models.tempNode = null;
     Models.gizNode;
-
 };
 
 Models.parseSceneGraph = (sg) => {
@@ -74,6 +73,7 @@ Models.onLoad = (model) => {
             Models.initMeshColors(N);
         }
     });
+    THOTH.updateSceneScale(model);
     THOTH.FE.addModel(model.name);
     THOTH.updateVisibility();
 };
@@ -293,6 +293,16 @@ Models.addTransformControls = () => {
    const gizmoNode = new ATON.Node("transformGizmo");
    ATON._mainRoot.add(gizmoNode);
    gizmoNode.add(THOTH.transform);
+};
+
+Models.deactivateTransformControls = () => {
+
+    if (!THOTH.transform) return;
+
+    THOTH.transform.detach();
+
+    THOTH.transform.visible = false;
+
 };
 
 

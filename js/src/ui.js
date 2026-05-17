@@ -256,11 +256,7 @@ UI.createVectorControl = (options, transform)=>{
         }
         if (options.onupdate) options.onupdate();
     };
-    /*
-      if (THOTH.transform) {
-            THOTH.transform.updateMatrixWorld(true);//update transformcontrols also
-            }
-            */
+
     return el;
 };
 
@@ -299,6 +295,7 @@ UI.createUserButton = () => {
     return UI._elUserBTN;
 };
 
+
 // Controllers
 
 UI.createModelController = (modelName) => {
@@ -318,8 +315,8 @@ UI.createModelController = (modelName) => {
             onpress: ()=> {
             THOTH.fire("selectModel", modelName);
             ATON.UI.showSidePanel({
-             header: modelName,
-            body: UI.createModelEditor(modelName)
+                header: modelName,
+                body: UI.createModelEditor(modelName)
             });
             }
         }),     
@@ -330,7 +327,12 @@ UI.createModelController = (modelName) => {
         itemsLeft : elLeft,
         itemsRight: ATON.UI.createButton({
             icon   : ATON.PATH_RES + "icons/trash.png",
-            onpress: () => THOTH.fire("deleteModel", modelName),
+            onpress: () => 
+                {
+                    THOTH.Models.deactivateTransformControls();
+                    THOTH.fire("deleteModel", modelName);}
+
+            
         }),
     });
     
@@ -408,6 +410,70 @@ UI.createLayerController = (layerId) => {
     return elController;
 };
 
+UI.createMsrController = (msrId) => {
+    const elLeft  = ATON.UI.createContainer();
+    const elRight = ATON.UI.createContainer();
+    
+    const msr = THOTH.MSR.msrMap.get(msrId);
+
+    const nameBtn = ATON.UI.createButton({
+    text   : msr.name || `Measurement ${msrId}`,
+    size   : "small",
+    tooltip: "Select measurement",
+    onpress: () => {
+        THOTH.FE.handleElementHighlight(msrId, THOTH.FE.msrMap);
+        THOTH.MSR.highlightMeasurement(msrId);
+    },
+});
+
+    // Name
+    elLeft.append(
+        // Visibility
+        ATON.UI.createButton({
+            icon   : "visibility",
+            size   : "small",
+            onpress: () => THOTH.MSR.toggleVisibility(msrId),
+        }),
+         nameBtn,
+    );
+    elRight.append(
+
+        // Details
+        ATON.UI.createButton({
+            icon   : "list",
+            size   : "small",
+            tooltip: "View measurement",
+            // onpress: () => THOTH.FE.showToast("TBI")
+            onpress: () => UI.modalMsrDetails(msrId)
+        }), 
+        // Delete
+        ATON.UI.createButton({
+            icon   : ATON.PATH_RES + "icons/trash.png",
+            size   : "small",
+            tooltip: "Delete measurement",
+            onpress: () => {
+                const msr = THOTH.MSR.msrMap.get(msrId);
+                //THOTH.fire("deleteMeasurement", (msrId))
+                THOTH.fire("deleteMeasurement", {
+                    id: msrId,
+                    point1: msr.points[0],
+                    point2: msr.points[1]
+             });
+            }
+        }),
+    );
+
+    const elController = UI.createSplitRow({
+        colLeft   : 7,
+        itemsLeft : elLeft,
+        itemsRight: elRight
+    });
+
+    elController.nameBtn = nameBtn;
+
+    return elController;
+};
+
 
 // Editors
 
@@ -421,10 +487,14 @@ UI.createModelEditor = (modelName) => {
         colLeft  : 4,
         itemsLeft: ATON.UI.createButton({
             icon   : ATON.PATH_RES + "icons/back.png",
-            onpress: () => ATON.UI.showSidePanel({
-                header: "Scene",
-                body  : THOTH.FE.modelsPanel
-            })
+           onpress: () => {
+
+                THOTH.Models.deactivateTransformControls();
+                ATON.UI.showSidePanel({
+                    header: "Scene",
+                    body  : THOTH.FE.modelsPanel
+                    });
+            }
         }),
         itemsRight: ATON.UI.createButton({
             text   : "Focus",
@@ -539,13 +609,13 @@ UI.createMeasureOptions = () => {
     
     // Distance type map
     const distanceTypeMap = new Map();
-    
+    THOTH.MSR.distanceType = 'euclidean';
+    THOTH.FE.handleElementHighlight('euclidean', distanceTypeMap);//highlight default
     const elBtnEuclidean = ATON.UI.createButton({
         text: "Euclidean",
         onpress: () => {
             THOTH.MSR.distanceType = 'euclidean';
             THOTH.FE.handleElementHighlight('euclidean', distanceTypeMap);
-            THOTH.MSR.recomputeLastMeasurement();
         }
     });
     distanceTypeMap.set('euclidean', elBtnEuclidean);
@@ -555,7 +625,7 @@ UI.createMeasureOptions = () => {
         onpress: () => {         
             THOTH.MSR.distanceType = 'geodesic';
             THOTH.FE.handleElementHighlight('geodesic', distanceTypeMap);
-            THOTH.MSR.recomputeLastMeasurement();
+
         }
     });
     distanceTypeMap.set('geodesic', elBtnGeodesic);
@@ -572,8 +642,8 @@ UI.createMeasureOptions = () => {
         itemsRight: elOptions,
     });
     const elResult = ATON.UI.createContainer({ classes: "bg-body-tertiary p-2" });
-    elResult.textContent = "Distance: ";  // default text
-    THOTH.MSR.elResult = elResult; 
+  //  elResult.textContent = "Distance: ";  // default text
+   // THOTH.MSR.elResult = elResult; 
     elBody.append(elHeader, elDistance, elResult);
 
     return elBody;
@@ -1033,6 +1103,96 @@ UI.createSensorDashboard = (sensorId) => {
     return elContainer;
 };
 
+UI.modalMsrDetails = (msrId) => {
+    const msr = THOTH.MSR.msrMap.get(msrId);
+    if (msr === undefined || msr.trash) return;
+
+    // Distance details
+    const elDistance = ATON.UI.createContainer();
+    elDistance.append(
+        ATON.UI.createButton({
+            text: msr.distanceType,
+            tooltip: "This measurement is calculated with " + msr.distanceType + " distance.",
+            onpress: () => {} // nothing :)
+        }),
+        ATON.UI.createButton({
+            text: msr.distance.toFixed(4),
+            tooltip: "Distance measured: " + msr.distance,
+            onpress: () => {} // nothing :)
+        }),
+    )
+    const elMsrDetails = UI.createSplitRow({
+        colLeft: 6,
+        itemsLeft: elDistance, 
+        itemsRight: ATON.UI.createButton({
+            text   : "Delete Measurement",
+            tooltip: "Delete Measurement",
+            icon   : ATON.PATH_RES + "icons/trash.png",
+            onpress: () => {
+               // THOTH.fire("deleteMeasurement", (msrId));
+               const msr = THOTH.MSR.msrMap.get(msrId);
+               THOTH.fire("deleteMeasurement", {
+                    id: msrId,
+                    point1: msr.points[0],
+                    point2: msr.points[1]
+             });
+
+                ATON.UI.hideModal();
+            }
+        }),
+    })
+    const oldName = msr.name || "";
+    const elBody = ATON.UI.createTreeGroup({
+        items: [
+            // Name
+            {
+                title: "Measurement Name",
+                open: true,
+                content: ATON.UI.createInputText({
+                    label   : "Measurement Name",
+                    value   : msr.name,
+                    onchange: (v) => THOTH.fire("renameMeasurement", {
+                        id      : msrId,
+                        value    : v,
+                        //prevData: structuredClone(msr.name) || ""
+                       // prevValue: oldName
+                    }),
+                })
+            },
+            // Point details
+            {
+                title  : "Details",
+                open   : true,
+                content: elMsrDetails
+            },
+            // Description
+            {
+                title: "Description",
+                open: false,
+                content: ATON.UI.createContainer()
+            }
+        ]
+    });
+
+    const elFooter = UI.createModalFooter({
+        onsuccess: () => {
+            THOTH.fire("editMeasurement", {
+                // id      : msrId,
+                // data    : data_temp,
+                // prevData: prev_data
+            });
+            ATON.UI.hideModal();
+        },
+        successText: "Save changes"
+    }); 
+
+    ATON.UI.showModal({
+        header: `Edit measurement with id: ${msrId}`,
+        body  : elBody,
+        footer: elFooter,
+    });
+};
+
 
 // Metadata editor
 
@@ -1177,7 +1337,7 @@ UI.modalLayerDetails = (layerId, data_temp) => {
         UI.createMetadataEditor(schema, data_temp),
     )
 
-    const ellayerDetails = UI.createSplitRow({
+    const elLayerDetails = UI.createSplitRow({
         colLeft: 7,
         itemsLeft: ATON.UI.createColorPicker({
             color: layer.highlightColor,
@@ -1218,7 +1378,7 @@ UI.modalLayerDetails = (layerId, data_temp) => {
             {
                 title  : "Details",
                 open   : false,
-                content: ellayerDetails
+                content: elLayerDetails
             },
             // Schema selection
             {

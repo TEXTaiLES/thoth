@@ -149,6 +149,7 @@ THOTH.update = () => {
     THOTH.hoveredModel = THOTH.Models.getParent(THOTH._queryData?.o);
 };
 
+
 // Visualization
 
 THOTH.highlightSelection = (selection, highlightColor, modelName, meshName) => {
@@ -254,6 +255,19 @@ THOTH.clearHighlights = () => {
 THOTH.updateVisibility = () => {
     THOTH.clearHighlights();
     THOTH.highlightAllLayers();
+};
+
+THOTH.updateSceneScale = (model) => {
+    const newModelScale = THOTH.Utils.getModelScale(model);
+    
+    // Naive computation
+    if (THOTH.sceneScale === undefined) {
+        THOTH.sceneScale = newModelScale;
+    }
+    else {
+        THOTH.sceneScale = (THOTH.sceneScale + newModelScale) / 2;
+    }
+    console.log("Average object scale: " + THOTH.sceneScale);
 };
 
 

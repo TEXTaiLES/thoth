@@ -22,12 +22,21 @@ FE.setup = () => {
 
     FE.setupLayerElements();
     FE.setupModelElements();
+    FE.setupMsrElements();
 
     // Toast
     FE.toast = FE.createToast();
     
     // VP
     FE.viewpointCard = FE.setupVPCard();
+    //gizmos state
+    const originalHideSidePanel = ATON.UI.hideSidePanel;
+    ATON.UI.hideSidePanel = (options) => {
+    if (THOTH.transform) {
+            THOTH.transform.detach();
+        }
+    return originalHideSidePanel(options);
+    };
 };
 
 FE.setupLayerElements = () => {
@@ -41,6 +50,13 @@ FE.setupModelElements = () => {
     FE.modelMap    = new Map();
     FE.modelList   = ATON.UI.createContainer();
     FE.modelsPanel = FE.setupModelsPanel(FE.modelList);
+};
+
+FE.setupMsrElements = () => {
+    FE.msrNameMap = new Map();
+    FE.msrMap     = new Map();
+    FE.msrList    = ATON.UI.createContainer();
+    FE.msrPanel   = FE.setupMsrPanel(FE.msrList);
 };
 
 FE.setupToolboxElements = () => {
@@ -66,6 +82,18 @@ FE.initLayerNameMap = () => {
         layerNameMap.set(layerId, layerNameBtn);
     }
     return layerNameMap;
+};
+
+FE.initMsrNameMap = () => {
+    const msrNameMap = new Map();
+    for (const [msrId, msr] of THOTH.MSR.msrMap) {
+        const msrBtn = ATON.UI.createButton({
+            text   : msr.name,
+            onpress: () => {}   // Hightlight msr
+        });
+        msrNameMap.set(msrId, msrBtn);
+    }
+    return msrNameMap;
 };
 
 FE.initToolMap = () => {
@@ -184,6 +212,16 @@ FE.setupHistoryList = () => {
     return elHistoryList;
 };
 
+FE.setupMsrList = (msrMap) => {
+    const elMsrList = ATON.UI.createContainer();
+
+    for (const [ , elMsrController] of msrMap) {
+        elMsrList.append(elMsrController)
+    }
+
+    return elMsrList;
+};
+
 
 // Toolbars
 
@@ -228,6 +266,7 @@ FE.setupTopToolbar = () => {
             }),
             tooltop : "Layers"
         }),
+<<<<<<< HEAD
         // Sensors
         ATON.UI.createButton({
             icon   : "light",
@@ -238,6 +277,18 @@ FE.setupTopToolbar = () => {
             }),
             tooltop : "Sensor Data"
         }), 
+=======
+        // msr
+        ATON.UI.createButton({
+            icon   : "measure",
+            text   : "Measurements",
+            onpress: () => ATON.UI.showSidePanel({
+                header: "Measurements",
+                body: FE.msrPanel
+            }),
+            tooltip: "Measurements"
+        }),
+>>>>>>> origin/msr_ui
         // Info
         ATON.UI.createButton({
             icon   : "info",
@@ -375,6 +426,8 @@ FE.setupModelsPanel = (elModelList) => {
     const elTopOptions = ATON.UI.createContainer({classes: "row g-0 align-items-center w-100 rounded-2 px-2 py-1 mb-1"});
     const [ elParentObject, elChildObjects ] = THOTH.LO.setupLinkedObjectsLists();
 
+
+
     // Top buttons
     elTopOptions.append(
         ATON.UI.createButton({
@@ -439,11 +492,29 @@ FE.setupLayersPanel = (elLayerList) => {
     return elBody;
 };
 
+<<<<<<< HEAD
 FE.setupSensorPanel = () => {
     const elBody = ATON.UI.createContainer();
     
     const sensorDashboard = THOTH.UI.createSensorDashboard("PREPEI_NA_STELNO_KATHE_15_LEPTA");
     elBody.append(sensorDashboard);
+=======
+FE.setupMsrPanel = (elMsrList) => {
+    const elBody       = ATON.UI.createContainer();
+    const elTopOptions = ATON.UI.createContainer({classes: "row g-0 align-items-center w-100 rounded-2 px-2 py-1 mb-1"});
+    
+    // Top buttons
+    elTopOptions.append(
+        ATON.UI.createButton({
+            icon   : "link",
+            text   : "Export changes",
+            variant: "success",
+            tooltip: "Export changes",
+            onpress: () => THOTH.UI.modalExport()
+        }),
+    );
+    elBody.append(elTopOptions, elMsrList);
+>>>>>>> origin/msr_ui
 
     return elBody;
 };
@@ -499,6 +570,42 @@ FE.addModel = (modelName) => {
 
 FE.deleteModel = (modelName) => {
     FE.modelMap.get(modelName).style.display = 'none';
+};
+
+
+// Measurements
+
+FE.addMsr = (msrId) => {
+    // Resurrect measurement if it already exists
+    if (FE.msrMap.has(msrId)) {
+        FE.msrMap.get(msrId).style.display = "flex";
+        return;
+    }
+
+    // Create new name button
+    const newMsrNameBtn = ATON.UI.createButton({
+        text   : THOTH.MSR.msrMap.get(msrId).name,
+        onpress: () => {
+           // THOTH.FE.handleElementHighlight('msrname',THOTH.MSR.msrMap.get(msrId));
+           //THOTH.MSR.SetActiveMsr(msrId);
+           //THOTH.MSR.set
+                //THOTH.MSR.SetActiveMsr();
+
+        } // highilight {}
+    });
+    FE.msrNameMap.set(msrId, newMsrNameBtn);
+
+    // Create new controller
+    const newMsrController = THOTH.UI.createMsrController(msrId);
+    FE.msrMap.set(msrId, newMsrController);
+
+    // Add to list
+    FE.msrList.append(newMsrController);
+};
+
+FE.deleteMsr = (msrId) => {
+    FE.msrMap.get(msrId).style.display = 'none';
+    // Add logic ? 
 };
 
 

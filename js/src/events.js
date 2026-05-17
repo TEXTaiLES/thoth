@@ -311,20 +311,41 @@ Events.setupMeasurementEvents = () => {
             }
         });
     });
-    THOTH.on("deleteMeasurement", (msrId) => {
+
+    THOTH.on("deleteMeasurement", (data) => {
+        const { id, point1, point2 } = data;
+
+        // push to history WITH value
+        THOTH.History.pushAction({
+            type: THOTH.History.ACTIONS.DEL_MEASUREMENT,
+            id: id,
+            value: { point1, point2 }
+        });
+
+        THOTH.MSR.deleteMeasurement(id);
+    });
+
+    THOTH.on("renameMeasurement", (l) => {
+        const id   = l.id;
+        const value = l.value;
+        //const prevValue = l.prevValue;
+
         // Local
-        THOTH.MSR.deleteMeasurement(msrId);
+        THOTH.MSR.renameMeasurement(id, value);
         // Photon
-        THOTH.firePhoton("deleteMeasurement", msrId);
+        THOTH.firePhoton("renameMeasurement", ({
+            id   : id,
+            value: value
+        }));
+        /*
         // History
         THOTH.History.pushAction({
-            type : THOTH.History.ACTIONS.DEL_MEASUREMENT,
-            id   : msrId,
-            value: {
-                point1: point1,
-                point2: point2,
-            }
-        }); 
+            type     : THOTH.History.ACTIONS.RENAME_MEASUREMENT,
+            id       : l.id,
+            value    : l.value,
+            prevValue: l.prevValue,
+        });
+        */
     });
 };
 
@@ -459,6 +480,7 @@ Events.setupModelEvents = () => {
     });
     THOTH.on("deleteModel", (id) => {
         // Local
+        
         THOTH.Models.deleteModel(id);
         // Photon
         THOTH.firePhoton("deleteModels", id);
@@ -568,8 +590,6 @@ Events.setupTransformControls = (ModelName) => {
 
         THOTH.UI.syncTransformUI(obj);
     });
-
-    //MUSTFIX: HISTORY PUSHES AND UNDO DURING DRAGGING
 
     THOTH.transform.addEventListener("mouseUp", () => {
 
@@ -899,6 +919,9 @@ Events.setupPhotonEvents = () => {
     });
     THOTH.onPhoton("deleteMeasurement", (l) => {
         THOTH.MSR.deleteMeasurement(l.id);
+    });
+     THOTH.onPhoton("renameMeasurement", (l) => {
+        THOTH.MSR.renameMeasurement(l.id, l.data);
     });
 };
 

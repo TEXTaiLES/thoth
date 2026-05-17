@@ -146,5 +146,15 @@ Utils.uniformSamplingFromMap = (map, n) => {
     return sampledMap;
 };
 
+Utils.getModelScale = (model) => {
+    const box = new THREE.Box3().setFromObject(model);
+    
+    const size = new THREE.Vector3();
+    box.getSize(size);
+
+    const avgDim = (size.x + size.y + size.z) / 3;
+    return avgDim;
+};
+
 
 export default Utils;
