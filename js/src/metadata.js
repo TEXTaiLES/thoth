@@ -39,86 +39,152 @@ MD.buildSchemaMap = (schemaListUrl) => {
     return schemaMap;
 };
 
-MD.createPropertiesfromSchema = (schemaName) => {
-    const data = MD.schemaMap.get(schemaName);
-    
-    const buildProperties = (data) => {
-        let A = {};
-    
-        for (const key in data) {
-            if (key === "required") continue;
-    
-            const attr = data[key];
-            if (attr["type"]) {
-                switch (attr.type.toLowerCase()) {
-                    case "string":
-                        A[key] = "-";
-                        break;
-                    case "integer":
-                        A[key] = 0;
-                        break;
-                    case "float": 
-                        A[key] = 0.0;
-                        break;
-                    case "bool": 
-                        A[key] = false;
-                        break;
-                    case "enum":
-                        A[key] = "-";
-                        break;
-                    case "enum-multiple": 
-                        A[key] = [];
-                        break;
-                    default: 
-                        A[key] = null;
-                        break;
-                }
-            }
-            else if (typeof attr === "object") {
-                A[key] = buildProperties(attr);
-            }
-        }
-        return A;
-
-    };
-    
-    const metadata = buildProperties(data);
-    metadata.schemaName = schemaName;
-
-    return metadata;
+MD._normalizeType = (type) => {
+    if (!type) return "";
+    return String(type).toLowerCase();
 };
 
-MD.validateSchema = (data) => {
-    let check = true;
+MD._getDefaultValue = (type) => {
+    switch (type) {
+        case "string":
+        case "text":
+        case "url":
+        case "date":
+        case "reference":
+            return "-";
+        case "integer":
+            return 0;
+        case "float":
+            return 0.0;
+        case "bool":
+        case "boolean":
+            return false;
+        case "enum":
+            return "-";
+        case "enum-multiple":
+        case "multienum":
+            return [];
+        case "group":
+            return {};
+        default:
+            return null;
+    }
+};
+
+MD._buildPropertiesFromObjectSchema = (data) => {
+    let A = {};
 
     for (const key in data) {
         if (key === "required") continue;
 
         const attr = data[key];
-        if (attr["type"]) {
-            switch (attr.type.toLowerCase()) {
-                case "string":
-                    break;
-                case "integer":
-                    break;
-                case "float": 
-                    break;
-                case "bool": 
-                    break;
-                case "enum":
-                    break;
-                case "enum-multiple": 
-                    break;
-                default:
-                    check = false;
-            }
+        const type = MD._normalizeType(attr?.type || attr?.dataType);
+
+        if (type) {
+            A[key] = MD._getDefaultValue(type);
         }
         else if (typeof attr === "object") {
-            check = MD.validateSchema(attr);
+            A[key] = MD._buildPropertiesFromObjectSchema(attr);
         }
-        else check = false;
     }
-    return check;
+
+    return A;
+};
+
+MD._buildPropertiesFromGroups = (groups) => {
+    let A = {};
+
+    if (!Array.isArray(groups)) return A;
+
+    for (const node of groups) {
+        const key = node.id || node.label;
+        if (!key) continue;
+
+        const type = MD._normalizeType(node.dataType || node.type);
+        if (type === "group" || Array.isArray(node.subgroups)) {
+            A[key] = MD._buildPropertiesFromGroups(node.subgroups || []);
+        }
+        else {
+            A[key] = MD._getDefaultValue(type);
+        }
+    }
+
+    return A;
+};
+
+MD.createPropertiesfromSchema = (schemaName) => {
+    const data = MD.schemaMap.get(schemaName);
+
+    if (!data) return { schemaName: schemaName };
+    
+    const metadata = Array.isArray(data.groups)
+        ? MD._buildPropertiesFromGroups(data.groups)
+        : MD._buildPropertiesFromObjectSchema(data);
+    metadata.schemaName = schemaName;
+
+    return metadata;
+};
+
+MD._isSupportedType = (type) => {
+    const supported = new Set([
+        "string",
+        "text",
+        "url",
+        "date",
+        "reference",
+        "integer",
+        "float",
+        "bool",
+        "boolean",
+        "enum",
+        "enum-multiple",
+        "multienum",
+        "group"
+    ]);
+
+    return supported.has(type);
+};
+
+MD._validateObjectSchema = (data) => {
+    for (const key in data) {
+        if (key === "required") continue;
+
+        const attr = data[key];
+        const type = MD._normalizeType(attr?.type || attr?.dataType);
+
+        if (type) {
+            if (!MD._isSupportedType(type)) return false;
+        }
+        else if (typeof attr === "object") {
+            if (!MD._validateObjectSchema(attr)) return false;
+        }
+        else return false;
+    }
+    return true;
+};
+
+MD._validateGroupSchema = (groups) => {
+    if (!Array.isArray(groups)) return false;
+
+    for (const node of groups) {
+        const type = MD._normalizeType(node.dataType || node.type);
+
+        if (type === "group" || Array.isArray(node.subgroups)) {
+            if (node.subgroups && !MD._validateGroupSchema(node.subgroups)) return false;
+        }
+        else if (!MD._isSupportedType(type)) {
+            return false;
+        }
+    }
+    return true;
+};
+
+MD.validateSchema = (data) => {
+    if (!data) return false;
+
+    if (Array.isArray(data.groups)) return MD._validateGroupSchema(data.groups);
+
+    return MD._validateObjectSchema(data);
 };
 
 

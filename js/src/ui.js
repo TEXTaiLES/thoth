@@ -1197,121 +1197,201 @@ UI.modalMsrDetails = (msrId) => {
 
 // Metadata editor
 
-UI.createMetadataEditor = (data, data_temp) => {
+UI.createMetadataEditor = (schema, data_temp) => {
     let elData = ATON.UI.createContainer();
-    
-    if (data === undefined || Object.keys(data).length === 0) {
+
+    const isEmptySchema = !schema ||
+        (Array.isArray(schema.groups)
+            ? schema.groups.length === 0
+            : Object.keys(schema).length === 0);
+
+    if (isEmptySchema) {
         elData.append(
             ATON.UI.createButton({
                 text: "No metadata found"
             })
         );
         return elData;
+    }
+
+    if (!data_temp) data_temp = {};
+
+    const normalizeType = (attr) => {
+        const raw = attr?.type || attr?.dataType || "";
+        return String(raw).toLowerCase();
     };
 
-    // Properties creation logic
-    for (const key in data) {
-        if (key === "required") continue;
-        if (key === "schemaName") continue;
-        
-        let elBody;
+    const getEnumOptions = (attr) => {
+        return attr?.value || attr?.options || [];
+    };
 
-        const attr = data[key];
-        
-        // Initialize values
+    const ensureValue = (obj, key, fallback) => {
+        if (!obj) return fallback;
+        if (obj[key] === undefined) obj[key] = fallback;
+        return obj[key];
+    };
 
-        if (attr["type"]) {
-            switch (attr.type.toLowerCase()) {
-                case "string":
-                    elBody = ATON.UI.createInputText({
-                        label      : key,
-                        value      : (data_temp && data_temp[key] !== undefined) ? data_temp[key] : undefined,
-                        placeholder: "string",
-                        oninput    : (v) => data_temp[key] = v,
-                    });
-                    break;
-                case "integer":
-                    elBody = ATON.UI.createInputText({
-                        placeholder: "integer",
-                        value      : (data_temp && data_temp[key] !== undefined) ? data_temp[key] : undefined,
-                        label      : key,
-                        oninput    : (v) => data_temp[key] = v,
-                    });
-                    break;
-                case "float" :
-                    elBody = ATON.UI.createInputText({
-                        placeholder: "float",
-                        label      : key,
-                        value      : (data_temp && data_temp[key] !== undefined) ? data_temp[key] : undefined,
-                        oninput    : (v) => data_temp[key] = v,
-                    });
-                    break;
-                case "bool":
-                    elBody = UI.createBool({
-                        text    : key,
-                        value   : (data_temp && data_temp[key] !== undefined) ? data_temp[key] : undefined,
-                        onchange: (input) => data_temp[key] = input
-                    });
-                    break;
-                case "enum":
-                    let elDisplay = ATON.UI.createButton({
-                        text   : data_temp[key],
-                    });
-                    elBody = THOTH.UI.createSplitRow({
-                        colLeft: 6,
-                        itemsLeft: ATON.UI.createDropdown({
-                            title: key,
-                            items: attr.value.map(option => ({
-                                title   : option,
-                                onselect: () => {
-                                    data_temp[key] = option;
-                                    elDisplay.textContent = option;
-                                }
-                            }))
-                        }),
-                        itemsRight: elDisplay,
-                    });
-                    
-                    break;
-                case "enum-multiple":
-                    elBody = ATON.UI.createTagsComponent({
-                        list    : attr.value,
-                        label   : key,
-                        tags    : data_temp[key],
-                        onaddtag: (k) => {
-                            if (!data_temp[key].includes(k)) {
-                                data_temp[key].push(k);
+    const buildLabel = (label, attr) => {
+        if (attr && attr.unit) return `${label} (${attr.unit})`;
+        return label;
+    };
+
+    const createField = (fieldKey, fieldLabel, attr, targetData) => {
+        const type = normalizeType(attr);
+        const label = buildLabel(fieldLabel, attr);
+
+        switch (type) {
+            case "string":
+            case "text":
+            case "url":
+            case "date":
+            case "reference":
+                return ATON.UI.createInputText({
+                    label      : label,
+                    value      : ensureValue(targetData, fieldKey, "-"),
+                    placeholder: type || "text",
+                    oninput    : (v) => targetData[fieldKey] = v,
+                });
+            case "integer":
+                return ATON.UI.createInputText({
+                    placeholder: "integer",
+                    value      : ensureValue(targetData, fieldKey, 0),
+                    label      : label,
+                    oninput    : (v) => targetData[fieldKey] = v,
+                });
+            case "float":
+                return ATON.UI.createInputText({
+                    placeholder: "float",
+                    label      : label,
+                    value      : ensureValue(targetData, fieldKey, 0.0),
+                    oninput    : (v) => targetData[fieldKey] = v,
+                });
+            case "bool":
+            case "boolean":
+                return UI.createBool({
+                    text    : label,
+                    value   : ensureValue(targetData, fieldKey, false),
+                    onchange: (input) => targetData[fieldKey] = input
+                });
+            case "enum": {
+                const options = getEnumOptions(attr);
+                const currentValue = ensureValue(targetData, fieldKey, "-");
+                const elDisplay = ATON.UI.createButton({
+                    text: currentValue
+                });
+
+                return UI.createSplitRow({
+                    colLeft: 6,
+                    itemsLeft: ATON.UI.createDropdown({
+                        title: label,
+                        items: options.map(option => ({
+                            title   : option,
+                            onselect: () => {
+                                targetData[fieldKey] = option;
+                                elDisplay.textContent = option;
                             }
-                        },
-                        onremovetag: (k) => {
-                            const index = data_temp[key].indexOf(k);
-                            if (index !== -1) {
-                                data_temp[key].splice(index, 1);
-                            }
-                        },
-                    });
-                    break;
-                default:
-                    break;
+                        }))
+                    }),
+                    itemsRight: elDisplay,
+                });
+            }
+            case "enum-multiple":
+            case "multienum": {
+                const options = getEnumOptions(attr);
+                const currentTags = ensureValue(targetData, fieldKey, []);
+
+                if (!Array.isArray(currentTags)) targetData[fieldKey] = [];
+
+                return ATON.UI.createTagsComponent({
+                    list    : options,
+                    label   : label,
+                    tags    : targetData[fieldKey],
+                    onaddtag: (k) => {
+                        if (!targetData[fieldKey].includes(k)) {
+                            targetData[fieldKey].push(k);
+                        }
+                    },
+                    onremovetag: (k) => {
+                        const index = targetData[fieldKey].indexOf(k);
+                        if (index !== -1) {
+                            targetData[fieldKey].splice(index, 1);
+                        }
+                    },
+                });
+            }
+            default:
+                return undefined;
+        }
+    };
+
+    const buildFromGroups = (groups, targetData) => {
+        const elGroup = ATON.UI.createContainer();
+
+        if (!Array.isArray(groups)) return elGroup;
+
+        for (const node of groups) {
+            const key = node.id || node.label;
+            if (!key) continue;
+
+            const label = node.label || key;
+            const type = normalizeType(node);
+
+            if (type === "group" || Array.isArray(node.subgroups)) {
+                if (!targetData[key]) targetData[key] = {};
+                const content = buildFromGroups(node.subgroups || [], targetData[key]);
+
+                elGroup.append(ATON.UI.createTreeGroup({
+                    items: [
+                        {
+                            title  : label,
+                            open   : false,
+                            content: content
+                        }
+                    ]
+                }));
+            }
+            else {
+                const elBody = createField(key, label, node, targetData);
+                if (elBody) elGroup.append(elBody);
             }
         }
+
+        return elGroup;
+    };
+
+    if (Array.isArray(schema.groups)) {
+        elData.append(buildFromGroups(schema.groups, data_temp));
+        return elData;
+    }
+
+    // Backward compatible object-based schema
+    for (const key in schema) {
+        if (key === "required") continue;
+        if (key === "schemaName") continue;
+
+        const attr = schema[key];
+        let elBody;
+
+        if (attr?.type || attr?.dataType) {
+            elBody = createField(key, key, attr, data_temp);
+        }
         else if (typeof attr === "object") {
+            if (data_temp[key] === undefined) data_temp[key] = {};
+
             elBody = ATON.UI.createTreeGroup({
-                items: 
-                [
+                items: [
                     {
-                        title   : key,
-                        open    : false,
-                        content : UI.createMetadataEditor(attr, data_temp[key])
+                        title  : key,
+                        open   : false,
+                        content: UI.createMetadataEditor(attr, data_temp[key])
                     }
                 ]
             });
         }
 
-        if (elBody) {
-            elData.append(elBody);
-        }
+        if (elBody) elData.append(elBody);
     }
+
     return elData;
 };
 
