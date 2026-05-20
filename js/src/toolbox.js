@@ -20,7 +20,8 @@ Toolbox.setup = (toolboxDefaults) => {
     Toolbox.lassoPrecision        = toolboxDefaults?.lassoPrecision ?? 0.1;           // between 0.1 and 1
     Toolbox.normalThreshold       = toolboxDefaults?.normalThreshold ?? 1;            // between -1 and 1
     Toolbox.selectObstructedFaces = toolboxDefaults?.selectObstructedFaces ?? false;
-    Toolbox.selectorSize          = toolboxDefaults?.selectorSize ?? 1;
+    Toolbox.selectorBaseRadius    = toolboxDefaults?.selectorBaseRadius ?? 1;
+    Toolbox.selectorSize          = toolboxDefaults?.selectorSize ?? 3;
     Toolbox.selectorSizeMin       = toolboxDefaults?.selectorSizeMin ?? 0;
     Toolbox.selectorSizeMax       = toolboxDefaults?.selectorSizeMax ?? 10;
 
@@ -34,7 +35,7 @@ Toolbox.setup = (toolboxDefaults) => {
     Toolbox.tempSelection = null;
 
     // Create selector mesh
-    Toolbox.selectorRadius = THOTH.Utils.computeRadius(Toolbox.selectorSize)
+    Toolbox.selectorRadius = Toolbox.selectorBaseRadius * THOTH.Utils.computeRadius(Toolbox.selectorSize)
     Toolbox.selectorMesh   = Toolbox.createSelectorMesh(Toolbox.selectorRadius);
     
     // Add to scene
@@ -70,19 +71,25 @@ Toolbox.createSelectorMesh = (radius) => {
 
 Toolbox.increaseSelectorSize = () => {
     if (Toolbox.selectorSize < Toolbox.selectorSizeMax) Toolbox.selectorSize += 1;
-    Toolbox.selectorRadius = THOTH.Utils.computeRadius(Toolbox.selectorSize);
+    Toolbox.selectorRadius = Toolbox.selectorBaseRadius * THOTH.Utils.computeRadius(Toolbox.selectorSize);
     Toolbox.selectorMesh.scale.setScalar(Toolbox.selectorRadius);
 };
 
 Toolbox.decreaseSelectorSize = () => {
     if (Toolbox.selectorSize > Toolbox.selectorSizeMin) Toolbox.selectorSize -= 1;
-    Toolbox.selectorRadius = THOTH.Utils.computeRadius(Toolbox.selectorSize);
+    Toolbox.selectorRadius = Toolbox.selectorBaseRadius * THOTH.Utils.computeRadius(Toolbox.selectorSize);
     Toolbox.selectorMesh.scale.setScalar(Toolbox.selectorRadius);
 };
 
 Toolbox.setSelectorSize = (size) => {
     Toolbox.selectorSize = parseInt(size);
-    Toolbox.selectorRadius = THOTH.Utils.computeRadius(Toolbox.selectorSize);
+    Toolbox.selectorRadius = Toolbox.selectorBaseRadius * THOTH.Utils.computeRadius(Toolbox.selectorSize);
+    Toolbox.selectorMesh.scale.setScalar(Toolbox.selectorRadius);
+};
+
+Toolbox.setSelectorBaseRadius = (radius) => {
+    Toolbox.selectorBaseRadius = parseFloat(radius);
+    Toolbox.selectorRadius = Toolbox.selectorBaseRadius * THOTH.Utils.computeRadius(Toolbox.selectorSize);
     Toolbox.selectorMesh.scale.setScalar(Toolbox.selectorRadius);
 };
 

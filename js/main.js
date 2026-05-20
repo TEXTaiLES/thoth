@@ -268,6 +268,7 @@ THOTH.updateSceneScale = (model) => {
         THOTH.sceneScale = (THOTH.sceneScale + newModelScale) / 2;
     }
     console.log("Average object scale: " + THOTH.sceneScale);
+    THOTH.Toolbox.setSelectorBaseRadius(0.1 * THOTH.sceneScale);
     THOTH.MSR?.refreshLabelScales();
 };
 

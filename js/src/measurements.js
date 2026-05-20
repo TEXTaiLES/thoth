@@ -60,6 +60,24 @@ MSR.setup = () => {
     });
 };
 
+
+MSR.parseMeasurements = (measurements) => {
+    if (measurements === undefined) return;
+
+    for (const id in measurements) {
+        const measurement = measurements[id];
+        if (measurement?.points?.length) {
+            measurement.points = measurement.points.map(MSR.normalizePoint);
+        }
+        MSR.msrMap.set(Number(id), measurement);
+        THOTH.FE.addMsr(Number(id));
+        MSR.addMeasurementSem(Number(id));
+    }
+};
+
+
+// UTILS
+
 MSR.getLabelScale = () => {
     const sceneScale = THOTH.sceneScale;
     if (!Number.isFinite(sceneScale)) return null;
@@ -98,25 +116,6 @@ MSR.refreshMeasurementVisibility = () => {
         const shouldShow = !MSR.isSceneLoading && measurement.trash !== true && measurement.visible !== false;
         if (shouldShow) node.show();
         else node.hide();
-    }
-};
-
-MSR.update = () => {
-    if (MSR.points.length === 0) return;
-
-    //
-};
-
-MSR.parseMeasurements = (measurements) => {
-    if (measurements === undefined) return;
-
-    for (const id in measurements) {
-        const measurement = measurements[id];
-        if (measurement?.points?.length) {
-            measurement.points = measurement.points.map(MSR.normalizePoint);
-        }
-        MSR.msrMap.set(Number(id), measurement);
-        MSR.addMeasurementSem(Number(id));
     }
 };
 

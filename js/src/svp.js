@@ -65,7 +65,10 @@ SVP.readCameraFile = (modelName) => {
 // Build
 
 SVP.buildVPNodes = (vpMap, modelName) => {
-    //read camera txt and get fov
+    // Delete existing first
+    SVP.deleteSVPNodes(modelName);
+
+    // Read camera txt and get FOV
     SVP.currentFOV=null;
     THOTH.SVP.readCameraFile(modelName).then(cam => {
      SVP.currentFOV = cam.fov;
@@ -94,9 +97,9 @@ SVP.buildVPNodes = (vpMap, modelName) => {
         Q.premultiply(Rfix);
         pos.applyQuaternion(Rfix);
         // Get image url
-       // const modelURL = THOTH.Models.modelMap.get(modelName).url;
+        // const modelURL = THOTH.Models.modelMap.get(modelName).url;
         const modelURL=THOTH.Models.getModelURL(modelName);
-       //const imageURL = modelURL.split('/').slice(0, -1).join('/') + "/images/" + image;
+        //const imageURL = modelURL.split('/').slice(0, -1).join('/') + "/images/" + image;
         const imageURL = ATON.Utils.resolveCollectionURL(modelURL.split('/').slice(0, -1).join('/') + "/images/" + image);
         // Get target
         //const target = SVP.createTarget(Q, pos);
@@ -119,7 +122,7 @@ SVP.buildVPNodes = (vpMap, modelName) => {
         SVP.viewpoints[modelName][id] = semNode;
     };
     // Attach to model
-   // viewpoints.attachTo(THOTH.Models.modelMap.get(modelName).modelData);
+    // viewpoints.attachTo(THOTH.Models.modelMap.get(modelName).modelData);
     viewpoints.attachTo(THOTH.Models.modelMap.get(modelName));    
 };
 
@@ -163,37 +166,6 @@ SVP.createSVPNode = (id, pos) => {
 
     return N;
 };
-/*
-SVP.deleteSVPNodes = (modelName) => {
-    if (!modelName) return;
-    const modelEntry = THOTH.Models.modelMap.get(modelName);
-    //if (!modelEntry || !modelEntry.modelData) return;
-    if (!modelEntry || !modelEntry.modelData) return;
-
-    const modelData = modelEntry.modelData;
-    const vpName = `${modelName}Viewpoints`;
-    const parent = modelData.getObjectByName ? modelData.getObjectByName(vpName) : null;
-
-    if (parent) {
-        modelData.remove(parent);
-
-        parent.traverse((obj) => {
-            if (obj.isMesh) {
-                if (obj.geometry) obj.geometry.dispose();
-                if (obj.material) {
-                    if (Array.isArray(obj.material)) {
-                        obj.material.forEach(m => m?.dispose && m.dispose());
-                    } else {
-                        obj.material?.dispose && obj.material.dispose();
-                    }
-                }
-            }
-        });
-    }
-
-    if (SVP.viewpoints?.[modelName]) delete SVP.viewpoints[modelName];
-};
-*/
 
 SVP.deleteSVPNodes = (modelName) => {
 
@@ -225,18 +197,19 @@ SVP.deleteSVPNodes = (modelName) => {
 
 // Visualization
 
-SVP.toggleVPNodes = (bool, modelName) => {
+SVP.toggleVPNodes = (modelName) => {
     if (!modelName) {
         const modelNames = Object.keys(SVP.viewpoints);
         for (const name of modelNames) {
-            SVP.toggleVPNodes(bool, name);
+            SVP.toggleVPNodes(name);
         }
         return;
     }
     const viewpoints = SVP.viewpoints?.[modelName];
     if (viewpoints === undefined) return;
     for (const vp in viewpoints) {
-        viewpoints[vp].toggle(bool);
+        let isVisible = viewpoints[vp].visible;
+        viewpoints[vp].toggle(!isVisible);
     }
 };
 

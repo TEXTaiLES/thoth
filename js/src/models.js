@@ -112,7 +112,7 @@ Models.getModelMeshes = (modelName) => {
     
     const meshes = new Map()
     model.traverse(N => {
-        if (N.isMesh) {
+        if (N.isMesh && N.name !== "") {
             meshes.set(N.name, N);
         }
     })

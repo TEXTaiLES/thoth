@@ -498,7 +498,7 @@ UI.createModelEditor = (modelName) => {
         }),
         itemsRight: ATON.UI.createButton({
             text   : "Focus",
-            icon   : ATON.PATH_RES + "icons/.png",
+            icon   : ATON.PATH_RES + "icons/focus.png",
             classes: "btn-default",
             onpress: () => ATON.Nav.requestPOVbyNode(model, 0.2)
         }),
@@ -510,7 +510,7 @@ UI.createModelEditor = (modelName) => {
         ATON.UI.createButton({
             icon   : "visibility",
             size   : "small",
-             onpress: () => THOTH.SVP.toggleVPNodes(vpVisible, modelName)
+             onpress: () => THOTH.SVP.toggleVPNodes(modelName)
             // onpress: () => THOTH.SVP.toggleVPNodes(true, modelName)
         }),
         ATON.UI.createButton({
@@ -1190,6 +1190,7 @@ UI.modalMsrDetails = (msrId) => {
         header: `Edit measurement with id: ${msrId}`,
         body  : elBody,
         footer: elFooter,
+        wide  : true
     });
 };
 
@@ -1422,6 +1423,7 @@ UI.modalLayerDetails = (layerId, data_temp) => {
         header: `Edit layer with id: ${layerId}`,
         body  : elBody,
         footer: elFooter,
+        wide  : true,
     });
 }; 
 
@@ -1477,6 +1479,7 @@ UI.modalSceneMetadata = (data_temp) => {
         header: `Edit scene metadata`,
         body  : elBody,
         footer: elFooter,
+        wide  : true,
     });
 };  
 
