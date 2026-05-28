@@ -42,7 +42,7 @@ History.ACTIONS.DEL_MODEL = 10;
 
 History.ACTIONS.ADD_MEASUREMENT = 11;
 History.ACTIONS.DEL_MEASUREMENT = 12;
-History.ACTIONS.RENAME_MEASUREMENT = 2;
+History.ACTIONS.RENAME_MEASUREMENT = 2;//not used
 
 // Setup
 
@@ -181,18 +181,30 @@ History.fireAndInverse = (action) => {
             THOTH.firePhoton("addModel");
             break; 
         case History.ACTIONS.ADD_MEASUREMENT:
-            inverseType = History.ACTIONS.DEL_MEASUREMENT;
+            inverseType = History.ACTIONS.DEL_MEASUREMENT;            
             THOTH.MSR.deleteMeasurement(id);
-            THOTH.firePhoton("deleteMeasurement", id);
+            //THOTH.firePhoton("deleteMeasurement", id);
+           /*   THOTH.firePhoton("deleteMeasurement", {
+                id    : id,
+                point1: value.point1,
+                point2: value.point2,
+            });*/
+            THOTH.firePhoton("deleteMeasurement", {
+            id: id
+            });
+
             break;
         case History.ACTIONS.DEL_MEASUREMENT:
             inverseType = History.ACTIONS.ADD_MEASUREMENT;
             THOTH.MSR.addMeasurement(id, value.point1, value.point2);
+            //THOTH.MSR.resurrectMeasurement(id);
             THOTH.firePhoton("createMeasurement", {
                 id    : id,
                 point1: value.point1,
                 point2: value.point2,
             });
+            break;
+            
         /*case History.ACTIONS.RENAME_MEASUREMENT:
             inverseType = History.ACTIONS.RENAME_MEASUREMENT;
             // Swap
@@ -203,7 +215,7 @@ History.fireAndInverse = (action) => {
                 value: value, 
                 prevValue: prevValue               
             });*/
-            break;
+           // break;
 
         default:
             THOTH.UI.showToast("Invalid action type: " + type);

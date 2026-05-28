@@ -609,8 +609,9 @@ UI.createMeasureOptions = () => {
     
     // Distance type map
     const distanceTypeMap = new Map();
+
     THOTH.MSR.distanceType = 'euclidean';
-    THOTH.FE.handleElementHighlight('euclidean', distanceTypeMap);//highlight default
+    
     const elBtnEuclidean = ATON.UI.createButton({
         text: "Euclidean",
         onpress: () => {
@@ -618,17 +619,18 @@ UI.createMeasureOptions = () => {
             THOTH.FE.handleElementHighlight('euclidean', distanceTypeMap);
         }
     });
-    distanceTypeMap.set('euclidean', elBtnEuclidean);
+    distanceTypeMap.set(THOTH.MSR.distanceType, elBtnEuclidean);
 
     const elBtnGeodesic = ATON.UI.createButton({
         text: "Geodesic",
         onpress: () => {         
             THOTH.MSR.distanceType = 'geodesic';
             THOTH.FE.handleElementHighlight('geodesic', distanceTypeMap);
-
         }
     });
     distanceTypeMap.set('geodesic', elBtnGeodesic);
+    //initial highlight
+    THOTH.FE.handleElementHighlight(THOTH.MSR.distanceType,distanceTypeMap);
 
     const elOptions = ATON.UI.createContainer();
     elOptions.append(elBtnEuclidean,elBtnGeodesic);
