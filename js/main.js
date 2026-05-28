@@ -340,35 +340,45 @@ THOTH.exportChanges = () => {
     console.log("Exporting changes...");
 
     let A = THOTH.getExportData();
+
+    const exportJson = JSON.stringify(A, null, 2);
+    const exportBlob = new Blob([exportJson], { type: "application/json" });
+    const exportUrl = URL.createObjectURL(exportBlob);
+    const exportLink = document.createElement("a");
+    exportLink.href = exportUrl;
+    exportLink.download = `${THOTH.sid || "scene"}.json`;
+    exportLink.click();
+    URL.revokeObjectURL(exportUrl);
+    THOTH.FE.showToast("Scene JSON downloaded locally.");
     
     // Remove all annotation objects and ADD them again with changes
-    ATON.REQ.patch(
-        THOTH.config.baseSceneUrl + THOTH.sid,
-        {
-            data: THOTH.initData,
-            mode: "DEL"
-        },
-        () => {},
-        err => {
-            console.log(err);
-            return;
-        } 
-    );
+    // ATON.REQ.patch(
+    //     THOTH.config.baseSceneUrl + THOTH.sid,
+    //     {
+    //         data: THOTH.initData,
+    //         mode: "DEL"
+    //     },
+    //     () => {},
+    //     err => {
+    //         console.log(err);
+    //         return;
+    //     }
+    // );
 
     // Patch changes
-    ATON.REQ.patch(
-        THOTH.config.baseSceneUrl + THOTH.sid,
-        {
-            data: A,
-            mode: "ADD"
-        }, 
-        () => {
-            THOTH.FE.showToast("Changes exported successfully!")
-            // Update for next export;
-            THOTH.initData = A;
-        },
-        (err) => console.log(err)
-    )
+    // ATON.REQ.patch(
+    //     THOTH.config.baseSceneUrl + THOTH.sid,
+    //     {
+    //         data: A,
+    //         mode: "ADD"
+    //     },
+    //     () => {
+    //         THOTH.FE.showToast("Changes exported successfully!");
+    //         // Update for next export;
+    //         THOTH.initData = A;
+    //     },
+    //     (err) => console.log(err)
+    // );
 
 };
 
@@ -416,7 +426,6 @@ THOTH.exportToHestia = async () => {
 
 THOTH.getExportData = () => {
     let A = structuredClone(THOTH.initData);
-    console.log(A)
     // Model data
     A.scenegraph = THOTH.Models.getExportData();
     // Layer data

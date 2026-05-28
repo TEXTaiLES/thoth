@@ -1,9 +1,12 @@
 name: thoth
 
 services:
-  thothv2:
+  thoth:
+    build: .
     image: thoth
-    container_name: thothv2
+    container_name: thoth
+    volumes:
+      - ./wapps/thoth:/thoth
     ports:
       - "8054:8080"
     networks:

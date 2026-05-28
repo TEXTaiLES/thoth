@@ -1,5 +1,3 @@
 [
-    "https://thoth.textailes.athenarc.gr/a/thoth/js/res/schema/test_schema.json",
-    "https://thoth.textailes.athenarc.gr/a/thoth/js/res/schema/annotation_schema.json",
     "../../a/thoth/js/res/schema/puc_schema.json"
 ]
