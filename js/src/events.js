@@ -294,12 +294,20 @@ Events.setupMeasurementEvents = () => {
         const point2 = THOTH.MSR.points[1];
 
         // Local
-        THOTH.MSR.addMeasurement(msrId, point1, point2);
+        THOTH.MSR.addMeasurement(msrId, point1, point2, {
+        distanceType: THOTH.MSR.distanceType
+    });
+        const measurement =THOTH.MSR.msrMap.get(msrId);
+        if (!measurement) return;
         // Photon
         THOTH.firePhoton("createMeasurement", {
             id    : msrId,
             point1: point1,
-            point2: point2
+            point2: point2,
+            path: measurement.path||null,
+            distance: measurement.distance,
+            distanceType: measurement.distanceType
+
         });
         // History
         THOTH.History.pushAction({
@@ -314,15 +322,28 @@ Events.setupMeasurementEvents = () => {
 
     THOTH.on("deleteMeasurement", (data) => {
         const { id, point1, point2 } = data;
-
+         //Local
+        THOTH.MSR.deleteMeasurement(id);
+              
+        // Photon
+        THOTH.firePhoton("deleteMeasurement", data);
+/*
         // push to history WITH value
         THOTH.History.pushAction({
             type: THOTH.History.ACTIONS.DEL_MEASUREMENT,
             id: id,
             value: { point1, point2 }
         });
+            */
+          THOTH.History.pushAction({
+            type  : THOTH.History.ACTIONS.DEL_MEASUREMENT,
+            id    : id,
+            value: {
+                point1: point1,
+                point2: point2
+            }
+        });
 
-        THOTH.MSR.deleteMeasurement(id);
     });
 
     THOTH.on("renameMeasurement", (l) => {
@@ -332,11 +353,13 @@ Events.setupMeasurementEvents = () => {
 
         // Local
         THOTH.MSR.renameMeasurement(id, value);
+        THOTH.firePhoton("renameMeasurement",l);
         // Photon
-        THOTH.firePhoton("renameMeasurement", ({
+       /* THOTH.firePhoton("renameMeasurement", ({
             id   : id,
             value: value
         }));
+        */
         /*
         // History
         THOTH.History.pushAction({
@@ -915,13 +938,18 @@ Events.setupPhotonEvents = () => {
 
     // Measurements
     THOTH.onPhoton("createMeasurement", (l) => {
-        THOTH.MSR.createMeasurement(l.id, l.point1, l.point2);
+
+       THOTH.MSR.addMeasurement(l.id, l.point1, l.point2,
+        {path: l.path,
+         distance: l.distance,
+         distanceType:   l.distanceType
+        });
     });
     THOTH.onPhoton("deleteMeasurement", (l) => {
         THOTH.MSR.deleteMeasurement(l.id);
     });
      THOTH.onPhoton("renameMeasurement", (l) => {
-        THOTH.MSR.renameMeasurement(l.id, l.data);
+        THOTH.MSR.renameMeasurement(l.id, l.value);
     });
 };
 
