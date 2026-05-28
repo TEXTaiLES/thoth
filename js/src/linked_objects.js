@@ -48,7 +48,7 @@ LinkedObjects.setupLinkedObjectsLists = () => {
                 if (linkedParentObject?.scene_id) {
                     elLinkedParentObject.append(ATON.UI.createButton({
                         text: linkedParentObject.name ?? "Parent Object",
-                        onpress: () => window.open(`?s=${u.username}/${linkedParentObject.scene_id}`, "_blank"),
+                        onpress: () => window.open(`?s=${linkedParentObject.scene_id}`, "_blank"),
                         tooltip: "Open scene in new tab",
                     }));
                 }
