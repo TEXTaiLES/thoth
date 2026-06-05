@@ -31,9 +31,9 @@ git clone https://github.com/phoenixbf/aton.git
 
 
 ### Step 3
-Download a copy of THOTH from [Github](https://github.com/Xenobii/thoth) and place it in the /wapps folder located directly inside the aton folder. Similarly to ATON, either download the [zip](https://github.com/Xenobii/thoth) or clone the repository inside the wapps folder. 
+Download a copy of THOTH from [Github](https://github.com/TEXTaiLES/thoth) and place it in the /wapps folder located directly inside the aton folder. Similarly to ATON, either download the [zip](https://github.com/TEXTaiLES/thoth) or clone the repository inside the wapps folder. 
 ```
-git clone https://github.com/Xenobii/thoth.git
+git clone https://github.com/TEXTaiLES/thoth.git
 ```
 
 ### Step 4

@@ -454,6 +454,6 @@ THOTH.onLogin = (u) => {
     THOTH.FE.setupToolboxElements();
     
     // Join collaborative
-    if (THOTH.collaborative) ATON.Photon.connect();
+    // if (THOTH.collaborative) ATON.Photon.connect();
 };
 

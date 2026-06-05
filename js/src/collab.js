@@ -25,7 +25,10 @@ Collab.syncScene = (sobj) => {
 
 
 Collab.parseCollab = (collab) => {
-    if (collab === true) THOTH.collaborative = true;
+    if (collab === true) {
+        THOTH.collaborative = true;
+        ATON.Photon.connect();
+    }
 };
 
 
