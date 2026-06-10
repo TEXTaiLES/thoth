@@ -238,16 +238,6 @@ FE.setupTopToolbar = () => {
             onpress : () => window.open("https://www.echoes-eccch.eu/textailes/", "_blank"),
             tooltip : "Go to the TEXTaiLES website"
         }),
-        // Settings
-        ATON.UI.createButton({
-            icon   : "settings",
-            text   : "Settings",
-            onpress: () => ATON.UI.showSidePanel({
-                header  : "Settings",
-                body    : FE.settingsPanel
-            }),
-            tooltip: "Options"
-        }),
         // Scene
         ATON.UI.createButton({
             icon   : 'scene',
@@ -268,16 +258,6 @@ FE.setupTopToolbar = () => {
             }),
             tooltop : "Layers"
         }),
-        // Sensors
-        ATON.UI.createButton({
-            icon   : "light",
-            text   : "Sensors ",
-            onpress: () => ATON.UI.showSidePanel({
-                header: "Sensor Stream",
-                body  : FE.sensorPanel
-            }),
-            tooltop : "Sensor Data"
-        }), 
         // msr
         ATON.UI.createButton({
             icon   : "measure",
@@ -288,6 +268,26 @@ FE.setupTopToolbar = () => {
             }),
             tooltip: "Measurements"
         }),
+        // Sensors
+        ATON.UI.createButton({
+            icon   : "light",
+            text   : "Sensors ",
+            onpress: () => ATON.UI.showSidePanel({
+                header: "Sensor Stream",
+                body  : FE.sensorPanel
+            }),
+            tooltop : "Sensor Data"
+        }), 
+        // Settings
+        ATON.UI.createButton({
+            icon   : "settings",
+            text   : "Settings",
+            onpress: () => ATON.UI.showSidePanel({
+                header  : "Settings",
+                body    : FE.settingsPanel
+            }),
+            tooltip: "Options"
+        }),
         // Info
         ATON.UI.createButton({
             icon   : "info",
@@ -296,8 +296,31 @@ FE.setupTopToolbar = () => {
             tooltip: "Open documentation"
         })
     );
-
+    
+    FE.syncMainToolbarOffset(topToolbar);
+    
     return topToolbar;
+};
+
+FE.syncMainToolbarOffset = (topToolbar) => {
+    if (!topToolbar) return;
+
+    const updateOffset = () => {
+        document.documentElement.style.setProperty(
+            "--thoth-top-toolbar-height",
+            `${topToolbar.offsetHeight}px`
+        );
+    };
+
+    requestAnimationFrame(updateOffset);
+
+    if (window.ResizeObserver) {
+        FE._topToolbarResizeObserver = new ResizeObserver(updateOffset);
+        FE._topToolbarResizeObserver.observe(topToolbar);
+    }
+    else {
+        window.addEventListener("resize", updateOffset);
+    }
 };
 
 FE.setupUserToolbar = () => {
@@ -312,9 +335,25 @@ FE.setupMainToolbar = (toolMap) => {
     if (!toolMap) return;
     
     const mainToolbar = ATON.UI.get("mainToolbar");
+    const toolGroups = [
+        [ "brush", "eraser", "lasso", "no_tool" ],
+        [ "measure" ],
+        [ "undo", "redo" ],
+    ];
 
-    for (const [ , toolElement] of toolMap) {
-        mainToolbar.append(toolElement);
+    mainToolbar.innerHTML = "";
+
+    for (let groupIndex = 0; groupIndex < toolGroups.length; groupIndex++) {
+        const toolKeys = toolGroups[groupIndex];
+
+        if (groupIndex > 0) {
+            mainToolbar.append(ATON.UI.createContainer({classes: "thoth-toolbar-separator"}));
+        }
+
+        for (const toolKey of toolKeys) {
+            const toolElement = toolMap.get(toolKey);
+            if (toolElement) mainToolbar.append(toolElement);
+        }
     }
 
     return mainToolbar;

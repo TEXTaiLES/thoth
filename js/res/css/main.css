@@ -8,7 +8,8 @@
 ===========================================================================*/
 
 :root {
-    --thoth-ui-margin: 4px
+    --thoth-ui-margin: 4px;
+    --thoth-top-toolbar-height: var(--aton-el-height);
 }
 
 .thoth-top-toolbar {
@@ -37,11 +38,12 @@
     backdrop-filter: blur(var(--aton-blur-radius));
 }
 
-.thoth-main-toolbar {
-    margin: var(--thoth-ui-margin);
-    margin-top: 50px;
+.aton-toolbar-left.thoth-main-toolbar {
+    top: calc(var(--thoth-top-toolbar-height) + var(--thoth-ui-margin));
+    left: var(--thoth-ui-margin);
+    margin: 0;
 
-    max-height: calc(100% - (var(--thoth-ui-margin)*2));
+    max-height: calc(100% - var(--thoth-top-toolbar-height) - (var(--thoth-ui-margin)*2));
 
     background-color: rgba(var(--bs-body-bg-rgb), 0.4) !important;
     border-radius: var(--bs-border-radius);
@@ -50,6 +52,14 @@
     backdrop-filter: blur(var(--aton-blur-radius));
 
     overflow-y: auto;
+}
+
+.thoth-toolbar-separator {
+    width: calc(100% - 12px);
+    height: 1px;
+    margin: 6px auto;
+    background-color: rgba(var(--bs-body-color-rgb), 0.25);
+    pointer-events: none;
 }
 
 .thoth-tool-options-toolbar {
