@@ -5,6 +5,7 @@
 
     Authors: 
         Stelios Alvanos (steliosalvanos@gmail.com)
+        Apostolos Kastrisis
 
 ===========================================================================*/
 let FE = {};
@@ -61,6 +62,7 @@ FE.setupMsrElements = () => {
 
 FE.setupToolboxElements = () => {
     // Tools
+    FE.userToolbar.append(THOTH.UI.createExportButton())
     if (THOTH.config.toolbox) {
         FE.toolMap        = FE.initToolMap();
         FE.toolOptMap     = FE.initToolOptMap();
@@ -301,14 +303,7 @@ FE.setupTopToolbar = () => {
 FE.setupUserToolbar = () => {
     const userToolbar = ATON.UI.get("userToolbar");
 
-    userToolbar.append(
-        THOTH.UI.createUserButton(),
-        ATON.UI.createButton({
-            icon   : ATON.PATH_RES + "icons/vrc.png",
-            onpress : () => {},
-            tooltip : "Connect to Photon"
-        })
-    );
+    userToolbar.append(THOTH.UI.createUserButton());
 
     return userToolbar;
 };
@@ -423,17 +418,8 @@ FE.setupModelsPanel = (elModelList) => {
     const elTopOptions = ATON.UI.createContainer({classes: "row g-0 align-items-center w-100 rounded-2 px-2 py-1 mb-1"});
     const [ elParentObject, elChildObjects ] = THOTH.LO.setupLinkedObjectsLists();
 
-
-
     // Top buttons
     elTopOptions.append(
-        ATON.UI.createButton({
-            icon   : "link",
-            text   : "Export changes",
-            variant: "success",
-            tooltip: "Export changes",
-            onpress: () => THOTH.UI.modalExport()
-        }),
         ATON.UI.createButton({
             icon   : "add",
             text   : "Add model",
@@ -461,21 +447,22 @@ FE.setupModelsPanel = (elModelList) => {
 };
 
 FE.setupLayersPanel = (elLayerList) => {
-    const elBody       = ATON.UI.createContainer();
+    const elBody       = ATON.UI.createContainer({classes: "d-flex flex-column h-100"});
     const elTopOptions = ATON.UI.createContainer({classes: "row g-0 align-items-center w-100 rounded-2 px-2 py-1 mb-1"});
+
+    // Layer structure
+    const elLayerStructure = THOTH.UI.createLayerStructureBlock();
+    elLayerStructure.classList.add("flex-shrink-0");
+    elLayerStructure.style.marginTop = "auto";
+
+    elLayerList.classList.add("flex-grow-1", "overflow-auto");
+    elLayerList.style.minHeight = "0";
 
     // Scene controller
     const elSceneController = THOTH.UI.createSceneController();
 
     // Top buttons
     elTopOptions.append(
-        ATON.UI.createButton({
-            icon   : "link",
-            text   : "Export changes",
-            variant: "success",
-            tooltip: "Export changes",
-            onpress: () => THOTH.UI.modalExport(),
-        }),
         ATON.UI.createButton({
             text   : "New Layer",
             icon   : "add",
@@ -484,7 +471,8 @@ FE.setupLayersPanel = (elLayerList) => {
             onpress: () => THOTH.fire("createLayer"),
         }),
     );
-    elBody.append(elTopOptions, elSceneController, elLayerList);
+
+    elBody.append(elTopOptions, elSceneController, elLayerList, elLayerStructure);
 
     return elBody;
 };

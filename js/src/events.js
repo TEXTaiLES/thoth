@@ -378,6 +378,7 @@ Events.setupLayerEvents = () => {
         const layerId = THOTH.Utils.getFirstUnusedKey(THOTH.Layers.layerMap);
         // Local
         THOTH.Layers.createLayer(layerId);
+        THOTH.Layers.setActiveLayer(layerId)
         // Photon
         THOTH.firePhoton("createLayer", layerId);
         // History

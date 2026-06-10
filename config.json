@@ -1,9 +1,9 @@
 {   
-    "authKey": "Authorization: Bearer change-me-locally",
     "baseDomain"   : "http://localhost:8080/api/v2/",
     "baseSceneUrl" : "http://localhost:8080/api/v2/scenes/",
     "baseModelUrl" : "http://localhost:8080/api/v2/items/samples/models/",
     "schemaListUrl": "../../a/thoth/js/res/schema/list_of_schemas.json",
+    "defaultSchemaName": "puc_schema",
     "toolbox"      : true,
     "toolboxDefaults" : {
         "lassoPrecision"       : 0.1,
@@ -12,7 +12,5 @@
         "selectorSize"         : 10,
         "selectorSizeMax"      : 50,
         "selectorSizeMin"      : 0
-    },
-    "hestiaToken"   : "",
-    "hestiaEndpoint": "https://localhost:5000/annotations/"
+    }
 }

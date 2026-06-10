@@ -295,6 +295,149 @@ UI.createUserButton = () => {
     return UI._elUserBTN;
 };
 
+UI.createExportButton = () => {
+    return ATON.UI.createButton({
+        icon   : "link",
+        text   : "Export changes",
+        variant: "success",
+        tooltip: "Export changes",
+        onpress: () => THOTH.UI.modalExport()
+    })
+};
+
+UI.createTextBlock = (content)=>{
+    let el = ATON.UI.createContainer({
+        classes: "hathor-text-block"
+    });
+
+    if (content) el.append(content);
+
+    return el;
+}
+
+UI.createColorPicker = (options) => {
+    if (!options) options = {};
+
+    const label = options.label || "";
+    if (!UI._colorPickerStyle) {
+        UI._colorPickerStyle = document.createElement("style");
+        UI._colorPickerStyle.textContent = `
+            .thoth-color-picker {
+                appearance: none;
+                -webkit-appearance: none;
+                background: transparent;
+                border: 0;
+                box-shadow: none;
+                cursor: pointer;
+                display: block;
+                height: 1.75rem;
+                min-height: 1.75rem;
+                padding: 0;
+                width: 1.75rem;
+            }
+
+            .thoth-color-picker::-webkit-color-swatch-wrapper {
+                padding: 0;
+            }
+
+            .thoth-color-picker::-webkit-color-swatch {
+                border: 0;
+                border-radius: 0.25rem;
+            }
+
+            .thoth-color-picker::-moz-color-swatch {
+                border: 0;
+                border-radius: 0.25rem;
+            }
+        `;
+        document.head.append(UI._colorPickerStyle);
+    }
+
+    const el = ATON.UI.createContainer({
+        classes: "d-inline-flex align-items-center flex-grow-0 border-0"
+    });
+    el.style.width     = "1.75rem";
+    el.style.minWidth  = "1.75rem";
+    el.style.maxWidth  = "1.75rem";
+    el.style.height    = "1.75rem";
+    el.style.minHeight = "1.75rem";
+    el.style.border    = "0";
+    el.style.lineHeight = "0";
+    el.style.overflow   = "hidden";
+
+    if (options.label) {
+        el.append(ATON.UI.elem("<span class='input-group-text aton-inline'>" + label + "</span>"));
+    }
+
+    const elInput = ATON.UI.elem(`<input class="thoth-color-picker" aria-label="${label}" type="color">`);
+    ATON.UI.registerElementAsComponent(elInput, "input");
+
+    elInput.onfocus = () => { ATON.UI._bInput = true; };
+    elInput.onblur  = () => { ATON.UI._bInput = false; };
+
+    if (options.color) elInput.value = options.color;
+
+    if (options.onchange) elInput.onchange = () => {
+        options.onchange(elInput.value);
+    };
+
+    if (options.oninput) elInput.oninput = () => {
+        options.oninput(elInput.value);
+    };
+
+    el.append(elInput);
+
+    return el;
+};
+
+UI.createLayerStructureBlock = () => {
+    const elBlock = ATON.UI.createContainer({
+        classes: "border rounded-2 bg-body mt-2 mb-2 shadow-sm overflow-hidden"
+    });
+    elBlock.classList.add("mx-2");
+    elBlock.style.boxSizing = "border-box";
+    elBlock.style.width     = "calc(100% - 1rem)";
+
+    const elHeader = ATON.UI.createContainer({
+        classes: "border-bottom px-3 py-2"
+    });
+    elHeader.append(ATON.UI.createButton({
+        text: "General Layer Structure",
+        icon: "layers",
+        size: "small"
+    }));
+
+    const elBody = ATON.UI.createContainer({
+        classes: "px-3 py-2"
+    });
+
+    const elText = document.createElement("p");
+    elText.classList.add("mb-2");
+    // elText.textContent = "Each annotation layer is stored with this structure:";
+
+    const elStructure = document.createElement("pre");
+    elStructure.classList.add("bg-body-secondary", "rounded-2", "p-3", "mb-0");
+    elStructure.style.fontSize  = "0.78rem";
+    elStructure.style.lineHeight = "1.45";
+    elStructure.style.overflowX  = "auto";
+    elStructure.textContent = `scene_layer
+|-- metadata
+layers
+|-- layer_1
+|   |-- name
+|   |-- metadata
+|   |-- selection
+|   |-- ...
+|-- layer_2
+|   |-- name
+| ...`;
+
+    elBody.append(elText, elStructure);
+    elBlock.append(elHeader, elBody);
+
+    return elBlock;
+};
+
 
 // Controllers
 
@@ -365,6 +508,7 @@ UI.createLayerController = (layerId) => {
     const layer = THOTH.Layers.layerMap.get(layerId);
     
     // Name
+    elLeft.classList.add("d-flex", "align-items-center");
     elLeft.append(
         // Visibility
         ATON.UI.createButton({
@@ -374,7 +518,7 @@ UI.createLayerController = (layerId) => {
         }),
         THOTH.FE.layerNameMap.get(layerId),
     );
-    let elCP = ATON.UI.createColorPicker({
+    let elCP = UI.createColorPicker({
         color  : layer.highlightColor,
         id     : `layer${layerId}CP`,
         oninput: (color) => {
@@ -383,15 +527,17 @@ UI.createLayerController = (layerId) => {
         },
     });
     elCP.id = `layer${layerId}CP`;
+    elRight.classList.add("d-flex", "justify-content-end", "align-items-center", "gap-1");
     elRight.append(
-        elCP,
         // Metadata
         ATON.UI.createButton({
+            text   : "Metadata",
             icon   : "list",
             size   : "small",
             tooltip: "Edit metadata",
             onpress: () => UI.modalLayerDetails(layerId),
         }),
+        elCP,
         // Delete
         ATON.UI.createButton({
             icon   : ATON.PATH_RES + "icons/trash.png",
@@ -1056,7 +1202,22 @@ UI.createSensorDashboard = (sensorId) => {
     elTime.style.fontSize = "0.75rem";
     elTime.innerHTML = `Reading Time: <span class="sensor-time">Loading...</span>`;
 
-    elContainer.append(elHeader, elSensorId, elAtmosphericPressure, elElevation, elHumidity, elLuminosity, elTemperature, elUVIntensity, elTime);
+    const elNoData = ATON.UI.createContainer({ classes: "text-body-secondary py-2" });
+    elNoData.textContent = "No sensor data associated with this model.";
+    elNoData.style.display = "none";
+
+    const elDataRows = [
+        elSensorId,
+        elAtmosphericPressure,
+        elElevation,
+        elHumidity,
+        elLuminosity,
+        elTemperature,
+        elUVIntensity,
+        elTime
+    ];
+
+    elContainer.append(elHeader, elNoData, ...elDataRows);
 
     const atmosphericPressureSpan = elAtmosphericPressure.querySelector(`.${atmosphericPressureClass}`);
     const elevationSpan           = elElevation.querySelector(`.${elevationClass}`);
@@ -1076,18 +1237,36 @@ UI.createSensorDashboard = (sensorId) => {
         timeSpan.textContent                = "";
     };
 
+    const showNoData = () => {
+        clearDashboard();
+        elNoData.style.display = "block";
+
+        for (const elRow of elDataRows) {
+            elRow.style.display = "none";
+        }
+    };
+
+    const showDashboard = () => {
+        elNoData.style.display = "none";
+
+        for (const elRow of elDataRows) {
+            elRow.style.display = "";
+        }
+    };
+
     const updateDashboard = async () => {
         if (!sensorId) {
-            clearDashboard();
+            showNoData();
             return;
         }
 
         const data = await THOTH.Sensor.fetchSensorData(sensorId);
         if (!data) {
-            clearDashboard();
+            showNoData();
             return;
         }
 
+        showDashboard();
         atmosphericPressureSpan.textContent = data.atmospheric_pressure ?? "";
         elevationSpan.textContent           = data.elevation ?? "";
         humiditySpan.textContent            = data.humidity ?? "";
@@ -1238,6 +1417,18 @@ UI.createMetadataEditor = (schema, data_temp) => {
         return label;
     };
 
+    const addFieldDescription = (elField, attr) => {
+        if (!attr?.description) return elField;
+
+        const elWrapper = ATON.UI.createContainer({classes: "d-grid gap-1 mb-2"});
+        const elDescription = ATON.UI.createContainer({classes: "small text-body-secondary"});
+
+        elDescription.textContent = attr.description;
+        elWrapper.append(elField, elDescription);
+
+        return elWrapper;
+    };
+
     const createField = (fieldKey, fieldLabel, attr, targetData) => {
         const type = normalizeType(attr);
         const label = buildLabel(fieldLabel, attr);
@@ -1248,33 +1439,33 @@ UI.createMetadataEditor = (schema, data_temp) => {
             case "url":
             case "date":
             case "reference":
-                return ATON.UI.createInputText({
+                return addFieldDescription(ATON.UI.createInputText({
                     label      : label,
                     value      : ensureValue(targetData, fieldKey, "-"),
                     placeholder: type || "text",
                     oninput    : (v) => targetData[fieldKey] = v,
-                });
+                }), attr);
             case "integer":
-                return ATON.UI.createInputText({
+                return addFieldDescription(ATON.UI.createInputText({
                     placeholder: "integer",
                     value      : ensureValue(targetData, fieldKey, 0),
                     label      : label,
                     oninput    : (v) => targetData[fieldKey] = v,
-                });
+                }), attr);
             case "float":
-                return ATON.UI.createInputText({
+                return addFieldDescription(ATON.UI.createInputText({
                     placeholder: "float",
                     label      : label,
                     value      : ensureValue(targetData, fieldKey, 0.0),
                     oninput    : (v) => targetData[fieldKey] = v,
-                });
+                }), attr);
             case "bool":
             case "boolean":
-                return UI.createBool({
+                return addFieldDescription(UI.createBool({
                     text    : label,
                     value   : ensureValue(targetData, fieldKey, false),
                     onchange: (input) => targetData[fieldKey] = input
-                });
+                }), attr);
             case "enum": {
                 const options = getEnumOptions(attr);
                 const currentValue = ensureValue(targetData, fieldKey, "-");
@@ -1282,7 +1473,7 @@ UI.createMetadataEditor = (schema, data_temp) => {
                     text: currentValue
                 });
 
-                return UI.createSplitRow({
+                return addFieldDescription(UI.createSplitRow({
                     colLeft: 6,
                     itemsLeft: ATON.UI.createDropdown({
                         title: label,
@@ -1295,7 +1486,7 @@ UI.createMetadataEditor = (schema, data_temp) => {
                         }))
                     }),
                     itemsRight: elDisplay,
-                });
+                }), attr);
             }
             case "enum-multiple":
             case "multienum": {
@@ -1304,7 +1495,7 @@ UI.createMetadataEditor = (schema, data_temp) => {
 
                 if (!Array.isArray(currentTags)) targetData[fieldKey] = [];
 
-                return ATON.UI.createTagsComponent({
+                return addFieldDescription(ATON.UI.createTagsComponent({
                     list    : options,
                     label   : label,
                     tags    : targetData[fieldKey],
@@ -1319,7 +1510,7 @@ UI.createMetadataEditor = (schema, data_temp) => {
                             targetData[fieldKey].splice(index, 1);
                         }
                     },
-                });
+                }), attr);
             }
             default:
                 return undefined;
@@ -1369,6 +1560,9 @@ UI.createMetadataEditor = (schema, data_temp) => {
     // Backward compatible object-based schema
     for (const key in schema) {
         if (key === "required") continue;
+        if (key === "schemaId") continue;
+        if (key === "version") continue;
+        if (key === "description") continue;
         if (key === "schemaName") continue;
 
         const attr = schema[key];
@@ -1397,13 +1591,82 @@ UI.createMetadataEditor = (schema, data_temp) => {
     return elData;
 };
 
+UI.getSchemaLabel = (schemaName) => {
+    const schema = THOTH.MD.schemaMap.get(schemaName);
+    const version = schema?.version;
+
+    if (version === undefined || version === null || version === "") return schemaName;
+
+    return `${schemaName} (v${version})`;
+};
+
+UI.createSchemaSelector = (schemaName, onapply) => {
+    const schemaNames = Array.from(THOTH.MD.schemaMap.keys());
+    let selectedSchemaName = schemaName || THOTH.MD.getDefaultSchemaName();
+
+    const elBody = ATON.UI.createContainer({classes: "d-grid gap-2"});
+    const elControls = ATON.UI.createContainer({classes: "d-flex align-items-center gap-2"});
+    const elInfo = ATON.UI.createContainer({classes: "small text-body-secondary"});
+
+    const elSelect = ATON.UI.elem(`<select class="form-select aton-input" aria-label="Metadata schema"></select>`);
+    ATON.UI.registerElementAsComponent(elSelect, "input");
+
+    for (const name of schemaNames) {
+        const elOption = document.createElement("option");
+        elOption.value = name;
+        elOption.textContent = UI.getSchemaLabel(name);
+        if (name === selectedSchemaName) elOption.setAttribute("selected", true);
+        elSelect.append(elOption);
+    }
+
+    const updateInfo = () => {
+        const schema = THOTH.MD.schemaMap.get(selectedSchemaName);
+        const infoParts = [];
+
+        if (schema?.version !== undefined && schema.version !== null && schema.version !== "") {
+            infoParts.push(`Version: ${schema.version}`);
+        }
+
+        if (schema?.description) infoParts.push(schema.description);
+
+        elInfo.textContent = infoParts.join(" - ");
+        elInfo.style.display = infoParts.length > 0 ? "block" : "none";
+    };
+
+    elSelect.onfocus = () => { ATON.UI._bInput = true; };
+    elSelect.onblur  = () => { ATON.UI._bInput = false; };
+    elSelect.onchange = () => {
+        selectedSchemaName = elSelect.value;
+        updateInfo();
+    };
+
+    elControls.append(
+        elSelect,
+        ATON.UI.createButton({
+            text   : "Apply",
+            // icon   : "check",
+            variant: "info",
+            onpress: () => {
+                if (onapply) onapply(selectedSchemaName);
+            }
+        })
+    );
+
+    updateInfo();
+    elBody.append(elControls, elInfo);
+
+    return elBody;
+};
+
 UI.modalLayerDetails = (layerId, data_temp) => {
     const layer = THOTH.Layers.layerMap.get(layerId);
     if (layer === undefined || layer.trash) return;
 
     if (data_temp === undefined) data_temp = structuredClone(layer.metadata) || {};
     
-    const schemaName = data_temp?.schemaName;
+    if (!data_temp.schemaName) data_temp.schemaName = THOTH.MD.getDefaultSchemaName();
+
+    const schemaName = data_temp.schemaName;
     const prev_data  = structuredClone(layer.metadata) || {};
     const schema     = THOTH.MD.schemaMap.get(schemaName);
 
@@ -1420,16 +1683,16 @@ UI.modalLayerDetails = (layerId, data_temp) => {
         UI.createMetadataEditor(schema, data_temp),
     )
 
-    const elLayerDetails = UI.createSplitRow({
-        colLeft: 7,
-        itemsLeft: ATON.UI.createColorPicker({
+    const elLayerActions = ATON.UI.createContainer({classes: "d-flex justify-content-end align-items-center gap-2"});
+    elLayerActions.append(
+        UI.createColorPicker({
             color: layer.highlightColor,
             onchange: (c) => {
-                layer.highlightColor = c,
-                THOTH.updateVisibility
+                layer.highlightColor = c;
+                THOTH.updateVisibility();
             }
         }),
-        itemsRight: ATON.UI.createButton({
+        ATON.UI.createButton({
             text   : "Delete Layer",
             tooltip: "Delete Layer",
             icon   : ATON.PATH_RES + "icons/trash.png",
@@ -1438,45 +1701,39 @@ UI.modalLayerDetails = (layerId, data_temp) => {
                 ATON.UI.hideModal();
             }
         }),
+    );
+
+    const elLayerInfo = UI.createSplitRow({
+        colLeft: 8,
+        itemsLeft: ATON.UI.createInputText({
+            label   : "Layer name",
+            value   : layer.name,
+            onchange: (v) => THOTH.fire("renameLayer", {
+                id      : layerId,
+                data    : v,
+                prevData: structuredClone(layer.name) || "",
+            }),
+        }),
+        itemsRight: elLayerActions,
     });
     
     // Body
     const elBody = ATON.UI.createTreeGroup({
         items: [
-            // Name
-            {
-                title  : "Layer name",
-                open   : true,
-                content: ATON.UI.createInputText({
-                    label   : "Layer name",
-                    value   : layer.name,
-                    onchange: (v) => THOTH.fire("renameLayer", {
-                        id      : layerId,
-                        data    : v,
-                        prevData: structuredClone(layer.name) || "",
-                    }),
-                })
-            },
             // Layer details
             {
-                title  : "Details",
-                open   : false,
-                content: elLayerDetails
+                title  : "Layer details",
+                open   : true,
+                content: elLayerInfo
             },
             // Schema selection
             {
                 title  : "Metadata schema",
                 open   : true,
-                content: ATON.UI.createInputText({
-                    label      : "Build metadata from schema",
-                    value      : schemaName,
-                    list       : Array.from(THOTH.MD.schemaMap.keys()),
-                    placeholder: "Choose chema",
-                    onchange   : (v) => {
-                        if (v !== schemaName) {
-                            data_temp = THOTH.MD.createPropertiesfromSchema(v);
-                            UI.modalLayerDetails(layerId, data_temp);
-                        }
+                content: UI.createSchemaSelector(schemaName, (v) => {
+                    if (v !== schemaName) {
+                        data_temp = THOTH.MD.createPropertiesfromSchema(v);
+                        UI.modalLayerDetails(layerId, data_temp);
                     }
                 })
             },
@@ -1512,7 +1769,9 @@ UI.modalLayerDetails = (layerId, data_temp) => {
 UI.modalSceneMetadata = (data_temp) => {
     if (data_temp === undefined) data_temp = structuredClone(THOTH.sceneMetadata) || {};
     
-    const schemaName = data_temp?.schemaName;
+    if (!data_temp.schemaName) data_temp.schemaName = THOTH.MD.getDefaultSchemaName();
+
+    const schemaName = data_temp.schemaName;
     const prev_data  = THOTH.sceneMetadata || {};
     const schema     = THOTH.MD.schemaMap.get(schemaName);
 
@@ -1523,16 +1782,10 @@ UI.modalSceneMetadata = (data_temp) => {
             {
                 title  : "Metadata schema",
                 open   : true,
-                content: ATON.UI.createInputText({
-                    label      : "Build metadata from schema",
-                    value      : schemaName,
-                    list       : Array.from(THOTH.MD.schemaMap.keys()),
-                    placeholder: "Choose chema",
-                    onchange   : (v) => {
-                        if (v !== schemaName) {
-                            data_temp = THOTH.MD.createPropertiesfromSchema(v);
-                            UI.modalSceneMetadata(data_temp);
-                        }
+                content: UI.createSchemaSelector(schemaName, (v) => {
+                    if (v !== schemaName) {
+                        data_temp = THOTH.MD.createPropertiesfromSchema(v);
+                        UI.modalSceneMetadata(data_temp);
                     }
                 })
             },

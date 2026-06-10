@@ -10,7 +10,6 @@
 let MD = {};
 
 
-
 MD.setup = () => {
     MD.schemaMap = MD.buildSchemaMap(THOTH.config.schemaListUrl);
 };
@@ -76,6 +75,9 @@ MD._buildPropertiesFromObjectSchema = (data) => {
 
     for (const key in data) {
         if (key === "required") continue;
+        if (key === "schemaId") continue;
+        if (key === "version") continue;
+        if (key === "description") continue;
 
         const attr = data[key];
         const type = MD._normalizeType(attr?.type || attr?.dataType);
@@ -123,6 +125,21 @@ MD.createPropertiesfromSchema = (schemaName) => {
     metadata.schemaName = schemaName;
 
     return metadata;
+};
+
+MD.getDefaultSchemaName = () => {
+    const configuredSchemaName = THOTH.config.defaultSchemaName || "puc_schema";
+
+    if (MD.schemaMap.has(configuredSchemaName)) return configuredSchemaName;
+    if (MD.schemaMap.has(`${configuredSchemaName}.json`)) return `${configuredSchemaName}.json`;
+
+    const schemaNames = Array.from(MD.schemaMap.keys());
+    const defaultSchemaName = schemaNames.find(name => name.startsWith(configuredSchemaName));
+    if (defaultSchemaName) return defaultSchemaName;
+
+    if (schemaNames.length > 0) return schemaNames[0];
+
+    return configuredSchemaName;
 };
 
 MD._isSupportedType = (type) => {
