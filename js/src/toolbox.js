@@ -496,6 +496,7 @@ Toolbox.processLassoSelection = (mesh) => {
 Toolbox.activate = () => {
     Toolbox.enabled = true;
     THOTH.MSR.deactivate();
+    THOTH.SemAnnotations.deactivate();
 };
 
 Toolbox.deactivate = () => {

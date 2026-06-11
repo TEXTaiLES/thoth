@@ -15,10 +15,16 @@ Collab.syncScene = (sobj) => {
     // Clear existing scene items
     THOTH.Layers.layerMap = new Map();
     THOTH.Models.modelMap = new Map();
+    if (THOTH.SemAnnotations.nodes) {
+        THOTH.SemAnnotations.nodes.clear();
+    }
+    THOTH.SemAnnotations.semMap = new Map();
+    THOTH.SemAnnotations.semNodeMap = new Map();
     THOTH.sceneMetadata   = {};
     // Reset FE
     THOTH.FE.setupLayerElements();
     THOTH.FE.setupModelElements();
+    THOTH.FE.setupSemAnnotationElements();
     // Parse scene
     ATON.SceneHub.parseScene(sobj);
 };

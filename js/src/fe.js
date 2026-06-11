@@ -24,6 +24,7 @@ FE.setup = () => {
     FE.setupLayerElements();
     FE.setupModelElements();
     FE.setupMsrElements();
+    FE.setupSemAnnotationElements();
 
     // Toast
     FE.toast = FE.createToast();
@@ -58,6 +59,13 @@ FE.setupMsrElements = () => {
     FE.msrMap     = new Map();
     FE.msrList    = ATON.UI.createContainer();
     FE.msrPanel   = FE.setupMsrPanel(FE.msrList);
+};
+
+FE.setupSemAnnotationElements = () => {
+    FE.semNameMap = new Map();
+    FE.semMap     = new Map();
+    FE.semList    = ATON.UI.createContainer();
+    FE.semPanel   = FE.setupSemAnnotationPanel(FE.semList);
 };
 
 FE.setupToolboxElements = () => {
@@ -108,6 +116,13 @@ FE.initToolMap = () => {
         onpress: () => THOTH.fire("selectMeasure"),
     });
     toolMap.set("measure", elMeasure);
+    // Semantic annotations
+    const elSemantic = ATON.UI.createButton({
+        icon: "list",
+        tooltip: "Semantic annotation tool (A)",
+        onpress: () => THOTH.fire("selectSemanticAnnotation"),
+    });
+    toolMap.set("semantic", elSemantic);
     // Brush
     const elBrush = ATON.UI.createButton({
         icon   : THOTH.PATH_RES_ICONS + "brush.png",
@@ -169,6 +184,9 @@ FE.initToolOptMap = () => {
     // Measure
     const elMeasureOpt = THOTH.UI.createMeasureOptions();
     toolOptMap.set("measure", elMeasureOpt);
+    // Semantic annotations
+    const elSemanticOpt = ATON.UI.createContainer();
+    toolOptMap.set("semantic", elSemanticOpt);
     // Brush
     const elBrushOpt = THOTH.UI.createBrushOptions();
     toolOptMap.set("brush", elBrushOpt);
@@ -268,6 +286,16 @@ FE.setupTopToolbar = () => {
             }),
             tooltip: "Measurements"
         }),
+        // Semantics
+        ATON.UI.createButton({
+            icon   : "list",
+            text   : "Semantics",
+            onpress: () => ATON.UI.showSidePanel({
+                header: "Semantic Annotations",
+                body  : FE.semPanel
+            }),
+            tooltip: "Semantic annotations"
+        }),
         // Sensors
         ATON.UI.createButton({
             icon   : "light",
@@ -337,7 +365,7 @@ FE.setupMainToolbar = (toolMap) => {
     const mainToolbar = ATON.UI.get("mainToolbar");
     const toolGroups = [
         [ "brush", "eraser", "lasso", "no_tool" ],
-        [ "measure" ],
+        [ "measure", "semantic" ],
         [ "undo", "redo" ],
     ];
 
@@ -529,17 +557,16 @@ FE.setupMsrPanel = (elMsrList) => {
     const elBody       = ATON.UI.createContainer();
     const elTopOptions = ATON.UI.createContainer({classes: "row g-0 align-items-center w-100 rounded-2 px-2 py-1 mb-1"});
     
-    // Top buttons
-    elTopOptions.append(
-        ATON.UI.createButton({
-            icon   : "link",
-            text   : "Export changes",
-            variant: "success",
-            tooltip: "Export changes",
-            onpress: () => THOTH.UI.modalExport()
-        }),
-    );
     elBody.append(elTopOptions, elMsrList);
+
+    return elBody;
+};
+
+FE.setupSemAnnotationPanel = (elSemList) => {
+    const elBody       = ATON.UI.createContainer();
+    const elTopOptions = ATON.UI.createContainer({classes: "row g-0 align-items-center w-100 rounded-2 px-2 py-1 mb-1"});
+
+    elBody.append(elTopOptions, elSemList);
 
     return elBody;
 };
@@ -627,6 +654,32 @@ FE.addMsr = (msrId) => {
 FE.deleteMsr = (msrId) => {
     FE.msrMap.get(msrId).style.display = 'none';
     // Add logic ? 
+};
+
+
+// Semantic annotations
+
+FE.addSemAnnotation = (annotationId) => {
+    if (FE.semMap.has(annotationId)) {
+        FE.semMap.get(annotationId).style.display = "flex";
+        return;
+    }
+
+    const annotation = THOTH.SemAnnotations.semMap.get(annotationId);
+    const newSemNameBtn = ATON.UI.createButton({
+        text   : annotation.name,
+        onpress: () => THOTH.UI.modalSemAnnotationDetails(annotationId),
+    });
+    FE.semNameMap.set(annotationId, newSemNameBtn);
+
+    const newSemController = THOTH.UI.createSemAnnotationController(annotationId);
+    FE.semMap.set(annotationId, newSemController);
+
+    FE.semList.append(newSemController);
+};
+
+FE.deleteSemAnnotation = (annotationId) => {
+    FE.semMap.get(annotationId).style.display = "none";
 };
 
 

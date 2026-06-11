@@ -1,4 +1,5 @@
 {   
+    "authKey": "Authorization: Bearer change-me-locally",
     "baseDomain"   : "http://localhost:8080/api/v2/",
     "baseSceneUrl" : "http://localhost:8080/api/v2/scenes/",
     "baseModelUrl" : "http://localhost:8080/api/v2/items/samples/models/",
@@ -12,5 +13,7 @@
         "selectorSize"         : 10,
         "selectorSizeMax"      : 50,
         "selectorSizeMin"      : 0
-    }
+    },
+    "hestiaToken"   : "",
+    "hestiaEndpoint": "https://localhost:5000/annotations/"
 }

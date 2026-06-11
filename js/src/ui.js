@@ -620,6 +620,54 @@ UI.createMsrController = (msrId) => {
     return elController;
 };
 
+UI.createSemAnnotationController = (annotationId) => {
+    const elLeft  = ATON.UI.createContainer();
+    const elRight = ATON.UI.createContainer();
+
+    const annotation = THOTH.SemAnnotations.semMap.get(annotationId);
+
+    const nameBtn = ATON.UI.createButton({
+        text   : annotation.name || `Semantic ${annotationId}`,
+        size   : "small",
+        tooltip: "Edit semantic annotation",
+        onpress: () => UI.modalSemAnnotationDetails(annotationId)
+    });
+
+    elLeft.append(
+        ATON.UI.createButton({
+            icon   : "visibility",
+            size   : "small",
+            onpress: () => THOTH.fire("toggleSemanticAnnotationVisibility", annotationId),
+        }),
+        nameBtn,
+    );
+
+    elRight.append(
+        ATON.UI.createButton({
+            icon   : "list",
+            size   : "small",
+            tooltip: "View semantic annotation",
+            onpress: () => UI.modalSemAnnotationDetails(annotationId)
+        }),
+        ATON.UI.createButton({
+            icon   : ATON.PATH_RES + "icons/trash.png",
+            size   : "small",
+            tooltip: "Delete semantic annotation",
+            onpress: () => THOTH.fire("deleteSemanticAnnotation", annotationId)
+        }),
+    );
+
+    const elController = UI.createSplitRow({
+        colLeft   : 7,
+        itemsLeft : elLeft,
+        itemsRight: elRight
+    });
+
+    elController.nameBtn = nameBtn;
+
+    return elController;
+};
+
 
 // Editors
 
@@ -1375,6 +1423,107 @@ UI.modalMsrDetails = (msrId) => {
     });
 };
 
+UI.createTextArea = (options) => {
+    const el = ATON.UI.createContainer({classes: "input-group mb-3 aton-inline"});
+
+    if (options.label) {
+        el.append(ATON.UI.elem("<span class='input-group-text aton-inline'>" + options.label + "</span>"));
+    }
+
+    const elInput = document.createElement("textarea");
+    elInput.classList.add("form-control", "aton-input");
+    elInput.rows = options.rows || 4;
+    elInput.value = options.value || "";
+
+    ATON.UI.registerElementAsComponent(elInput, "input");
+
+    elInput.onfocus = () => { ATON.UI._bInput = true; };
+    elInput.onblur  = () => { ATON.UI._bInput = false; };
+
+    if (options.oninput) {
+        elInput.oninput = () => options.oninput(elInput.value);
+    }
+
+    if (options.onchange) {
+        elInput.onchange = () => options.onchange(elInput.value);
+    }
+
+    el.append(elInput);
+
+    return el;
+};
+
+UI.modalSemAnnotationDetails = (annotationId, draftData, options = {}) => {
+    const annotation = THOTH.SemAnnotations.semMap.get(annotationId);
+    if (!annotation && !draftData) return;
+    if (annotation?.trash) return;
+
+    const source = draftData || annotation;
+    const dataTemp = {
+        id         : annotationId,
+        name       : source.name || `Semantic ${annotationId}`,
+        description: source.description || "",
+        point      : source.point,
+        visible    : source.visible !== false,
+        trash      : false
+    };
+    const prevData = annotation ? THOTH.SemAnnotations.cloneAnnotation(annotation) : null;
+
+    const elBody = ATON.UI.createTreeGroup({
+        items: [
+            {
+                title  : "Name",
+                open   : true,
+                content: ATON.UI.createInputText({
+                    label  : "Name",
+                    value  : dataTemp.name,
+                    oninput: (v) => dataTemp.name = v,
+                })
+            },
+            {
+                title  : "Description",
+                open   : true,
+                content: UI.createTextArea({
+                    label  : "Description",
+                    value  : dataTemp.description,
+                    rows   : 5,
+                    oninput: (v) => dataTemp.description = v,
+                })
+            }
+        ]
+    });
+
+    const elFooter = UI.createModalFooter({
+        onsuccess: () => {
+            if (options.isNew) {
+                THOTH.fire("createSemanticAnnotation", {
+                    id  : annotationId,
+                    data: dataTemp
+                });
+            }
+            else {
+                THOTH.fire("updateSemanticAnnotation", {
+                    id       : annotationId,
+                    data     : dataTemp,
+                    prevData : prevData
+                });
+            }
+            ATON.UI.hideModal();
+        },
+        oncancel: () => {
+            if (options.isNew) THOTH.SemAnnotations.clearTempAnnotationSem();
+        },
+        successText: "Save changes"
+    });
+
+    ATON.UI.showModal({
+        header: `Edit semantic annotation with id: ${annotationId}`,
+        body  : elBody,
+        footer: elFooter,
+        wide  : true
+    });
+};
+
 
 // Metadata editor
 
@@ -1835,7 +1984,10 @@ UI.createModalFooter = (options) => {
             text   : "Cancel",
             size   : "large",
             variant: "secondary",
-            onpress: () => ATON.UI.hideModal()
+            onpress: () => {
+                if (options.oncancel) options.oncancel();
+                ATON.UI.hideModal();
+            }
         }),
     );
     return elFooter;

@@ -44,6 +44,11 @@ History.ACTIONS.ADD_MEASUREMENT = 11;
 History.ACTIONS.DEL_MEASUREMENT = 12;
 History.ACTIONS.RENAME_MEASUREMENT = 2;//not used
 
+History.ACTIONS.ADD_SEMANTIC_ANNOTATION = 13;
+History.ACTIONS.DEL_SEMANTIC_ANNOTATION = 14;
+History.ACTIONS.EDIT_SEMANTIC_ANNOTATION = 15;
+History.ACTIONS.TOGGLE_SEMANTIC_ANNOTATION_VISIBILITY = 16;
+
 // Setup
 
 History.setup = () => {
@@ -202,6 +207,37 @@ History.fireAndInverse = (action) => {
                 id    : id,
                 point1: value.point1,
                 point2: value.point2,
+            });
+            break;
+        case History.ACTIONS.ADD_SEMANTIC_ANNOTATION:
+            inverseType = History.ACTIONS.DEL_SEMANTIC_ANNOTATION;
+            THOTH.SemAnnotations.deleteAnnotation(id);
+            THOTH.firePhoton("deleteSemanticAnnotation", id);
+            break;
+        case History.ACTIONS.DEL_SEMANTIC_ANNOTATION:
+            inverseType = History.ACTIONS.ADD_SEMANTIC_ANNOTATION;
+            THOTH.SemAnnotations.addAnnotation(id, value);
+            THOTH.firePhoton("createSemanticAnnotation", {
+                id  : id,
+                data: value
+            });
+            break;
+        case History.ACTIONS.EDIT_SEMANTIC_ANNOTATION:
+            inverseType = History.ACTIONS.EDIT_SEMANTIC_ANNOTATION;
+            [value, prevValue] = [prevValue, value];
+            THOTH.SemAnnotations.updateAnnotation(id, value);
+            THOTH.firePhoton("updateSemanticAnnotation", {
+                id  : id,
+                data: value
+            });
+            break;
+        case History.ACTIONS.TOGGLE_SEMANTIC_ANNOTATION_VISIBILITY:
+            inverseType = History.ACTIONS.TOGGLE_SEMANTIC_ANNOTATION_VISIBILITY;
+            [value, prevValue] = [prevValue, value];
+            THOTH.SemAnnotations.updateAnnotation(id, value);
+            THOTH.firePhoton("toggleSemanticAnnotationVisibility", {
+                id     : id,
+                visible: value.visible
             });
             break;
             

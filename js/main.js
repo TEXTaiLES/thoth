@@ -21,6 +21,7 @@ import FE                  from "./src/fe.js";
 import MD                  from "./src/metadata.js";
 import Collab              from "./src/collab.js";
 import MSR                 from "./src/measurements.js";
+import SemAnnotations      from "./src/sem_annotations.js";
 import Sensor              from "./src/sensor.js";
 import {TransformControls} from "./src/transform_controls.js";
 import LinkedObjects       from "./src/linked_objects.js";
@@ -44,6 +45,7 @@ THOTH.FE      = FE;
 THOTH.MD      = MD;
 THOTH.Collab  = Collab;
 THOTH.MSR     = MSR;
+THOTH.SemAnnotations = SemAnnotations;
 THOTH.TC      = TransformControls;
 THOTH.LO      = LinkedObjects;
 THOTH.Sensor  = Sensor;
@@ -86,6 +88,10 @@ THOTH.setup = () => {
     ATON.SceneHub.addSceneParser("measurements", measurements => {
         THOTH.MSR.parseMeasurements(measurements);
     });
+    // Semantic annotation parser
+    ATON.SceneHub.addSceneParser("semantic_annotations", annotations => {
+        THOTH.SemAnnotations.parseAnnotations(annotations);
+    });
     // Linked objects parser
     ATON.SceneHub.addSceneParser("linked_objects", linked_objects => {
         THOTH.LO.parseLinkedObjects(linked_objects);
@@ -117,6 +123,8 @@ THOTH.setup = () => {
             THOTH.Toolbox.setup(THOTH.config.toolboxDefaults);
             // Init measurements
             THOTH.MSR.setup();
+            // Init semantic annotations
+            THOTH.SemAnnotations.setup();
             // Init linked objects
             THOTH.LO.setup();
             // Init front end 
@@ -270,6 +278,7 @@ THOTH.updateSceneScale = (model) => {
     console.log("Average object scale: " + THOTH.sceneScale);
     THOTH.Toolbox.setSelectorBaseRadius(0.01 * THOTH.sceneScale);
     THOTH.MSR?.refreshLabelScales();
+    THOTH.SemAnnotations?.refreshLabelScales();
 };
 
 
@@ -432,6 +441,8 @@ THOTH.getExportData = () => {
     A.layers = THOTH.Layers.getExportData();
     // Measurements
     A.measurements = THOTH.MSR.getExportData();
+    // Semantic annotations
+    A.semantic_annotations = THOTH.SemAnnotations.getExportData();
     // Scene metadata
     A.sceneMetadata = structuredClone(THOTH.sceneMetadata);
     
@@ -448,6 +459,7 @@ THOTH.onLogin = (u) => {
     THOTH.Events.setupLayerEvents();
     THOTH.Events.setupModelEvents();
     THOTH.Events.setupMeasurementEvents();
+    THOTH.Events.setupSemanticAnnotationEvents();
     if (THOTH.config.toolbox) THOTH.Events.setupToolboxEvents();
     
     // Update FE

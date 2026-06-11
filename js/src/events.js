@@ -78,6 +78,10 @@ Events.setupActiveEL = () => {
         if (THOTH.MSR.enabled) {
             THOTH.fire("addMeasurementPoint");
         }
+        // Semantic annotations
+        if (THOTH.SemAnnotations.enabled) {
+            THOTH.fire("addSemanticAnnotationPoint");
+        }
         // Brush
         if (THOTH.Toolbox.brushEnabled) {
             if (!Events.activeLayerExists()) {
@@ -168,7 +172,7 @@ Events.setupActiveEL = () => {
 
     // Mouse move
     THOTH.on("MouseMove", (e) => {
-        if (!THOTH.Toolbox.enabled && !THOTH.MSR.enabled) return;
+        if (!THOTH.Toolbox.enabled && !THOTH.MSR.enabled && !THOTH.SemAnnotations.enabled) return;
 
         if (e.preventDefault) e.preventDefault();
 
@@ -251,6 +255,10 @@ Events.setupActiveEL = () => {
                 ATON.Nav.setUserControl(false);
                 THOTH.MSR.resume();
             }
+            if (THOTH.SemAnnotations.paused) {
+                ATON.Nav.setUserControl(false);
+                THOTH.SemAnnotations.resume();
+            }
         }
     });
 };
@@ -277,6 +285,7 @@ Events.setupMeasurementEvents = () => {
     THOTH.on("selectMeasure", () => {
         THOTH.MSR.activate();
         THOTH.Toolbox.deactivate();
+        THOTH.SemAnnotations.deactivate();
         THOTH.FE.handleElementHighlight('measure', THOTH.FE.toolMap);
         THOTH.FE.handleToolOptions('measure');
        // ATON.Nav.setUserControl(false);
@@ -369,6 +378,103 @@ Events.setupMeasurementEvents = () => {
             prevValue: l.prevValue,
         });
         */
+    });
+};
+
+Events.setupSemanticAnnotationEvents = () => {
+    THOTH.on("selectSemanticAnnotation", () => {
+        THOTH.SemAnnotations.activate();
+        THOTH.Toolbox.deactivate();
+        THOTH.MSR.deactivate();
+        ATON.Nav.setUserControl(false);
+        THOTH.FE.handleElementHighlight("semantic", THOTH.FE.toolMap);
+        THOTH.FE.handleToolOptions("semantic");
+    });
+
+    THOTH.on("addSemanticAnnotationPoint", () => {
+        if (!THOTH.SemAnnotations.enabled || THOTH.SemAnnotations.paused) return;
+        if (THOTH._queryData === undefined) return;
+
+        const point = THOTH.SemAnnotations.createPointFromHit();
+        if (!point) return;
+
+        const annotationId = THOTH.Utils.getFirstUnusedKey(THOTH.SemAnnotations.semMap);
+        const annotation = THOTH.SemAnnotations.createAnnotationData(annotationId, point);
+
+        THOTH.SemAnnotations.addTempAnnotationSem(point);
+        THOTH.UI.modalSemAnnotationDetails(annotationId, annotation, {
+            isNew: true
+        });
+    });
+
+    THOTH.on("createSemanticAnnotation", (l) => {
+        THOTH.SemAnnotations.addAnnotation(l.id, l.data);
+        THOTH.firePhoton("createSemanticAnnotation", l);
+
+        THOTH.History.pushAction({
+            type : THOTH.History.ACTIONS.ADD_SEMANTIC_ANNOTATION,
+            id   : l.id,
+            value: THOTH.SemAnnotations.cloneAnnotation(l.data)
+        });
+    });
+
+    THOTH.on("updateSemanticAnnotation", (l) => {
+        const prevData = l.prevData || THOTH.SemAnnotations.cloneAnnotation(THOTH.SemAnnotations.semMap.get(l.id));
+
+        THOTH.SemAnnotations.updateAnnotation(l.id, l.data);
+        THOTH.firePhoton("updateSemanticAnnotation", {
+            id  : l.id,
+            data: l.data
+        });
+
+        THOTH.History.pushAction({
+            type     : THOTH.History.ACTIONS.EDIT_SEMANTIC_ANNOTATION,
+            id       : l.id,
+            value    : THOTH.SemAnnotations.cloneAnnotation(l.data),
+            prevValue: prevData
+        });
+    });
+
+    THOTH.on("deleteSemanticAnnotation", (annotationId) => {
+        const annotation = THOTH.SemAnnotations.cloneAnnotation(THOTH.SemAnnotations.semMap.get(annotationId));
+        if (!annotation) return;
+
+        THOTH.SemAnnotations.deleteAnnotation(annotationId);
+        THOTH.firePhoton("deleteSemanticAnnotation", annotationId);
+
+        THOTH.History.pushAction({
+            type : THOTH.History.ACTIONS.DEL_SEMANTIC_ANNOTATION,
+            id   : annotationId,
+            value: annotation
+        });
+    });
+
+    THOTH.on("toggleSemanticAnnotationVisibility", (annotationId) => {
+        const prevData = THOTH.SemAnnotations.cloneAnnotation(THOTH.SemAnnotations.semMap.get(annotationId));
+        if (!prevData) return;
+
+        THOTH.SemAnnotations.toggleVisibility(annotationId);
+        const data = THOTH.SemAnnotations.cloneAnnotation(THOTH.SemAnnotations.semMap.get(annotationId));
+
+        THOTH.firePhoton("toggleSemanticAnnotationVisibility", {
+            id     : annotationId,
+            visible: data.visible
+        });
+
+        THOTH.History.pushAction({
+            type     : THOTH.History.ACTIONS.TOGGLE_SEMANTIC_ANNOTATION_VISIBILITY,
+            id       : annotationId,
+            value    : data,
+            prevValue: prevData
+        });
+    });
+
+    THOTH.on("KeyDown", (k) => {
+        if (ATON.UI._bModal) return;
+
+        if (k === "KeyA" && !THOTH._bShiftDown) {
+            THOTH.fire("selectSemanticAnnotation");
+        }
     });
 };
 
@@ -707,7 +813,7 @@ Events.setupToolboxEvents = () => {
         }
 
         if (k === "Space") {
-            if (THOTH.Toolbox.enabled || THOTH.MSR.enabled) {
+            if (THOTH.Toolbox.enabled || THOTH.MSR.enabled || THOTH.SemAnnotations.enabled) {
                 ATON.Nav.setUserControl(true);
 
                 THOTH.Toolbox.pause();
@@ -715,6 +821,9 @@ Events.setupToolboxEvents = () => {
 
                 THOTH.MSR.pause();
                 THOTH.MSR.clearMeasurementPoints();
+
+                THOTH.SemAnnotations.pause();
+                THOTH.SemAnnotations.clearTempAnnotationSem();
             }
         }
     });
@@ -728,6 +837,10 @@ Events.setupToolboxEvents = () => {
                 ATON.Nav.setUserControl(false);
                 THOTH.MSR.resume();
             }
+            if (THOTH.SemAnnotations.paused) {
+                ATON.Nav.setUserControl(false);
+                THOTH.SemAnnotations.resume();
+            }
         }
     });
     
@@ -735,6 +848,7 @@ Events.setupToolboxEvents = () => {
     THOTH.on("selectBrush", () => {
         THOTH.Toolbox.activateBrush();
         THOTH.MSR.deactivate();
+        THOTH.SemAnnotations.deactivate();
         ATON.Nav.setUserControl(false);
         THOTH.FE.handleToolOptions('brush');
         THOTH.FE.handleElementHighlight('brush', THOTH.FE.toolMap);
@@ -742,6 +856,7 @@ Events.setupToolboxEvents = () => {
     THOTH.on("selectEraser", () => {
         THOTH.Toolbox.activateEraser();
         THOTH.MSR.deactivate();
+        THOTH.SemAnnotations.deactivate();
         ATON.Nav.setUserControl(false);
         THOTH.FE.handleToolOptions('eraser');
         THOTH.FE.handleElementHighlight('eraser', THOTH.FE.toolMap);
@@ -749,6 +864,7 @@ Events.setupToolboxEvents = () => {
     THOTH.on("selectLasso", () => {
         THOTH.Toolbox.activateLasso();
         THOTH.MSR.deactivate();
+        THOTH.SemAnnotations.deactivate();
         ATON.Nav.setUserControl(false);
         THOTH.FE.handleToolOptions('lasso');
         THOTH.FE.handleElementHighlight('lasso', THOTH.FE.toolMap);
@@ -756,6 +872,7 @@ Events.setupToolboxEvents = () => {
     THOTH.on("selectNone", () => {
         THOTH.Toolbox.deactivate();
         THOTH.MSR.deactivate();
+        THOTH.SemAnnotations.deactivate();
         ATON.Nav.setUserControl(true);
         THOTH.FE.handleToolOptions('no_tool');
         THOTH.FE.handleElementHighlight('no_tool', THOTH.FE.toolMap);
@@ -951,6 +1068,29 @@ Events.setupPhotonEvents = () => {
     });
      THOTH.onPhoton("renameMeasurement", (l) => {
         THOTH.MSR.renameMeasurement(l.id, l.value);
+    });
+
+    // Semantic annotations
+    THOTH.onPhoton("createSemanticAnnotation", (l) => {
+        THOTH.SemAnnotations.addAnnotation(l.id, l.data);
+    });
+    THOTH.onPhoton("updateSemanticAnnotation", (l) => {
+        THOTH.SemAnnotations.updateAnnotation(l.id, l.data);
+    });
+    THOTH.onPhoton("deleteSemanticAnnotation", (annotationId) => {
+        THOTH.SemAnnotations.deleteAnnotation(annotationId);
+    });
+    THOTH.onPhoton("toggleSemanticAnnotationVisibility", (l) => {
+        const annotation = THOTH.SemAnnotations.semMap.get(l.id);
+        if (!annotation) return;
+
+        if (l.visible) THOTH.SemAnnotations.showAnnotation(l.id);
+        else THOTH.SemAnnotations.hideAnnotation(l.id);
+
+        THOTH.FE.toggleControllerVisibility(
+            THOTH.FE.semMap.get(l.id),
+            annotation.visible
+        );
     });
 };
 
