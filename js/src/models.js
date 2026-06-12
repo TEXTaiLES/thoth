@@ -45,6 +45,13 @@ Models.parseSceneGraph = (sg) => {
         }
         
         if (N.toYup) G.setYup();
+
+        THOTH.SceneStore?.ensureModel(nid, {
+            artefact: {
+                gltf_file: Models._getNodeURL(N)
+            },
+            transforms: Models._canonicalTransformsFromSceneGraph(N.transform)
+        });
     }
     // edges
     for (const parid in edges) {
@@ -67,6 +74,31 @@ Models.parseSceneGraph = (sg) => {
     }
 };
 
+Models.parseModels = (models) => {
+    if (models === undefined) return;
+
+    for (const modelId in models) {
+        const modelData = models[modelId];
+        if (modelData.trash === true) continue;
+
+        const modelURL = Models._getArtefactURL(modelData.artefact);
+        const G = ATON.getOrCreateSceneNode(modelId).removeChildren();
+        Models._applyCanonicalTransforms(modelData.transforms, G);
+
+        if (modelURL) {
+            G.load(modelURL, () => {
+                G.attachToRoot();
+                Models.onLoad(G);
+            });
+        }
+        else {
+            G.attachToRoot();
+        }
+
+        Models.modelMap.set(modelId, G);
+    }
+};
+
 Models.onLoad = (model) => {
     model.traverse(N => {
         if (N.isMesh) {
@@ -86,9 +118,13 @@ Models.getModelURL = (modelName) => {
     if (!modelName) return;
 
     const model = Models.modelMap.get(modelName);
-    if (model === undefined) return;
+    if (model === undefined) {
+        return Models._getArtefactURL(
+            THOTH.SceneStore?.getModel(modelName)?.artefact
+        );
+    }
     
-    const url = Object.keys(model._reqURLs)[0];
+    const url = Object.keys(model._reqURLs || {})[0];
     return url;
 };
 
@@ -138,6 +174,94 @@ Models.getModelTransforms = (modelName) => {
     };
 };
 
+Models.getCanonicalModelTransforms = (modelName) => {
+    if (!modelName) return;
+    const model = Models.modelMap.get(modelName);
+    if (!model) return;
+
+    return {
+        translation: {
+            x: Number(model.position.x),
+            y: Number(model.position.y),
+            z: Number(model.position.z)
+        },
+        rotation: {
+            x: Number(model.rotation.x),
+            y: Number(model.rotation.y),
+            z: Number(model.rotation.z)
+        },
+        scale: {
+            x: Number(model.scale.x),
+            y: Number(model.scale.y),
+            z: Number(model.scale.z)
+        }
+    };
+};
+
+Models._getNodeURL = (nodeData) => {
+    const urls = nodeData?.urls;
+
+    if (Array.isArray(urls)) return urls[0];
+    if (typeof urls === "string") return urls;
+
+    return undefined;
+};
+
+Models._getArtefactURL = (artefact = {}) => {
+    return artefact.gltf_file || artefact.url || artefact.path || artefact.src;
+};
+
+Models._canonicalTransformsFromSceneGraph = (transform = {}) => {
+    const position = transform.translation || transform.position || [0, 0, 0];
+    const rotation = transform.rotation || [0, 0, 0];
+    const scale    = transform.scale || [1, 1, 1];
+
+    return {
+        translation: Models._vectorFromTransformValue(position, { x: 0, y: 0, z: 0 }),
+        rotation: Models._vectorFromTransformValue(rotation, { x: 0, y: 0, z: 0 }),
+        scale: Models._vectorFromTransformValue(scale, { x: 1, y: 1, z: 1 })
+    };
+};
+
+Models._vectorFromTransformValue = (value, defaultValue) => {
+    if (Array.isArray(value)) {
+        return {
+            x: Number(value[0] ?? defaultValue.x),
+            y: Number(value[1] ?? defaultValue.y),
+            z: Number(value[2] ?? defaultValue.z)
+        };
+    }
+
+    if (value && typeof value === "object") {
+        return {
+            x: Number(value.x ?? defaultValue.x),
+            y: Number(value.y ?? defaultValue.y),
+            z: Number(value.z ?? defaultValue.z)
+        };
+    }
+
+    return { ...defaultValue };
+};
+
+Models._applyCanonicalTransforms = (transforms = {}, model) => {
+    const translation = Models._vectorFromTransformValue(
+        transforms.translation,
+        { x: 0, y: 0, z: 0 }
+    );
+    const rotation = Models._vectorFromTransformValue(
+        transforms.rotation,
+        { x: 0, y: 0, z: 0 }
+    );
+    const scale = Models._vectorFromTransformValue(
+        transforms.scale,
+        { x: 1, y: 1, z: 1 }
+    );
+
+    model.position.set(translation.x, translation.y, translation.z);
+    model.rotation.set(rotation.x, rotation.y, rotation.z);
+    model.scale.set(scale.x, scale.y, scale.z);
+};
+
 
 // Model Management
 
@@ -146,6 +270,11 @@ Models.addModelFromURL = (modelURL) => {
 
     // modelURL can act as modelName
     const modelName = modelURL.split('/').filter(Boolean).pop();
+    THOTH.SceneStore?.ensureModel(modelName, {
+        artefact: {
+            gltf_file: modelURL
+        }
+    });
     
     if (ATON.getSceneNode(modelName) !== undefined) {
         Models.resurrectModel(modelName);
@@ -168,9 +297,10 @@ Models.deleteModel = (modelName) => {
     if (!modelName) return;
 
     const model = Models.modelMap.get(modelName);
+    THOTH.SceneStore?.deleteModel(modelName);
     
     // Dettach node
-    if (model.parent) model.parent.remove(model);
+    if (model?.parent) model.parent.remove(model);
     
     // Update FE
     THOTH.FE.deleteModel(modelName);
@@ -181,6 +311,8 @@ Models.resurrectModel = (modelName) => {
 
     // Reattach to root
     const model = Models.modelMap.get(modelName);
+    const storeModel = THOTH.SceneStore?.getModel(modelName);
+    if (storeModel) storeModel.trash = false;
     model.attachToRoot();
     
     // Update FE
@@ -270,6 +402,11 @@ Models.modelTransformPos = (modelName, value) => {
 
     const model = Models.modelMap.get(modelName);
     model.position.set(Number(value.x), Number(value.y), Number(value.z));
+    THOTH.SceneStore?.setModelField(
+        modelName,
+        "transforms",
+        Models.getCanonicalModelTransforms(modelName)
+    );
       if (THOTH.transform && THOTH.transform.object === model) {
         THOTH.transform.updateMatrixWorld(true);
     }
@@ -280,6 +417,11 @@ Models.modelTransformRot = (modelName, value) => {
 
     const model = Models.modelMap.get(modelName);
     model.rotation.set(Number(value.x), Number(value.y), Number(value.z));
+    THOTH.SceneStore?.setModelField(
+        modelName,
+        "transforms",
+        Models.getCanonicalModelTransforms(modelName)
+    );
       if (THOTH.transform && THOTH.transform.object === model) {
         THOTH.transform.updateMatrixWorld(true);
     }

@@ -25,6 +25,7 @@ import SemAnnotations      from "./src/sem_annotations.js";
 import Sensor              from "./src/sensor.js";
 import {TransformControls} from "./src/transform_controls.js";
 import LinkedObjects       from "./src/linked_objects.js";
+import SceneStore          from "./src/scene_store.js";
 
 
 // Realize 
@@ -49,6 +50,7 @@ THOTH.SemAnnotations = SemAnnotations;
 THOTH.TC      = TransformControls;
 THOTH.LO      = LinkedObjects;
 THOTH.Sensor  = Sensor;
+THOTH.SceneStore = SceneStore;
 
 
 THOTH.BASE_URL        = "../thoth";
@@ -67,9 +69,17 @@ THOTH.setup = () => {
     // Realize base ATON and add base UI events
     ATON.realize();
     ATON.UI.addBasicEvents();
+    THOTH.SceneStore.setup();
+    
+    // Canonical scene parser
+    ATON.SceneHub.addSceneParser("models", models => {
+        THOTH.SceneStore.parseScene({ models });
+        THOTH.Models.parseModels(THOTH.SceneStore.getScene().models);
+    });
     
     // Model parser
     ATON.SceneHub.addSceneParser("scenegraph", scenegraph => {
+        THOTH.SceneStore.parseScene({ scenegraph });
         THOTH.Models.parseSceneGraph(scenegraph)
     });
     // Layer parsers
@@ -434,20 +444,9 @@ THOTH.exportToHestia = async () => {
 };
 
 THOTH.getExportData = () => {
-    let A = structuredClone(THOTH.initData);
-    // Model data
-    A.scenegraph = THOTH.Models.getExportData();
-    // Layer data
-    A.layers = THOTH.Layers.getExportData();
-    // Measurements
-    A.measurements = THOTH.MSR.getExportData();
-    // Semantic annotations
-    A.semantic_annotations = THOTH.SemAnnotations.getExportData();
-    // Scene metadata
-    A.sceneMetadata = structuredClone(THOTH.sceneMetadata);
-    
-    console.log(A)
-    return A;
+    return {
+        models: THOTH.SceneStore.getExportData().models
+    };
 };
 
 
