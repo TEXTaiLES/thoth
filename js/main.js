@@ -26,6 +26,7 @@ import Sensor              from "./src/sensor.js";
 import {TransformControls} from "./src/transform_controls.js";
 import LinkedObjects       from "./src/linked_objects.js";
 import SceneStore          from "./src/scene_store.js";
+import Ops                 from "./src/operations.js";
 
 
 // Realize 
@@ -51,6 +52,7 @@ THOTH.TC      = TransformControls;
 THOTH.LO      = LinkedObjects;
 THOTH.Sensor  = Sensor;
 THOTH.SceneStore = SceneStore;
+THOTH.Ops     = Ops;
 
 
 THOTH.BASE_URL        = "../thoth";
@@ -127,6 +129,8 @@ THOTH.setup = () => {
             THOTH.MD.setup();
             // Init history
             THOTH.History.setup();
+            // Init operations
+            THOTH.Ops.setup();
             // Init events
             THOTH.Events.setup();
             // Init toolbox
@@ -453,6 +457,8 @@ THOTH.getExportData = () => {
 // User 
 
 THOTH.onLogin = (u) => {
+    THOTH.user = u;
+
     // Allow events
     THOTH.Events.setupPhotonEvents();
     THOTH.Events.setupLayerEvents();

@@ -15,7 +15,7 @@ Collab.syncScene = (sobj) => {
     // Clear existing scene items
     THOTH.Layers.layerMap = new Map();
     THOTH.Models.modelMap = new Map();
-    THOTH.SceneStore?.clear();
+    THOTH.SceneStore?.parseScene(sobj);
     if (THOTH.SemAnnotations.nodes) {
         THOTH.SemAnnotations.nodes.clear();
     }

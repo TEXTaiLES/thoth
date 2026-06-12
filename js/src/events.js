@@ -11,6 +11,86 @@ import {TransformControls} from "./transform_controls.js";
 let Events = {};
 
 
+Events.clone = (value) => {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+
+    return structuredClone(value);
+};
+
+Events.getDefaultModelId = () => {
+    if (THOTH.hoveredModel) return THOTH.hoveredModel;
+    if (THOTH.Models?.modelMap?.size > 0) return THOTH.Models.modelMap.keys().next().value;
+
+    return undefined;
+};
+
+Events.getPointModelId = (point) => {
+    return point?.meshId || Events.getDefaultModelId();
+};
+
+Events.getLayerData = (layerId) => {
+    return Events.clone(THOTH.Layers.layerMap.get(layerId));
+};
+
+Events.mergeSelection = (baseSelection = {}, selection = {}, mode = "add") => {
+    const nextSelection = Events.clone(baseSelection) || {};
+
+    for (const modelName of Object.keys(selection)) {
+        nextSelection[modelName] = nextSelection[modelName] || {};
+
+        for (const meshName of Object.keys(selection[modelName])) {
+            const currentFaces = nextSelection[modelName][meshName] || [];
+            const incomingFaces = selection[modelName][meshName] || [];
+
+            if (mode === "delete") {
+                const incomingSet = new Set(incomingFaces);
+                nextSelection[modelName][meshName] = currentFaces.filter(face => !incomingSet.has(face));
+            }
+            else {
+                nextSelection[modelName][meshName] = Array.from(
+                    new Set([...currentFaces, ...incomingFaces])
+                );
+            }
+        }
+    }
+
+    return nextSelection;
+};
+
+Events.applySelectionEdit = (layerId, selection, mode) => {
+    const prevData = Events.getLayerData(layerId);
+    if (!prevData) return;
+
+    const data = {
+        ...prevData,
+        selection: Events.mergeSelection(prevData.selection, selection, mode)
+    };
+
+    Events.applyLocal("selection.update", {
+        model_id  : Object.keys(selection)[0] || Events.getDefaultModelId(),
+        collection: "selections",
+        item_id   : layerId,
+        field     : "selection"
+    }, data, prevData);
+};
+
+Events.getMeasurementData = (measurementId) => {
+    return Events.clone(THOTH.MSR.msrMap.get(measurementId));
+};
+
+Events.getSemanticAnnotationData = (annotationId) => {
+    return THOTH.SemAnnotations.cloneAnnotation(
+        THOTH.SemAnnotations.semMap.get(annotationId)
+    );
+};
+
+Events.applyLocal = (type, target, value, prevValue) => {
+    const operation = THOTH.Ops.makeOperation(type, target, value, prevValue);
+    THOTH.Ops.applyLocal(operation);
+};
+
+
 Events.setup = () => {
     // Ease of access
     THOTH.on   = ATON.on;
@@ -302,82 +382,46 @@ Events.setupMeasurementEvents = () => {
         const point1 = THOTH.MSR.points[0];
         const point2 = THOTH.MSR.points[1];
 
-        // Local
-        THOTH.MSR.addMeasurement(msrId, point1, point2, {
-        distanceType: THOTH.MSR.distanceType
-    });
-        const measurement =THOTH.MSR.msrMap.get(msrId);
-        if (!measurement) return;
-        // Photon
-        THOTH.firePhoton("createMeasurement", {
-            id    : msrId,
-            point1: point1,
-            point2: point2,
-            path: measurement.path||null,
-            distance: measurement.distance,
-            distanceType: measurement.distanceType
-
-        });
-        // History
-        THOTH.History.pushAction({
-            type  : THOTH.History.ACTIONS.ADD_MEASUREMENT,
-            id    : msrId,
-            value: {
-                point1: point1,
-                point2: point2
-            }
+        Events.applyLocal("measurement.create", {
+            model_id  : Events.getPointModelId(point1),
+            collection: "measurements",
+            item_id   : msrId
+        }, {
+            id          : msrId,
+            point1      : point1,
+            point2      : point2,
+            points      : [point1, point2],
+            distanceType: THOTH.MSR.distanceType
         });
     });
 
     THOTH.on("deleteMeasurement", (data) => {
-        const { id, point1, point2 } = data;
-         //Local
-        THOTH.MSR.deleteMeasurement(id);
-              
-        // Photon
-        THOTH.firePhoton("deleteMeasurement", data);
-/*
-        // push to history WITH value
-        THOTH.History.pushAction({
-            type: THOTH.History.ACTIONS.DEL_MEASUREMENT,
-            id: id,
-            value: { point1, point2 }
-        });
-            */
-          THOTH.History.pushAction({
-            type  : THOTH.History.ACTIONS.DEL_MEASUREMENT,
-            id    : id,
-            value: {
-                point1: point1,
-                point2: point2
-            }
-        });
+        const id = data.id;
+        const measurement = Events.getMeasurementData(id);
+        if (!measurement) return;
 
+        Events.applyLocal("measurement.delete", {
+            model_id  : Events.getPointModelId(measurement.points?.[0] || data.point1),
+            collection: "measurements",
+            item_id   : id
+        }, null, measurement);
     });
 
     THOTH.on("renameMeasurement", (l) => {
-        const id   = l.id;
-        const value = l.value;
-        //const prevValue = l.prevValue;
+        const prevData = Events.getMeasurementData(l.id);
+        if (!prevData) return;
 
-        // Local
-        THOTH.MSR.renameMeasurement(id, value);
-        THOTH.firePhoton("renameMeasurement",l);
-        // Photon
-       /* THOTH.firePhoton("renameMeasurement", ({
-            id   : id,
-            value: value
-        }));
-        */
-        /*
-        // History
-        THOTH.History.pushAction({
-            type     : THOTH.History.ACTIONS.RENAME_MEASUREMENT,
-            id       : l.id,
-            value    : l.value,
-            prevValue: l.prevValue,
-        });
-        */
+        const data = {
+            ...prevData,
+            name: l.value
+        };
+
+        Events.applyLocal("measurement.update", {
+            model_id  : Events.getPointModelId(data.points?.[0]),
+            collection: "measurements",
+            item_id   : l.id,
+            field     : "name"
+        }, data, prevData);
     });
 };
 
@@ -408,65 +452,50 @@ Events.setupSemanticAnnotationEvents = () => {
     });
 
     THOTH.on("createSemanticAnnotation", (l) => {
-        THOTH.SemAnnotations.addAnnotation(l.id, l.data);
-        THOTH.firePhoton("createSemanticAnnotation", l);
-
-        THOTH.History.pushAction({
-            type : THOTH.History.ACTIONS.ADD_SEMANTIC_ANNOTATION,
-            id   : l.id,
-            value: THOTH.SemAnnotations.cloneAnnotation(l.data)
-        });
+        Events.applyLocal("semantic_annotation.create", {
+            model_id  : Events.getPointModelId(l.data?.point),
+            collection: "semantic_annotations",
+            item_id   : l.id
+        }, l.data);
     });
 
     THOTH.on("updateSemanticAnnotation", (l) => {
         const prevData = l.prevData || THOTH.SemAnnotations.cloneAnnotation(THOTH.SemAnnotations.semMap.get(l.id));
+        if (!prevData) return;
 
-        THOTH.SemAnnotations.updateAnnotation(l.id, l.data);
-        THOTH.firePhoton("updateSemanticAnnotation", {
-            id  : l.id,
-            data: l.data
-        });
-
-        THOTH.History.pushAction({
-            type     : THOTH.History.ACTIONS.EDIT_SEMANTIC_ANNOTATION,
-            id       : l.id,
-            value    : THOTH.SemAnnotations.cloneAnnotation(l.data),
-            prevValue: prevData
-        });
+        Events.applyLocal("semantic_annotation.update", {
+            model_id  : Events.getPointModelId(l.data?.point || prevData.point),
+            collection: "semantic_annotations",
+            item_id   : l.id
+        }, THOTH.SemAnnotations.cloneAnnotation(l.data), prevData);
     });
 
     THOTH.on("deleteSemanticAnnotation", (annotationId) => {
         const annotation = THOTH.SemAnnotations.cloneAnnotation(THOTH.SemAnnotations.semMap.get(annotationId));
         if (!annotation) return;
 
-        THOTH.SemAnnotations.deleteAnnotation(annotationId);
-        THOTH.firePhoton("deleteSemanticAnnotation", annotationId);
-
-        THOTH.History.pushAction({
-            type : THOTH.History.ACTIONS.DEL_SEMANTIC_ANNOTATION,
-            id   : annotationId,
-            value: annotation
-        });
+        Events.applyLocal("semantic_annotation.delete", {
+            model_id  : Events.getPointModelId(annotation.point),
+            collection: "semantic_annotations",
+            item_id   : annotationId
+        }, null, annotation);
     });
 
     THOTH.on("toggleSemanticAnnotationVisibility", (annotationId) => {
         const prevData = THOTH.SemAnnotations.cloneAnnotation(THOTH.SemAnnotations.semMap.get(annotationId));
         if (!prevData) return;
 
-        THOTH.SemAnnotations.toggleVisibility(annotationId);
-        const data = THOTH.SemAnnotations.cloneAnnotation(THOTH.SemAnnotations.semMap.get(annotationId));
+        const data = {
+            ...prevData,
+            visible: prevData.visible === false
+        };
 
-        THOTH.firePhoton("toggleSemanticAnnotationVisibility", {
-            id     : annotationId,
-            visible: data.visible
-        });
-
-        THOTH.History.pushAction({
-            type     : THOTH.History.ACTIONS.TOGGLE_SEMANTIC_ANNOTATION_VISIBILITY,
-            id       : annotationId,
-            value    : data,
-            prevValue: prevData
-        });
+        Events.applyLocal("semantic_annotation.update", {
+            model_id  : Events.getPointModelId(prevData.point),
+            collection: "semantic_annotations",
+            item_id   : annotationId,
+            field     : "visible"
+        }, data, prevData);
     });
 
     THOTH.on("KeyDown", (k) => {
@@ -482,82 +511,70 @@ Events.setupLayerEvents = () => {
     // Create/Delet
     THOTH.on("createLayer", () => {
         const layerId = THOTH.Utils.getFirstUnusedKey(THOTH.Layers.layerMap);
-        // Local
-        THOTH.Layers.createLayer(layerId);
-        THOTH.Layers.setActiveLayer(layerId)
-        // Photon
-        THOTH.firePhoton("createLayer", layerId);
-        // History
-        THOTH.History.pushAction({
-            type: THOTH.History.ACTIONS.CREATE_LAYER,
-            id  : layerId
-        });
+        const modelId = Events.getDefaultModelId();
+        const layerData = {
+            id            : layerId,
+            name          : "New Layer",
+            metadata      : {},
+            selection     : {},
+            visible       : true,
+            highlightColor: THOTH.Utils.getHighlightColor(layerId),
+            trash         : false
+        };
+
+        Events.applyLocal("selection.create", {
+            model_id  : modelId,
+            collection: "selections",
+            item_id   : layerId
+        }, layerData);
+        THOTH.Layers.setActiveLayer(layerId);
     });
     THOTH.on("deleteLayer", (layerId) => {
-        // Local
-        THOTH.Layers.deleteLayer(layerId);
-        // Photon
-        THOTH.firePhoton("deleteLayer", layerId);
-        // History
-        THOTH.History.pushAction({
-            type: THOTH.History.ACTIONS.DELETE_LAYER,
-            id  : layerId
-        });
+        const prevData = Events.getLayerData(layerId);
+        if (!prevData) return;
+
+        Events.applyLocal("selection.delete", {
+            model_id  : Events.getDefaultModelId(),
+            collection: "selections",
+            item_id   : layerId
+        }, null, prevData);
     });
     // Edit layer data
     THOTH.on("editLayerMetadata", (l) => {
         const layerId  = l.id;
         const data     = l.data;
-        const prevData = l.prevData;
-        
-        // Local
-        THOTH.MD.editLayerMetadata(layerId, data);
-        // Photon
-        THOTH.firePhoton("editLayerMetadata", ({
-            id   : layerId,
-            value: data
-        }));
-        // History
-        THOTH.History.pushAction({
-            type     : THOTH.History.ACTIONS.EDIT_METADATA_LAYER,
-            id       : layerId,
-            value    : data,
-            prevValue: prevData
-        });
+        const prevData = l.prevData || Events.getLayerData(layerId);
+        if (!prevData) return;
+
+        Events.applyLocal("selection.update", {
+            model_id  : Events.getDefaultModelId(),
+            collection: "selections",
+            item_id   : layerId,
+            field     : "metadata"
+        }, {
+            ...prevData,
+            metadata: data
+        }, prevData);
     });
     THOTH.on("renameLayer", (l) => {
         const id   = l.id;
         const data = l.data;
+        const prevData = l.prevData || Events.getLayerData(id);
+        if (!prevData) return;
 
-        // Local
-        THOTH.Layers.renameLayer(id, data);
-        // Photon
-        THOTH.firePhoton("renameLayer", ({
-            id   : id,
-            value: data
-        }));
-        // History
-        THOTH.History.pushAction({
-            type     : THOTH.History.ACTIONS.RENAME_LAYER,
-            id       : l.id,
-            value    : l.data,
-            prevValue: l.prevData,
-        });
+        Events.applyLocal("selection.update", {
+            model_id  : Events.getDefaultModelId(),
+            collection: "selections",
+            item_id   : id,
+            field     : "name"
+        }, {
+            ...prevData,
+            name: data
+        }, prevData);
     });
     THOTH.on("editSceneMetadata", (l) => {
         const data     = l.data;
-        const prevData = l.prevData;
-
-        // Local event
         THOTH.MD.editSceneMetadata(data);
-        // Photon event
-        THOTH.firePhoton("editSceneMetadata", data);
-        // History 
-        THOTH.History.pushAction({
-            type     : THOTH.History.ACTIONS.EDIT_METADATA_SCENE,
-            value    : data,
-            prevValue: prevData
-        });
     });
 
     // Layer keybinds
@@ -598,66 +615,50 @@ Events.setupModelEvents = () => {
 
     // Add/Delete
     THOTH.on("addModel", (id) => {
-        // Local
-        THOTH.Models.addModelFromURL(id);
-        // Photon
-        THOTH.firePhoton("addModel", id);
-        // History
-        THOTH.History.pushAction({
-            type: THOTH.History.ACTIONS.ADD_MODEL,
-            id  : id
-        });
+        const modelId = id.split('/').filter(Boolean).pop();
+        const value = {
+            id      : modelId,
+            artefact: {
+                gltf_file: id
+            }
+        };
+
+        Events.applyLocal("model.create", {
+            model_id: modelId
+        }, value);
     });
     THOTH.on("deleteModel", (id) => {
-        // Local
-        
-        THOTH.Models.deleteModel(id);
-        // Photon
-        THOTH.firePhoton("deleteModels", id);
-        // History
-        THOTH.History.pushAction({
-            type: THOTH.History.ACTIONS.DEL_MODEL,
-            id  : id
-        });
+        const prevData = Events.clone(THOTH.SceneStore.getModel(id));
+        if (!prevData) return;
+
+        Events.applyLocal("model.delete", {
+            model_id: id
+        }, null, prevData);
     });
     // Transform
     THOTH.on("modelTransformPos", (l) => {
-        const pos = THOTH.Models.modelMap.get(l.modelName).position
-        const prevValue = {
-            x: pos.x,
-            y: pos.y,
-            z: pos.z
+        const prevValue = Events.clone(THOTH.SceneStore.getModel(l.modelName)?.transforms);
+        const value = {
+            ...prevValue,
+            translation: l.value
         };
-        // Local
-        THOTH.Models.modelTransformPos(l.modelName, l.value);
-        // Photon
-        THOTH.firePhoton("modelTransformPos", (l));
-        // History
-        THOTH.History.pushAction({
-            type     : THOTH.History.ACTIONS.TRANSFORM_MODEL_POS,
-            id       : l.modelName,
-            value    : l.value,
-            prevValue: prevValue
-        });
+
+        Events.applyLocal("model.update_transform", {
+            model_id: l.modelName,
+            field   : "translation"
+        }, value, prevValue);
     }); 
     THOTH.on("modelTransformRot", (l) => {
-        const rot = THOTH.Models.modelMap.get(l.modelName).rotation;
-        const prevValue = {
-            x: rot.x,
-            y: rot.y,
-            z: rot.z
+        const prevValue = Events.clone(THOTH.SceneStore.getModel(l.modelName)?.transforms);
+        const value = {
+            ...prevValue,
+            rotation: l.value
         };
-        // Local
-        THOTH.Models.modelTransformRot(l.modelName, l.value);
-        // Photon
-        THOTH.firePhoton("modelTransformRot", (l));
-        // History
-        THOTH.History.pushAction({
-            type     : THOTH.History.ACTIONS.TRANSFORM_MODEL_ROT,
-            id       : l.modelName,
-            value    : l.value,
-            prevValue: prevValue
-        });
+
+        Events.applyLocal("model.update_transform", {
+            model_id: l.modelName,
+            field   : "rotation"
+        }, value, prevValue);
     }); 
     //select model
     THOTH.on("selectModel", (modelName) => {
@@ -738,18 +739,18 @@ Events.setupTransformControls = (ModelName) => {
             z: obj.position.z
         };
 
-        THOTH.Models.modelTransformPos(modelName, newPos);
+        const prevValue = Events.clone(THOTH.SceneStore.getModel(modelName)?.transforms);
+        const value = {
+            ...prevValue,
+            translation: newPos
+        };
 
-        THOTH.firePhoton("modelTransformPos", {
-            modelName: modelName,
-            value: newPos
-        });
-
-        THOTH.History.pushAction({
-            type: THOTH.History.ACTIONS.TRANSFORM_MODEL_POS,
-            id: modelName,
-            value: newPos,
-            prevValue: Events.transformStart.position
+        Events.applyLocal("model.update_transform", {
+            model_id: modelName,
+            field   : "translation"
+        }, value, {
+            ...prevValue,
+            translation: Events.transformStart.position
         });
 
     }
@@ -761,18 +762,18 @@ Events.setupTransformControls = (ModelName) => {
             z: obj.rotation.z
         };
 
-        THOTH.Models.modelTransformRot(modelName, newRot);
+        const prevValue = Events.clone(THOTH.SceneStore.getModel(modelName)?.transforms);
+        const value = {
+            ...prevValue,
+            rotation: newRot
+        };
 
-        THOTH.firePhoton("modelTransformRot", {
-            modelName: modelName,
-            value: newRot
-        });
-
-        THOTH.History.pushAction({
-            type: THOTH.History.ACTIONS.TRANSFORM_MODEL_ROT,
-            id: modelName,
-            value: newRot,
-            prevValue: Events.transformStart.rotation
+        Events.applyLocal("model.update_transform", {
+            model_id: modelName,
+            field   : "rotation"
+        }, value, {
+            ...prevValue,
+            rotation: Events.transformStart.rotation
         });
     }
     Events.transformStart = null;
@@ -900,19 +901,7 @@ Events.setupToolboxEvents = () => {
         
         if (Object.keys(selection).length === 0) return;
 
-        // Local
-        THOTH.Layers.addToSelection(layerId, selection);
-        // Photon
-        THOTH.firePhoton("addToSelection", {
-            id       : layerId,
-            selection: selection
-        });
-        // History
-        THOTH.History.pushAction({
-            type : THOTH.History.ACTIONS.SELEC_ADD,
-            id   : layerId,
-            value: selection
-        });
+        Events.applySelectionEdit(layerId, selection, "add");
 
         THOTH.Toolbox.tempSelection = null;
     });
@@ -947,19 +936,7 @@ Events.setupToolboxEvents = () => {
         // Return if selection is empty
         if (Object.keys(selection).length === 0) return;
         
-        // Local
-        THOTH.Layers.delFromSelection(layerId, selection);
-        // Photon
-        THOTH.firePhoton("delFromSelection", {
-            id       : layerId,
-            selection: selection
-        });
-        // History
-        THOTH.History.pushAction({
-            type : THOTH.History.ACTIONS.SELEC_DEL,
-            id   : layerId,
-            value: selection
-        });
+        Events.applySelectionEdit(layerId, selection, "delete");
 
         THOTH.Toolbox.tempSelection = null;
     });
@@ -971,19 +948,7 @@ Events.setupToolboxEvents = () => {
 
         if (Object.keys(selection).length === 0) return;
 
-        // Local
-        THOTH.Layers.addToSelection(layerId, selection);
-        // Photon
-        THOTH.firePhoton("addToSelection", {
-            id       : layerId,
-            selection: selection
-        });
-        // History
-        THOTH.History.pushAction({
-            type : THOTH.History.ACTIONS.SELEC_ADD,
-            id   : layerId,
-            value: selection
-        });
+        Events.applySelectionEdit(layerId, selection, "add");
 
         THOTH.Toolbox.tempSelection = null;
     });
@@ -995,19 +960,7 @@ Events.setupToolboxEvents = () => {
 
         if (Object.keys(selection).length === 0) return;
 
-        // Local
-        THOTH.Layers.delFromSelection(layerId, selection);
-        // Photon
-        THOTH.firePhoton("delFromSelection", {
-            id       : layerId,
-            selection: selection
-        });
-        // History
-        THOTH.History.pushAction({
-            type : THOTH.History.ACTIONS.SELEC_DEL,
-            id   : layerId,
-            value: selection
-        });
+        Events.applySelectionEdit(layerId, selection, "delete");
 
         THOTH.Toolbox.tempSelection = null;
     });
@@ -1017,80 +970,8 @@ Events.setupToolboxEvents = () => {
 };
 
 Events.setupPhotonEvents = () => {
-    // Layer
-    THOTH.onPhoton("createLayer", (layerId) => {
-        THOTH.Layers.createLayer(layerId);
-    });
-    THOTH.onPhoton("deleteLayer", (layerId) => {
-        THOTH.Layers.deleteLayer(layerId);
-    });
-    THOTH.onPhoton("editSceneMetadata", (data) => {
-        THOTH.MD.editSceneMetadata(data);
-    });
-    THOTH.onPhoton("editLayerMetadata", (l) => {
-        THOTH.MD.editLayerMetadata(l.id, l.value);
-    });
-    THOTH.onPhoton("addToSelection", (l) => {
-        THOTH.Layers.addToSelection(l.id, l.selection);
-    });
-    THOTH.onPhoton("delFromSelection", (l) => {
-        THOTH.Layers.delFromSelection(l.id, l.selection);
-    });
-    THOTH.onPhoton("renameLayer", (l) => {
-        THOTH.Layers.renameLayer(l.id, l.data);
-    });
-
-    // Model
-    THOTH.onPhoton("addModel", (id) => {
-        THOTH.Models.addModelFromURL(id);
-    });
-    THOTH.onPhoton("deleteModel", (id) => {
-        THOTH.Models.deleteModel(id);
-    });
-    THOTH.onPhoton("modelTransformPos", (l) => {
-        THOTH.Models.modelTransformPos(l.modelName, l.value);
-    });
-    THOTH.onPhoton("modelTransformRot", (l) => {
-        THOTH.Models.modelTransformRot(l.modelName, l.value);
-    });
-
-    // Measurements
-    THOTH.onPhoton("createMeasurement", (l) => {
-
-       THOTH.MSR.addMeasurement(l.id, l.point1, l.point2,
-        {path: l.path,
-         distance: l.distance,
-         distanceType:   l.distanceType
-        });
-    });
-    THOTH.onPhoton("deleteMeasurement", (l) => {
-        THOTH.MSR.deleteMeasurement(l.id);
-    });
-     THOTH.onPhoton("renameMeasurement", (l) => {
-        THOTH.MSR.renameMeasurement(l.id, l.value);
-    });
-
-    // Semantic annotations
-    THOTH.onPhoton("createSemanticAnnotation", (l) => {
-        THOTH.SemAnnotations.addAnnotation(l.id, l.data);
-    });
-    THOTH.onPhoton("updateSemanticAnnotation", (l) => {
-        THOTH.SemAnnotations.updateAnnotation(l.id, l.data);
-    });
-    THOTH.onPhoton("deleteSemanticAnnotation", (annotationId) => {
-        THOTH.SemAnnotations.deleteAnnotation(annotationId);
-    });
-    THOTH.onPhoton("toggleSemanticAnnotationVisibility", (l) => {
-        const annotation = THOTH.SemAnnotations.semMap.get(l.id);
-        if (!annotation) return;
-
-        if (l.visible) THOTH.SemAnnotations.showAnnotation(l.id);
-        else THOTH.SemAnnotations.hideAnnotation(l.id);
-
-        THOTH.FE.toggleControllerVisibility(
-            THOTH.FE.semMap.get(l.id),
-            annotation.visible
-        );
+    THOTH.onPhoton("thoth.operation", (operation) => {
+        THOTH.Ops.applyRemote(operation);
     });
 };
 
