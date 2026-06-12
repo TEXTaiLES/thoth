@@ -1,0 +1,770 @@
+{
+    "schemaId": "puc_textile_schema",
+    "version": 1,
+    "description": "Dedicated TEXTaiLES schema",
+    "groups": [
+        {
+            "id": "documentation",
+            "label": "Documentation",
+            "description": null,
+            "dataType": "group",
+            "subgroups": [
+                {
+                    "id": "identification",
+                    "label": "Identification",
+                    "description": "Basic identification and provenance information for the textile artifact",
+                    "dataType": "group",
+                    "subgroups": [
+                        {
+                            "id": "accession_number",
+                            "label": "Accession Number",
+                            "dataType": "text",
+                            "description": "Unique identifier of the artifact in the database"
+                        },
+                        {
+                            "id": "reference_name",
+                            "label": "Reference Name/Number",
+                            "dataType": "text",
+                            "description": "Reference name or number of the collection where it is kept"
+                        },
+                        {
+                            "id": "current_location",
+                            "label": "Current Location",
+                            "dataType": "text",
+                            "description": "Where the object is kept (e.g., museum, excavation storage room)"
+                        },
+                        {
+                            "id": "external_link",
+                            "label": "External Link",
+                            "dataType": "url",
+                            "description": "Online page dedicated to this artifact if available"
+                        },
+                        {
+                            "id": "origin",
+                            "label": "Origin",
+                            "dataType": "text",
+                            "description": "Excavation or location this object comes from"
+                        },
+                        {
+                            "id": "geolocation",
+                            "label": "Geolocation",
+                            "dataType": "text",
+                            "description": "Geographic coordinates (latitude, longitude)"
+                        },
+                        {
+                            "id": "provenance",
+                            "label": "Provenance",
+                            "dataType": "enum",
+                            "description": "How the object came to the museum",
+                            "options": [
+                                "excavation",
+                                "donation",
+                                "purchase",
+                                "acquisition (process of legal transfer)",
+                                "on loan"
+                            ]
+                        },
+                        {
+                            "id": "belongs_to_group",
+                            "label": "Belongs to a Group",
+                            "dataType": "boolean",
+                            "description": "Whether the object belongs to a larger group of artifacts"
+                        },
+                        {
+                            "id": "belongs_to_subgroup",
+                            "label": "Belongs to a Subgroup",
+                            "dataType": "boolean",
+                            "description": "Whether the object belongs to a subgroup within a group"
+                        },
+                        {
+                            "id": "documented_by",
+                            "label": "Documented by",
+                            "dataType": "reference",
+                            "description": "Name(s) of researcher(s) who documented this artifact",
+                            "target": "Users"
+                        },
+                        {
+                            "id": "date_of_upload",
+                            "label": "Date of Upload",
+                            "dataType": "date",
+                            "description": "Date when the artifact was added to the database"
+                        },
+                        {
+                            "id": "type_of_object",
+                            "label": "Type of Object",
+                            "dataType": "enum",
+                            "description": "General type of textile artifact",
+                            "options": [
+                                "textile",
+                                "costume",
+                                "rope",
+                                "accessory",
+                                "imprint",
+                                "cast",
+                                "cordage",
+                                "band",
+                                "thread",
+                                "yarn",
+                                "cord"
+                            ]
+                        },
+                        {
+                            "id": "specific_type_of_object",
+                            "label": "Specific Type of Object",
+                            "dataType": "enum",
+                            "description": "More specific classification of the textile",
+                            "options": [
+                                "funerary",
+                                "costume",
+                                "utilitarian",
+                                "hat",
+                                "shoe",
+                                "bodice",
+                                "skirt",
+                                "dress",
+                                "head gear"
+                            ]
+                        },
+                        {
+                            "id": "maximum_dimensions",
+                            "label": "Maximum Dimensions",
+                            "dataType": "text",
+                            "description": "Size measurements in m and/or mm (e.g., 200x300mm)"
+                        },
+                        {
+                            "id": "date_period",
+                            "label": "Date/Period",
+                            "dataType": "text",
+                            "description": "Chronological period and date range (e.g., Protogeometric (1100-800BC))"
+                        },
+                        {
+                            "id": "publication",
+                            "label": "Publication",
+                            "dataType": "text",
+                            "description": "Bibliographical references if the artifact has been published"
+                        }
+                    ]
+                },
+                {
+                    "id": "technological_analysis",
+                    "label": "Technological Analysis",
+                    "description": "Detailed technical analysis of weave structure and thread characteristics",
+                    "dataType": "group",
+                    "subgroups": [
+                        {
+                            "id": "structure",
+                            "label": "Primary Structure",
+                            "description": "Information about the basic material composition",
+                            "dataType": "group",
+                            "subgroups": [
+                                {
+                                    "id": "primary_material",
+                                    "label": "Primary Material",
+                                    "dataType": "enum",
+                                    "description": "Main material of the textile (e.g., wool, plant fiber, linen)",
+                                    "options": [
+                                        "wool",
+                                        "fiber",
+                                        "linen",
+                                        "cotton"
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "id": "weave_analysis",
+                            "label": "Weave Analysis",
+                            "dataType": "group",
+                            "description": "Information about the weave structure",
+                            "subgroups": [
+                                {
+                                    "id": "type_of_weave",
+                                    "label": "Type of Weave",
+                                    "dataType": "enum",
+                                    "description": "Main weave category",
+                                    "options": [
+                                        "plain/tabby",
+                                        "basket",
+                                        "warp faced",
+                                        "weft-faced",
+                                        "twill",
+                                        "satin",
+                                        "brocade",
+                                        "damask",
+                                        "velvet",
+                                        "ribbed",
+                                        "net",
+                                        "lace",
+                                        "lampas",
+                                        "tablet weaving"
+                                    ]
+                                },
+                                {
+                                    "id": "weave_specification",
+                                    "label": "Weave Specification",
+                                    "dataType": "text",
+                                    "description": "Detailed weave specification (e.g., 2/2 twill, looped, 6/1 satin)"
+                                },
+                                {
+                                    "id": "weave_count",
+                                    "label": "Weave Count",
+                                    "dataType": "text",
+                                    "description": "Density of weave in warps x wefts per cm² or element A x element B / cm²"
+                                }
+                            ]
+                        },
+                        {
+                            "id": "warp_analysis",
+                            "label": "Warp (Element A) Analysis",
+                            "dataType": "group",
+                            "description": "Technical analysis of warp threads",
+                            "subgroups": [
+                                {
+                                    "id": "warp_thread_diameter",
+                                    "label": "Thread Diameter (Warp)",
+                                    "dataType": "text",
+                                    "description": "Measurements in mm and/or microns"
+                                },
+                                {
+                                    "id": "warp_thread_ply",
+                                    "label": "Thread Ply (Warp)",
+                                    "dataType": "enum",
+                                    "description": "Number of plies in warp threads",
+                                    "options": [
+                                        "none",
+                                        "2",
+                                        "3",
+                                        "4",
+                                        "5",
+                                        "6"
+                                    ]
+                                },
+                                {
+                                    "id": "warp_thread_twist",
+                                    "label": "Thread Twist (Warp)",
+                                    "dataType": "enum",
+                                    "description": "Direction and type of twist",
+                                    "options": [
+                                        "s",
+                                        "z",
+                                        "s2Z",
+                                        "z2S",
+                                        "I"
+                                    ]
+                                },
+                                {
+                                    "id": "warp_twist_angle",
+                                    "label": "Twist Angle (Warp)",
+                                    "dataType": "enum",
+                                    "description": "Angle of twist",
+                                    "options": [
+                                        "light (number range)",
+                                        "medium (number range)",
+                                        "high (number range)"
+                                    ]
+                                },
+                                {
+                                    "id": "warp_twist_method",
+                                    "label": "Twist Method (Warp)",
+                                    "dataType": "enum",
+                                    "description": "Method of twisting",
+                                    "options": [
+                                        "spinning",
+                                        "splicing"
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "id": "weft_analysis",
+                            "label": "Weft (Element B) Analysis",
+                            "dataType": "group",
+                            "description": "Technical analysis of weft threads",
+                            "subgroups": [
+                                {
+                                    "id": "weft_thread_diameter",
+                                    "label": "Thread Diameter (Weft)",
+                                    "dataType": "text",
+                                    "description": "Measurements in mm and/or microns"
+                                },
+                                {
+                                    "id": "weft_thread_ply",
+                                    "label": "Thread Ply (Weft)",
+                                    "dataType": "enum",
+                                    "description": "Number of plies in weft threads",
+                                    "options": [
+                                        "none",
+                                        "2",
+                                        "3",
+                                        "4",
+                                        "5",
+                                        "6"
+                                    ]
+                                },
+                                {
+                                    "id": "weft_thread_twist",
+                                    "label": "Thread Twist (Weft)",
+                                    "dataType": "enum",
+                                    "description": "Direction and type of twist",
+                                    "options": [
+                                        "s",
+                                        "z",
+                                        "s2Z",
+                                        "z2S",
+                                        "I"
+                                    ]
+                                },
+                                {
+                                    "id": "weft_twist_angle",
+                                    "label": "Twist Angle (Weft)",
+                                    "dataType": "enum",
+                                    "description": "Angle of twist",
+                                    "options": [
+                                        "light (number range)",
+                                        "medium (number range)",
+                                        "high (number range)"
+                                    ]
+                                },
+                                {
+                                    "id": "weft_twist_method",
+                                    "label": "Twist Method (Weft)",
+                                    "dataType": "enum",
+                                    "description": "Method of twisting",
+                                    "options": [
+                                        "spinning",
+                                        "splicing"
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "id": "decoration_analysis",
+                            "label": "Decoration Analysis",
+                            "dataType": "group",
+                            "description": "Information about decorative elements",
+                            "subgroups": [
+                                {
+                                    "id": "type_of_decoration",
+                                    "label": "Type of Decoration",
+                                    "dataType": "enum",
+                                    "description": "Main type of decoration",
+                                    "options": [
+                                        "embroidery",
+                                        "metal threads",
+                                        "dyes",
+                                        "tapestry"
+                                    ]
+                                },
+                                {
+                                    "id": "decoration_specifics",
+                                    "label": "Decoration Specifics",
+                                    "dataType": "text",
+                                    "description": "Detailed description of decoration (e.g., slit tapestry, interlaced tapestry, printed, painted, dyed)"
+                                },
+                                {
+                                    "id": "decoration_material",
+                                    "label": "Decoration Material",
+                                    "dataType": "text",
+                                    "description": "Material used for decoration (e.g., metal, thread, dye)"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "analysis",
+            "label": "Analysis",
+            "description": null,
+            "dataType": "group",
+            "subgroups": [
+                {
+                    "id": "identification",
+                    "label": "Identification",
+                    "description": "Basic identification of the artifact being analyzed",
+                    "dataType": "group",
+                    "subgroups": [
+                        {
+                            "id": "accession_number",
+                            "label": "Accession Number",
+                            "dataType": "text",
+                            "description": "Unique identifier of the artifact in the database"
+                        },
+                        {
+                            "id": "reference_name",
+                            "label": "Reference Name/Number",
+                            "dataType": "text",
+                            "description": "Reference name or number of the collection where it is kept"
+                        },
+                        {
+                            "id": "material_analysed",
+                            "label": "Material Analysed",
+                            "dataType": "enum",
+                            "description": "Type of material that was analyzed",
+                            "options": [
+                                "textile",
+                                "fibre",
+                                "thread",
+                                "leather",
+                                "metal",
+                                "adhesive"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "non_destructive_analysis",
+                    "label": "Non-Destructive Analysis",
+                    "description": "Non-destructive analytical methods performed on the artifact",
+                    "dataType": "group",
+                    "subgroups": [
+                        {
+                            "id": "method_of_analysis",
+                            "label": "Method of Analysis",
+                            "dataType": "enum",
+                            "description": "Non-destructive analytical method used",
+                            "options": [
+                                "digital microscope",
+                                "stereomicroscope",
+                                "optical microscope",
+                                "scanning electron microscope (SEM)",
+                                "EDX analyser in SEM",
+                                "X-ray fluorescence spectroscopy (XRF)",
+                                "Fourier transform infrared spectroscopy (FTIR)",
+                                "Raman spectroscopy",
+                                "multispectral imaging"
+                            ]
+                        },
+                        {
+                            "id": "type_of_instrument",
+                            "label": "Type of Instrument",
+                            "dataType": "text",
+                            "description": "Specific model or name of the instrument used"
+                        },
+                        {
+                            "id": "aim",
+                            "label": "Aim",
+                            "dataType": "enum",
+                            "description": "Purpose of the analysis",
+                            "options": [
+                                "technological analysis",
+                                "fibre identification",
+                                "dye analysis",
+                                "condition assessment",
+                                "material identification"
+                            ]
+                        },
+                        {
+                            "id": "result",
+                            "label": "Result",
+                            "dataType": "text",
+                            "description": "Analysis results in various formats (spectra, images, numbers, text)"
+                        }
+                    ]
+                },
+                {
+                    "id": "destructive_analysis",
+                    "label": "Destructive Analysis",
+                    "description": "Destructive analytical methods requiring sample removal",
+                    "dataType": "group",
+                    "subgroups": [
+                        {
+                            "id": "sample_material",
+                            "label": "Sample Material",
+                            "dataType": "multienum",
+                            "description": "Type of material sampled from the object",
+                            "options": [
+                                "textile",
+                                "fibre",
+                                "thread",
+                                "leather",
+                                "metal",
+                                "adhesive"
+                            ]
+                        },
+                        {
+                            "id": "area_of_sample",
+                            "label": "Area of Sample on Object",
+                            "dataType": "text",
+                            "description": "Description of where the sample was taken from"
+                        },
+                        {
+                            "id": "size_of_samples",
+                            "label": "Size of Samples",
+                            "dataType": "text",
+                            "description": "Physical dimensions of the samples (e.g., 3x3mm)"
+                        },
+                        {
+                            "id": "sample_weight",
+                            "label": "Sample Weight",
+                            "dataType": "text",
+                            "description": "Weight of samples in mg or grams"
+                        },
+                        {
+                            "id": "method_of_analysis_destructive",
+                            "label": "Method of Analysis",
+                            "dataType": "enum",
+                            "description": "Destructive analytical method used",
+                            "options": [
+                                "radiocarbon dating",
+                                "High performance liquid chromatography (HPLC)",
+                                "proteomics",
+                                "aDNA",
+                                "Polymerase chain reaction (PCR)",
+                                "stable isotope analysis",
+                                "Gas chromatography-Mass spectrometry (GC-MS)"
+                            ]
+                        },
+                        {
+                            "id": "type_of_instrument_destructive",
+                            "label": "Type of Instrument",
+                            "dataType": "text",
+                            "description": "Specific model or name of the instrument used"
+                        },
+                        {
+                            "id": "aim_destructive",
+                            "label": "Aim",
+                            "dataType": "enum",
+                            "description": "Purpose of the destructive analysis",
+                            "options": [
+                                "material identification",
+                                "dating",
+                                "dye analysis",
+                                "fibre identification",
+                                "condition assessment"
+                            ]
+                        },
+                        {
+                            "id": "result_destructive",
+                            "label": "Result",
+                            "dataType": "text",
+                            "description": "Analysis results in various formats (spectra, images, numbers, text)"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "conservation",
+            "label": "Conservation",
+            "description": null,
+            "dataType": "group",
+            "subgroups": [
+                {
+                    "id": "identification",
+                    "label": "Identification",
+                    "description": "Basic identification of the artifact",
+                    "dataType": "group",
+                    "subgroups": [
+                        {
+                            "id": "accession_number",
+                            "label": "Accession Number",
+                            "dataType": "text",
+                            "description": "Unique identifier of the artifact in the database"
+                        },
+                        {
+                            "id": "reference_name",
+                            "label": "Reference Name/Number",
+                            "dataType": "text",
+                            "description": "Reference name or number of the collection where it is kept"
+                        },
+                        {
+                            "id": "material_analysed",
+                            "label": "Material Analysed",
+                            "dataType": "enum",
+                            "description": "Type of material being conserved",
+                            "options": [
+                                "textile",
+                                "fibre",
+                                "thread",
+                                "leather",
+                                "metal",
+                                "adhesive"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "condition",
+                    "label": "Condition",
+                    "description": "Current condition and preservation state of the artifact",
+                    "dataType": "group",
+                    "subgroups": [
+                        {
+                            "id": "object_status",
+                            "label": "Object Status",
+                            "dataType": "enum",
+                            "description": "Current location and status of the object",
+                            "options": [
+                                "storage",
+                                "on display",
+                                "under conservation"
+                            ]
+                        },
+                        {
+                            "id": "condition_assessment",
+                            "label": "Condition Assessment",
+                            "dataType": "enum",
+                            "description": "Overall condition of the artifact",
+                            "options": [
+                                "very good",
+                                "good",
+                                "medium",
+                                "poor",
+                                "very poor"
+                            ]
+                        },
+                        {
+                            "id": "state_of_preservation",
+                            "label": "State of Preservation",
+                            "dataType": "enum",
+                            "description": "Type of preservation state the artifact is in",
+                            "options": [
+                                "object",
+                                "fragments",
+                                "remains",
+                                "imprints",
+                                "cast"
+                            ]
+                        },
+                        {
+                            "id": "type_of_preservation",
+                            "label": "Type of Preservation",
+                            "dataType": "enum",
+                            "description": "Environmental conditions that led to preservation",
+                            "options": [
+                                "historical/unburied",
+                                "buried",
+                                "carbonised",
+                                "mineralised",
+                                "waterlogged"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "preventive_conservation",
+                    "label": "Preventive Conservation",
+                    "description": "Environmental and storage conditions for preservation",
+                    "dataType": "group",
+                    "subgroups": [
+                        {
+                            "id": "environmental_conditions",
+                            "label": "Environmental Conditions",
+                            "dataType": "group",
+                            "description": "Temperature in celsius degrees and humidity in RH",
+                            "subgroups": [
+                                {
+                                    "id": "temperature",
+                                    "label": "Temperature",
+                                    "dataType": "float",
+                                    "description": null,
+                                    "unit": "celsius",
+                                    "fpPrecision": "2"
+                                },
+                                {
+                                    "id": "humidity",
+                                    "label": "Humidity",
+                                    "dataType": "float",
+                                    "description": null,
+                                    "unit": "RH",
+                                    "fpPrecision": "2"
+                                }
+                            ]
+                        },
+                        {
+                            "id": "type_of_container",
+                            "label": "Type of Container",
+                            "dataType": "multienum",
+                            "description": "Storage or display container type(s)",
+                            "options": [
+                                "cupboard",
+                                "display case",
+                                "laboratory",
+                                "storage",
+                                "drawer",
+                                "shelf",
+                                "open container",
+                                "closed container",
+                                "fridge",
+                                "environmental chamber"
+                            ]
+                        },
+                        {
+                            "id": "mount",
+                            "label": "Mount",
+                            "dataType": "enum",
+                            "description": "Type of mounting used for display or storage",
+                            "options": [
+                                "free",
+                                "mount",
+                                "mannequin",
+                                "frame"
+                            ]
+                        },
+                        {
+                            "id": "result",
+                            "label": "Result/Notes",
+                            "dataType": "text",
+                            "description": "Documentation of preventive conservation measures and results"
+                        }
+                    ]
+                },
+                {
+                    "id": "interventive_conservation",
+                    "label": "Interventive Conservation",
+                    "description": "Active conservation treatments performed on the artifact",
+                    "dataType": "group",
+                    "subgroups": [
+                        {
+                            "id": "conservation_performed",
+                            "label": "Conservation Performed",
+                            "dataType": "boolean",
+                            "description": "Whether interventive conservation was performed"
+                        },
+                        {
+                            "id": "conservation_date",
+                            "label": "Conservation Date",
+                            "dataType": "text",
+                            "description": "Year or date when conservation was performed"
+                        },
+                        {
+                            "id": "cleaning",
+                            "label": "Cleaning",
+                            "dataType": "boolean",
+                            "description": "Whether cleaning treatment was performed"
+                        },
+                        {
+                            "id": "introduction_of_foreign_material",
+                            "label": "Foreign Material Introduced",
+                            "dataType": "multienum",
+                            "description": "Types of foreign materials introduced",
+                            "options": [
+                                "textile",
+                                "net",
+                                "adhesive/consolidant",
+                                "stitching"
+                            ]
+                        },
+                        {
+                            "id": "specific_foreign_material",
+                            "label": "Specific Foreign Material Introduced",
+                            "dataType": "multienum",
+                            "description": "Types of foreign materials introduced",
+                            "options": [
+                                "cotton fabric",
+                                "silk fabric",
+                                "wool fabric",
+                                "linen fabric",
+                                "synthetic fabric",
+                                "polyvinyl adhesive",
+                                "acrylic adhesive"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
