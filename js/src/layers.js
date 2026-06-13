@@ -22,9 +22,10 @@ Layers.parseLayers = (layers) => {
     if (layers === undefined) return;
 
     for (const layerId in layers) {
-        const layer = layers[layerId];
-        Layers.layerMap.set(Number(layerId), layer);
-        THOTH.FE.addNewLayer(Number(layerId));
+        const id = Number(layerId);
+        const layer = Layers.normalizeLayer(id, layers[layerId]);
+        Layers.layerMap.set(id, layer);
+        THOTH.FE.addNewLayer(id);
     };
 
     // Active layer
@@ -33,6 +34,27 @@ Layers.parseLayers = (layers) => {
 
 
 // Management
+
+Layers.normalizeLayer = (layerId, data = {}) => {
+    const base = THOTH.Annotations?.createBaseAnnotation(layerId, data) || {
+        id                            : layerId,
+        name                          : data.name || "",
+        description                   : data.description || "",
+        related_rgb_images            : data.related_rgb_images || [],
+        related_multispectral_images  : data.related_multispectral_images || [],
+        related_artefacts             : data.related_artefacts || [],
+        annotation                    : data.annotation || {},
+        visible                       : data.visible !== false
+    };
+
+    return {
+        ...base,
+        metadata      : data.metadata || {},
+        selection     : data.selection || base.annotation.selection || {},
+        highlightColor: data.highlightColor || data.selection_color || THOTH.Utils.getHighlightColor(layerId),
+        trash         : data.trash === true
+    };
+};
 
 Layers.createLayer = (layerId) => {
     if (layerId === undefined) return;
@@ -48,15 +70,15 @@ Layers.createLayer = (layerId) => {
     }
 
     // Build layer data
-    const layerData = {
-        id            : layerId,
-        name          : `New Layer`,
+    const layerData = Layers.normalizeLayer(layerId, {
+        name          : "New Layer",
         metadata      : {},
         selection     : {},
+        annotation    : {},
         visible       : true,
         highlightColor: THOTH.Utils.getHighlightColor(layerId),
         trash         : false
-    };
+    });
 
     // Append to map
     Layers.layerMap.set(layerId, layerData);
@@ -99,7 +121,10 @@ Layers.renameLayer = (layerId, newName) => {
     const layer = Layers.layerMap.get(layerId);
     if (!layer) return;
 
-    layer.name = newName;
+    Object.assign(layer, THOTH.Annotations?.normalize({
+        ...layer,
+        name: newName
+    }) || { name: newName });
     let layerNameBtn = THOTH.FE.layerNameMap.get(layerId);
     layerNameBtn.textContent = newName;
 };
@@ -163,18 +188,20 @@ Layers.toggleVisibility = (layerId) => {
     if (layerId === undefined) return;
 
     const layer = Layers.layerMap.get(layerId);
-    const layerControler = THOTH.FE?.layerMap.get(layerId);
-    
     if (layer === undefined) return;
-    
-    if (layer.visible) {
-        Layers.hideLayer(layerId);
-        THOTH.FE.toggleControllerVisibility(layerControler, false);
+
+    if (THOTH.Annotations) {
+        const applied = THOTH.Annotations.setVisible(
+            THOTH.Annotations.getModelId("selections", layerId),
+            "selections",
+            layerId,
+            layer.visible === false
+        );
+        if (applied) return;
     }
-    else {
-        Layers.showLayer(layerId);
-        THOTH.FE.toggleControllerVisibility(layerControler, true);
-    }
+
+    if (layer.visible) Layers.hideLayer(layerId);
+    else Layers.showLayer(layerId);
 };
 
 
@@ -184,7 +211,7 @@ Layers.getExportData = () => {
     const layerObjects = {};
     for (const [id, layer] of Layers.layerMap.entries()) {
         if (!layer || layer.trash === true) continue;
-        layerObjects[id] = layer;
+        layerObjects[id] = THOTH.Annotations?.toExportAnnotation(layer) || layer;
     }
     return layerObjects;
 };

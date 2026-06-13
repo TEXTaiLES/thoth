@@ -21,8 +21,11 @@ const RUNTIME_FIELDS = new Set([
     "three_node",
     "mesh",
     "material",
+    "path",
     "path_cache",
-    "mesh_cache"
+    "mesh_cache",
+    "temp_node",
+    "runtime_cache"
 ]);
 
 
@@ -142,6 +145,21 @@ SceneStore._normalizeObjectMap = (data) => {
     return {};
 };
 
+SceneStore._normalizeAnnotationCollection = (data) => {
+    const collection = SceneStore._normalizeObjectMap(data);
+
+    if (typeof THOTH === "undefined" || !THOTH.Annotations) return collection;
+
+    for (const annotationId in collection) {
+        collection[annotationId] = THOTH.Annotations.normalize({
+            ...collection[annotationId],
+            id: collection[annotationId]?.id ?? annotationId
+        });
+    }
+
+    return collection;
+};
+
 SceneStore._normalizeSensors = (data) => {
     if (Array.isArray(data)) return SceneStore._clone(data);
 
@@ -154,9 +172,9 @@ SceneStore._normalizeModel = (modelId, data = {}) => {
         artefact: SceneStore._normalizeArtefact(data.artefact),
         metadata: SceneStore._normalizeMetadata(data.metadata),
         transforms: SceneStore._normalizeTransforms(data),
-        selections: SceneStore._normalizeObjectMap(data.selections),
-        measurements: SceneStore._normalizeObjectMap(data.measurements),
-        semantic_annotations: SceneStore._normalizeObjectMap(data.semantic_annotations),
+        selections: SceneStore._normalizeAnnotationCollection(data.selections),
+        measurements: SceneStore._normalizeAnnotationCollection(data.measurements),
+        semantic_annotations: SceneStore._normalizeAnnotationCollection(data.semantic_annotations),
         sensors: SceneStore._normalizeSensors(data.sensors)
     };
 };

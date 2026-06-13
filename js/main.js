@@ -31,6 +31,7 @@ import API                 from "./src/api_client.js";
 import Auth                from "./src/auth.js";
 import Artefacts           from "./src/artefacts.js";
 import Transforms          from "./src/transforms.js";
+import Annotations         from "./src/annotations.js";
 
 
 // Realize 
@@ -61,6 +62,7 @@ THOTH.API     = API;
 THOTH.Auth    = Auth;
 THOTH.Artefacts = Artefacts;
 THOTH.Transforms = Transforms;
+THOTH.Annotations = Annotations;
 
 
 THOTH.BASE_URL        = "../thoth";
@@ -153,6 +155,8 @@ THOTH.setup = () => {
             THOTH.MD.setup();
             // Init transforms
             THOTH.Transforms.setup();
+            // Init shared annotation API
+            THOTH.Annotations.setup();
             // Init history
             THOTH.History.setup();
             // Init operations

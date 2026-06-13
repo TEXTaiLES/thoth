@@ -65,7 +65,7 @@ MSR.parseMeasurements = (measurements) => {
     if (measurements === undefined) return;
 
     for (const id in measurements) {
-        const measurement = measurements[id];
+        const measurement = MSR.normalizeMeasurement(Number(id), measurements[id]);
         if (measurement?.points?.length) {
             measurement.points = measurement.points.map(MSR.normalizePoint);
         }
@@ -128,6 +128,31 @@ MSR.normalizePoint = (point) => {
         delete point.mesh;
     }
     return point;
+};
+
+MSR.normalizeMeasurement = (measurementId, data = {}) => {
+    const base = THOTH.Annotations?.createBaseAnnotation(measurementId, data) || {
+        id                            : measurementId,
+        name                          : data.name || "",
+        description                   : data.description || "",
+        related_rgb_images            : data.related_rgb_images || [],
+        related_multispectral_images  : data.related_multispectral_images || [],
+        related_artefacts             : data.related_artefacts || [],
+        annotation                    : data.annotation || {},
+        visible                       : data.visible !== false
+    };
+
+    const points = data.points || [data.point1, data.point2].filter(Boolean);
+
+    return {
+        ...base,
+        name        : base.name || `Measurement ${measurementId}`,
+        distanceType: data.distanceType || base.annotation.distanceType || "euclidean",
+        distance    : Number(data.distance ?? base.annotation.distance ?? 0),
+        points      : points.map(MSR.normalizePoint),
+        path        : data.path,
+        trash       : data.trash === true
+    };
 };
 
 MSR.getPointModel = (point) => {
@@ -244,16 +269,15 @@ MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
         const name = "";
         const distance = MSR.getEuclideanDistance(point1, point2);
 
-        measurementData = {
-            id: measurementId,
-            description: description,
+        measurementData = MSR.normalizeMeasurement(measurementId, {
+            description : description,
             distanceType: distanceType,
-            distance: distance,
-            points: [point1, point2],
-            trash: false,
-            name:  `Measurement ${measurementId}`,
-            visible: true
-        };
+            distance    : distance,
+            points      : [point1, point2],
+            trash       : false,
+            name        : `Measurement ${measurementId}`,
+            visible     : true
+        });
     }   
     else if (distanceType === "geodesic") {    
     // REMOTE / PRECOMPUTED
@@ -262,8 +286,7 @@ MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
             options.path = options.path.map(
             p => new THREE.Vector3(p.x, p.y, p.z));
 
-        measurementData = {
-            id           : measurementId,
+        measurementData = MSR.normalizeMeasurement(measurementId, {
             description  : "description",
             distanceType : options.distanceType,
             distance     : options.distance,
@@ -272,7 +295,7 @@ MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
             trash        : false,
             name         : `Measurement ${measurementId}`,
             visible      : true
-        };
+        });
     }
 
     // LOCAL COMPUTATION
@@ -304,8 +327,7 @@ MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
         }
         const distance = MSR.computePathLength(vertices, path);
         const worldPoints = MSR.pathToPoints(mesh, path);
-        measurementData = {
-            id           : measurementId,
+        measurementData = MSR.normalizeMeasurement(measurementId, {
             description  : "description",
             distanceType : distanceType,
             distance     : distance,
@@ -314,7 +336,7 @@ MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
             trash        : false,
             name         : `Measurement ${measurementId}`,
             visible      : true
-        };
+        });
     }
           } 
           if (!measurementData) {
@@ -344,6 +366,26 @@ MSR.deleteMeasurement = (measurementId) => {
 
     // Update FE
     THOTH.FE.deleteMsr(measurementId);
+};
+
+MSR.updateMeasurement = (measurementId, data) => {
+    if (measurementId === undefined || !data) return;
+
+    const measurement = MSR.msrMap.get(measurementId);
+    if (!measurement) return;
+
+    const nextMeasurement = MSR.normalizeMeasurement(measurementId, {
+        ...measurement,
+        ...data
+    });
+
+    MSR.msrMap.set(measurementId, nextMeasurement);
+    MSR.renameMeasurement(measurementId, nextMeasurement.name);
+    MSR.refreshMeasurementVisibility();
+    THOTH.FE.toggleControllerVisibility(
+        THOTH.FE.msrMap.get(measurementId),
+        nextMeasurement.visible !== false
+    );
 };
 
 MSR.resurrectMeasurement = (measurementId) => {
@@ -733,33 +775,27 @@ MSR.showMeasurement = (measurementId) => {
     if (!node || !measurement) return;
 
     node.show();
-    measurement.visible = false;
+    measurement.visible = true;
 };
 
 MSR.toggleVisibility = (measurementId) => {
     if (measurementId === undefined) return;
 
     const measurement = MSR.msrMap.get(measurementId);
-    const node = MSR.msrSemMap.get(measurementId);
+    if (!measurement) return;
 
-    if (!node || !measurement) return;
-    //if (measurement === undefined) return;
-    const isVisible = node.visible;
-
-    if (isVisible) {
-        MSR.hideMeasurement(measurementId);
+    if (THOTH.Annotations) {
+        const applied = THOTH.Annotations.setVisible(
+            THOTH.Annotations.getModelId("measurements", measurementId),
+            "measurements",
+            measurementId,
+            measurement.visible === false
+        );
+        if (applied) return;
     }
-    else {
-        MSR.showMeasurement(measurementId);
-    }
-        // Keep data synced
-    measurement.visible = !isVisible;
 
-    // Optional UI feedback
-    THOTH.FE.toggleControllerVisibility(
-        THOTH.FE.msrMap.get(measurementId),
-        measurement.visible
-    );
+    if (measurement.visible !== false) MSR.hideMeasurement(measurementId);
+    else MSR.showMeasurement(measurementId);
 };
 
 MSR.highlightMeasurement = (measurementId) => {
@@ -815,7 +851,7 @@ MSR.getExportData = () => {
     const measurementObjects = {};
     for (const [id, measurement] of MSR.msrMap.entries()) {
         if (!measurement || measurement.trash === true) continue;
-        measurementObjects[id] = measurement;
+        measurementObjects[id] = THOTH.Annotations?.toExportAnnotation(measurement) || measurement;
     }
     return measurementObjects;
 };

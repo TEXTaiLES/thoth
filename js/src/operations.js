@@ -108,6 +108,10 @@ Ops._applySelectionRuntime = (action, itemId, value) => {
             const layerNameBtn = THOTH.FE.layerNameMap.get(itemId);
             if (layerNameBtn) layerNameBtn.textContent = value.name;
         }
+        if (value.visible !== undefined) {
+            const layerController = THOTH.FE.layerMap.get(itemId);
+            THOTH.FE.toggleControllerVisibility(layerController, value.visible);
+        }
         THOTH.updateVisibility();
         return;
     }
@@ -128,9 +132,7 @@ Ops._applyMeasurementRuntime = (action, itemId, value, operation) => {
     }
 
     if (action === "update") {
-        Ops._replaceMapValue(THOTH.MSR.msrMap, itemId, value);
-        THOTH.MSR.renameMeasurement(itemId, value?.name);
-        THOTH.MSR.refreshMeasurementVisibility();
+        THOTH.MSR.updateMeasurement(itemId, value);
         return;
     }
 
@@ -192,7 +194,7 @@ Ops._applyCollection = (operation) => {
 
     const modelId = Ops._getModelId(operation);
     const itemId  = Ops._getItemId(operation);
-    const value   = operation.value;
+    let value     = operation.value;
 
     if (info.prefix === "selection") {
         Ops._applySelectionRuntime(info.action, itemId, value);
@@ -202,6 +204,11 @@ Ops._applyCollection = (operation) => {
     }
     else if (info.prefix === "semantic_annotation") {
         Ops._applySemanticAnnotationRuntime(info.action, itemId, value);
+    }
+
+    if (info.action !== "delete" && THOTH.Annotations) {
+        value = THOTH.Annotations.normalize(operation.value);
+        operation.value = value;
     }
 
     if (info.action === "delete") {

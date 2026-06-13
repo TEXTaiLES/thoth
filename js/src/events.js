@@ -25,6 +25,7 @@ Events.authRequiredEvents = new Map([
     [ "createMeasurement", "create measurements" ],
     [ "deleteMeasurement", "delete measurements" ],
     [ "renameMeasurement", "edit measurements" ],
+    [ "toggleMeasurementVisibility", "edit measurements" ],
     [ "editMeasurement", "edit measurements" ],
     [ "selectSemanticAnnotation", "create semantic annotations" ],
     [ "addSemanticAnnotationPoint", "create semantic annotations" ],
@@ -121,6 +122,10 @@ Events.getSemanticAnnotationData = (annotationId) => {
     return THOTH.SemAnnotations.cloneAnnotation(
         THOTH.SemAnnotations.semMap.get(annotationId)
     );
+};
+
+Events.getAnnotationModelId = (modality, annotationId, fallbackModelId) => {
+    return THOTH.Annotations?.getModelId(modality, annotationId) || fallbackModelId || Events.getDefaultModelId();
 };
 
 Events.applyLocal = (type, target, value, prevValue) => {
@@ -468,6 +473,45 @@ Events.setupMeasurementEvents = () => {
             field     : "name"
         }, data, prevData);
     });
+
+    THOTH.on("editMeasurement", (l) => {
+        const id = l.id;
+        const prevData = l.prevData || Events.getMeasurementData(id);
+        if (!prevData) return;
+
+        const data = THOTH.Annotations?.normalize({
+            ...prevData,
+            ...l.data,
+            id: id
+        }) || {
+            ...prevData,
+            ...l.data,
+            id: id
+        };
+
+        Events.applyLocal("measurement.update", {
+            model_id  : Events.getAnnotationModelId("measurements", id, Events.getPointModelId(data.points?.[0])),
+            collection: "measurements",
+            item_id   : id
+        }, data, prevData);
+    });
+
+    THOTH.on("toggleMeasurementVisibility", (measurementId) => {
+        const prevData = Events.getMeasurementData(measurementId);
+        if (!prevData) return;
+
+        const data = {
+            ...prevData,
+            visible: prevData.visible === false
+        };
+
+        Events.applyLocal("measurement.update", {
+            model_id  : Events.getAnnotationModelId("measurements", measurementId, Events.getPointModelId(prevData.points?.[0])),
+            collection: "measurements",
+            item_id   : measurementId,
+            field     : "visible"
+        }, data, prevData);
+    });
 };
 
 Events.setupSemanticAnnotationEvents = () => {
@@ -509,7 +553,7 @@ Events.setupSemanticAnnotationEvents = () => {
         if (!prevData) return;
 
         Events.applyLocal("semantic_annotation.update", {
-            model_id  : Events.getPointModelId(l.data?.point || prevData.point),
+            model_id  : Events.getAnnotationModelId("semantic_annotations", l.id, Events.getPointModelId(l.data?.point || prevData.point)),
             collection: "semantic_annotations",
             item_id   : l.id
         }, THOTH.SemAnnotations.cloneAnnotation(l.data), prevData);
@@ -520,7 +564,7 @@ Events.setupSemanticAnnotationEvents = () => {
         if (!annotation) return;
 
         Events.applyLocal("semantic_annotation.delete", {
-            model_id  : Events.getPointModelId(annotation.point),
+            model_id  : Events.getAnnotationModelId("semantic_annotations", annotationId, Events.getPointModelId(annotation.point)),
             collection: "semantic_annotations",
             item_id   : annotationId
         }, null, annotation);
@@ -536,7 +580,7 @@ Events.setupSemanticAnnotationEvents = () => {
         };
 
         Events.applyLocal("semantic_annotation.update", {
-            model_id  : Events.getPointModelId(prevData.point),
+            model_id  : Events.getAnnotationModelId("semantic_annotations", annotationId, Events.getPointModelId(prevData.point)),
             collection: "semantic_annotations",
             item_id   : annotationId,
             field     : "visible"
@@ -579,7 +623,7 @@ Events.setupLayerEvents = () => {
         if (!prevData) return;
 
         Events.applyLocal("selection.delete", {
-            model_id  : Events.getDefaultModelId(),
+            model_id  : Events.getAnnotationModelId("selections", layerId),
             collection: "selections",
             item_id   : layerId
         }, null, prevData);
@@ -588,18 +632,22 @@ Events.setupLayerEvents = () => {
     THOTH.on("editLayerMetadata", (l) => {
         const layerId  = l.id;
         const data     = l.data;
-        const prevData = l.prevData || Events.getLayerData(layerId);
+        const currentData = Events.getLayerData(layerId);
+        const prevData = l.prevData?.id !== undefined ? l.prevData : currentData;
         if (!prevData) return;
 
+        const nextData = {
+            ...prevData,
+            ...(l.annotationData || {}),
+            metadata: data
+        };
+
         Events.applyLocal("selection.update", {
-            model_id  : Events.getDefaultModelId(),
+            model_id  : Events.getAnnotationModelId("selections", layerId),
             collection: "selections",
             item_id   : layerId,
             field     : "metadata"
-        }, {
-            ...prevData,
-            metadata: data
-        }, prevData);
+        }, nextData, prevData);
     });
     THOTH.on("renameLayer", (l) => {
         const id   = l.id;
@@ -608,7 +656,7 @@ Events.setupLayerEvents = () => {
         if (!prevData) return;
 
         Events.applyLocal("selection.update", {
-            model_id  : Events.getDefaultModelId(),
+            model_id  : Events.getAnnotationModelId("selections", id),
             collection: "selections",
             item_id   : id,
             field     : "name"

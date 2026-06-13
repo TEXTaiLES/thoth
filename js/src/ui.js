@@ -595,7 +595,7 @@ UI.createMsrController = (msrId) => {
         ATON.UI.createButton({
             icon   : "visibility",
             size   : "small",
-            onpress: () => THOTH.MSR.toggleVisibility(msrId),
+            onpress: () => THOTH.fire("toggleMeasurementVisibility", msrId),
         }),
          nameBtn,
     );
@@ -1377,6 +1377,8 @@ UI.createSensorDashboard = (sensorId) => {
 UI.modalMsrDetails = (msrId) => {
     const msr = THOTH.MSR.msrMap.get(msrId);
     if (msr === undefined || msr.trash) return;
+    const dataTemp = THOTH.Annotations?.normalize(msr) || structuredClone(msr);
+    const prevData = structuredClone(msr);
 
     // Distance details
     const elDistance = ATON.UI.createContainer();
@@ -1412,24 +1414,11 @@ UI.modalMsrDetails = (msrId) => {
             }
         }),
     })
-    const oldName = msr.name || "";
     const elBody = ATON.UI.createTreeGroup({
         items: [
-            // Name
-            {
-                title: "Measurement Name",
-                open: true,
-                content: ATON.UI.createInputText({
-                    label   : "Measurement Name",
-                    value   : msr.name,
-                    onchange: (v) => THOTH.fire("renameMeasurement", {
-                        id      : msrId,
-                        value    : v,
-                        //prevData: structuredClone(msr.name) || ""
-                       // prevValue: oldName
-                    }),
-                })
-            },
+            ...UI.createAnnotationSharedItems(dataTemp, {
+                visibility: true
+            }),
             // Point details
             {
                 title  : "Details",
@@ -1447,10 +1436,13 @@ UI.modalMsrDetails = (msrId) => {
 
     const elFooter = UI.createModalFooter({
         onsuccess: () => {
+            const sharedData = UI.collectAnnotationSharedFields(dataTemp);
+            if (!sharedData) return;
+
             THOTH.fire("editMeasurement", {
-                // id      : msrId,
-                // data    : data_temp,
-                // prevData: prev_data
+                id      : msrId,
+                data    : sharedData,
+                prevData: prevData
             });
             ATON.UI.hideModal();
         },
@@ -1495,6 +1487,121 @@ UI.createTextArea = (options) => {
     return el;
 };
 
+UI._formatRelationList = (relations) => {
+    return JSON.stringify(Array.isArray(relations) ? relations : [], null, 2);
+};
+
+UI._parseRelationList = (value, fieldName) => {
+    try {
+        const parsed = JSON.parse(value || "[]");
+        if (Array.isArray(parsed)) return parsed;
+    }
+    catch (err) {
+    }
+
+    THOTH.FE.showToast(`${fieldName} must be a JSON array.`);
+    return null;
+};
+
+UI.collectAnnotationSharedFields = (dataTemp) => {
+    const relatedRgbImages = UI._parseRelationList(dataTemp._relatedRgbImagesText, "Related RGB images");
+    if (relatedRgbImages === null) return null;
+
+    const relatedMultispectralImages = UI._parseRelationList(
+        dataTemp._relatedMultispectralImagesText,
+        "Related multispectral images"
+    );
+    if (relatedMultispectralImages === null) return null;
+
+    const relatedArtefacts = UI._parseRelationList(dataTemp._relatedArtefactsText, "Related artefacts");
+    if (relatedArtefacts === null) return null;
+
+    const data = {
+        ...dataTemp,
+        related_rgb_images          : relatedRgbImages,
+        related_multispectral_images: relatedMultispectralImages,
+        related_artefacts           : relatedArtefacts
+    };
+
+    delete data._relatedRgbImagesText;
+    delete data._relatedMultispectralImagesText;
+    delete data._relatedArtefactsText;
+
+    return THOTH.Annotations?.normalize(data) || data;
+};
+
+UI.createAnnotationSharedItems = (dataTemp, options = {}) => {
+    dataTemp._relatedRgbImagesText = UI._formatRelationList(dataTemp.related_rgb_images);
+    dataTemp._relatedMultispectralImagesText = UI._formatRelationList(dataTemp.related_multispectral_images);
+    dataTemp._relatedArtefactsText = UI._formatRelationList(dataTemp.related_artefacts);
+
+    const items = [
+        {
+            title  : "Name",
+            open   : true,
+            content: ATON.UI.createInputText({
+                label  : "Name",
+                value  : dataTemp.name,
+                oninput: (v) => dataTemp.name = v
+            })
+        },
+        {
+            title  : "Description",
+            open   : true,
+            content: UI.createTextArea({
+                label  : "Description",
+                value  : dataTemp.description,
+                rows   : 5,
+                oninput: (v) => dataTemp.description = v
+            })
+        },
+        {
+            title  : "Related RGB images",
+            open   : false,
+            content: UI.createTextArea({
+                label  : "JSON",
+                value  : dataTemp._relatedRgbImagesText,
+                rows   : 4,
+                oninput: (v) => dataTemp._relatedRgbImagesText = v
+            })
+        },
+        {
+            title  : "Related multispectral images",
+            open   : false,
+            content: UI.createTextArea({
+                label  : "JSON",
+                value  : dataTemp._relatedMultispectralImagesText,
+                rows   : 4,
+                oninput: (v) => dataTemp._relatedMultispectralImagesText = v
+            })
+        },
+        {
+            title  : "Related artefacts",
+            open   : false,
+            content: UI.createTextArea({
+                label  : "JSON",
+                value  : dataTemp._relatedArtefactsText,
+                rows   : 4,
+                oninput: (v) => dataTemp._relatedArtefactsText = v
+            })
+        }
+    ];
+
+    if (options.visibility) {
+        items.push({
+            title  : "Visibility",
+            open   : false,
+            content: UI.createBool({
+                text    : "Visible",
+                value   : dataTemp.visible !== false,
+                onchange: (v) => dataTemp.visible = v
+            })
+        });
+    }
+
+    return items;
+};
+
 UI.modalSemAnnotationDetails = (annotationId, draftData, options = {}) => {
     const annotation = THOTH.SemAnnotations.semMap.get(annotationId);
     if (!annotation && !draftData) return;
@@ -1502,51 +1609,40 @@ UI.modalSemAnnotationDetails = (annotationId, draftData, options = {}) => {
 
     const source = draftData || annotation;
     const dataTemp = {
-        id         : annotationId,
-        name       : source.name || `Semantic ${annotationId}`,
-        description: source.description || "",
-        point      : source.point,
-        visible    : source.visible !== false,
-        trash      : false
+        id                            : annotationId,
+        name                          : source.name || `Semantic ${annotationId}`,
+        description                   : source.description || "",
+        related_rgb_images            : source.related_rgb_images || [],
+        related_multispectral_images  : source.related_multispectral_images || [],
+        related_artefacts             : source.related_artefacts || [],
+        annotation                    : source.annotation || {},
+        point                         : source.point,
+        visible                       : source.visible !== false,
+        trash                         : false
     };
     const prevData = annotation ? THOTH.SemAnnotations.cloneAnnotation(annotation) : null;
 
     const elBody = ATON.UI.createTreeGroup({
-        items: [
-            {
-                title  : "Name",
-                open   : true,
-                content: ATON.UI.createInputText({
-                    label  : "Name",
-                    value  : dataTemp.name,
-                    oninput: (v) => dataTemp.name = v,
-                })
-            },
-            {
-                title  : "Description",
-                open   : true,
-                content: UI.createTextArea({
-                    label  : "Description",
-                    value  : dataTemp.description,
-                    rows   : 5,
-                    oninput: (v) => dataTemp.description = v,
-                })
-            }
-        ]
+        items: UI.createAnnotationSharedItems(dataTemp, {
+            visibility: true
+        })
     });
 
     const elFooter = UI.createModalFooter({
         onsuccess: () => {
+            const sharedData = UI.collectAnnotationSharedFields(dataTemp);
+            if (!sharedData) return;
+
             if (options.isNew) {
                 THOTH.fire("createSemanticAnnotation", {
                     id  : annotationId,
-                    data: dataTemp
+                    data: sharedData
                 });
             }
             else {
                 THOTH.fire("updateSemanticAnnotation", {
                     id       : annotationId,
-                    data     : dataTemp,
+                    data     : sharedData,
                     prevData : prevData
                 });
             }
@@ -1860,9 +1956,10 @@ UI.modalLayerDetails = (layerId, data_temp) => {
     }
 
     const schemaName = THOTH.MD.getSchemaName(data_temp);
-    const prev_data  = structuredClone(layer.metadata) || {};
+    const prev_data  = structuredClone(layer) || {};
     const schema     = THOTH.MD.schemaMap.get(schemaName);
     const attributes = THOTH.MD.getAttributes(data_temp);
+    const annotationTemp = THOTH.Annotations?.normalize(layer) || structuredClone(layer);
 
     const metadataBody = ATON.UI.createContainer({classes: "row g-0 w-100"});
     metadataBody.append(
@@ -1899,14 +1996,10 @@ UI.modalLayerDetails = (layerId, data_temp) => {
 
     const elLayerInfo = UI.createSplitRow({
         colLeft: 8,
-        itemsLeft: ATON.UI.createInputText({
-            label   : "Layer name",
-            value   : layer.name,
-            onchange: (v) => THOTH.fire("renameLayer", {
-                id      : layerId,
-                data    : v,
-                prevData: structuredClone(layer.name) || "",
-            }),
+        itemsLeft: ATON.UI.createButton({
+            text   : layer.name || `Selection ${layerId}`,
+            icon   : "layers",
+            onpress: () => {}
         }),
         itemsRight: elLayerActions,
     });
@@ -1920,6 +2013,9 @@ UI.modalLayerDetails = (layerId, data_temp) => {
                 open   : true,
                 content: elLayerInfo
             },
+            ...UI.createAnnotationSharedItems(annotationTemp, {
+                visibility: true
+            }),
             // Schema selection
             {
                 title  : "Metadata schema",
@@ -1942,10 +2038,14 @@ UI.modalLayerDetails = (layerId, data_temp) => {
     // Footer
     const elFooter = UI.createModalFooter({
         onsuccess: () => {
+            const sharedData = UI.collectAnnotationSharedFields(annotationTemp);
+            if (!sharedData) return;
+
             THOTH.fire("editLayerMetadata", {
-                id      : layerId,
-                data    : data_temp,
-                prevData: prev_data
+                id            : layerId,
+                data          : data_temp,
+                annotationData: sharedData,
+                prevData      : prev_data
             });
             ATON.UI.hideModal();
         },

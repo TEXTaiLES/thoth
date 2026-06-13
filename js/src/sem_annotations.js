@@ -61,15 +61,18 @@ SemAnnotations.cloneAnnotation = (annotation) => {
 SemAnnotations.normalizeAnnotation = (annotation) => {
     if (!annotation) return annotation;
 
-    if (annotation.point) {
-        annotation.point = SemAnnotations.normalizePoint(annotation.point);
+    const normalized = THOTH.Annotations?.normalize(annotation) || structuredClone(annotation);
+
+    if (normalized.point) {
+        normalized.point = SemAnnotations.normalizePoint(normalized.point);
     }
 
-    if (annotation.visible === undefined) annotation.visible = true;
-    if (annotation.trash === undefined) annotation.trash = false;
-    if (annotation.description === undefined) annotation.description = "";
+    if (!normalized.name) normalized.name = `Semantic ${normalized.id}`;
+    if (normalized.visible === undefined) normalized.visible = true;
+    if (normalized.trash === undefined) normalized.trash = false;
+    if (normalized.description === undefined) normalized.description = "";
 
-    return annotation;
+    return normalized;
 };
 
 SemAnnotations.normalizePoint = (point) => {
@@ -258,14 +261,18 @@ SemAnnotations.updateAnnotationSem = (annotationId) => {
 // Management
 
 SemAnnotations.createAnnotationData = (annotationId, point, data = {}) => {
-    return {
+    return SemAnnotations.normalizeAnnotation({
         id         : annotationId,
         name       : data.name || `Semantic ${annotationId}`,
         description: data.description || "",
+        related_rgb_images          : data.related_rgb_images || [],
+        related_multispectral_images: data.related_multispectral_images || [],
+        related_artefacts           : data.related_artefacts || [],
+        annotation  : data.annotation || {},
         point      : SemAnnotations.normalizePoint(point),
         visible    : data.visible !== false,
         trash      : false
-    };
+    });
 };
 
 SemAnnotations.addAnnotation = (annotationId, annotationData) => {
@@ -291,11 +298,13 @@ SemAnnotations.updateAnnotation = (annotationId, data) => {
     const annotation = SemAnnotations.semMap.get(annotationId);
     if (!annotation) return;
 
-    annotation.name        = data.name;
-    annotation.description = data.description;
-    if (data.point) annotation.point = SemAnnotations.normalizePoint(data.point);
+    const normalized = SemAnnotations.normalizeAnnotation({
+        ...annotation,
+        ...data
+    });
 
-    if (data.visible !== undefined) annotation.visible = data.visible;
+    Object.assign(annotation, normalized);
+    if (data.point) annotation.point = SemAnnotations.normalizePoint(data.point);
 
     SemAnnotations.updateAnnotationSem(annotationId);
 
@@ -375,7 +384,7 @@ SemAnnotations.getExportData = () => {
 
     for (const [id, annotation] of SemAnnotations.semMap.entries()) {
         if (!annotation || annotation.trash === true) continue;
-        annotationObjects[id] = annotation;
+        annotationObjects[id] = THOTH.Annotations?.toExportAnnotation(annotation) || annotation;
     }
 
     return annotationObjects;
