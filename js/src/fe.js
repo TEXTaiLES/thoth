@@ -51,7 +51,6 @@ FE.setupSelectionElements = () => {
 FE.setupModelElements = () => {
     FE.modelMap    = new Map();
     FE.modelList   = ATON.UI.createContainer();
-    FE.modelsPanel = FE.setupModelsPanel(FE.modelList);
 };
 
 FE.setupMsrElements = () => {
@@ -407,9 +406,8 @@ FE.refreshSceneTree = () => {
     elTree.append(THOTH.UI.createSceneTreeRow({
         label   : "Scene Structure",
         icon    : "scene",
-        active  : FE.sceneTreeActiveKey === "scene",
         count   : modelIds.length,
-        onselect: () => FE.openSceneTreePanel("scene", "Scene", FE.modelsPanel)
+        selectable: false
     }));
 
     for (const modelId of modelIds) {
@@ -422,9 +420,8 @@ FE.refreshSceneTree = () => {
             icon      : "scene",
             expandable: true,
             open      : isOpen,
-            active    : FE.sceneTreeActiveKey === modelKey,
             onexpand  : () => FE.toggleSceneTreeNode(modelKey),
-            onselect  : () => FE.openModelPanel(modelId)
+            onselect  : () => FE.toggleSceneTreeNode(modelKey)
         }));
 
         if (!isOpen) continue;
@@ -448,6 +445,9 @@ FE.toggleSceneTreeNode = (key) => {
 
 FE.openSceneTreePanel = (key, header, body) => {
     FE.sceneTreeActiveKey = key;
+    if (!key.endsWith(":transforms")) {
+        THOTH.Transforms?.detachGizmo();
+    }
     ATON.UI.showSidePanel({
         header: header,
         body  : body
@@ -455,9 +455,14 @@ FE.openSceneTreePanel = (key, header, body) => {
     FE.refreshSceneTree();
 };
 
-FE.openModelPanel = (modelId) => {
-    THOTH.fire?.("selectModel", modelId);
-    FE.openSceneTreePanel(`model:${modelId}`, modelId, THOTH.UI.createModelEditor(modelId));
+FE.openTransformPanel = (modelId, key) => {
+    FE.sceneTreeActiveKey = key;
+    THOTH.requireAuth?.("edit transforms", () => THOTH.Transforms?.attachGizmo(modelId));
+    ATON.UI.showSidePanel({
+        header: `${modelId} - Transforms`,
+        body  : THOTH.UI.createModelTransformEditor(modelId)
+    });
+    FE.refreshSceneTree();
 };
 
 FE.appendModelSceneRows = (elParent, modelId, model) => {
@@ -474,6 +479,7 @@ FE.appendModelSceneRows = (elParent, modelId, model) => {
             label  : "Selections",
             icon   : "collection-item",
             count  : FE.countCollectionItems(model.selections),
+            expandable: true,
             content: () => FE.createModelCollectionPanel(modelId, "selections")
         },
         {
@@ -481,6 +487,7 @@ FE.appendModelSceneRows = (elParent, modelId, model) => {
             label  : "Semantic Annotations",
             icon   : "list",
             count  : FE.countCollectionItems(model.semantic_annotations),
+            expandable: true,
             content: () => FE.createModelCollectionPanel(modelId, "semantic_annotations")
         },
         {
@@ -488,13 +495,14 @@ FE.appendModelSceneRows = (elParent, modelId, model) => {
             label  : "Measurements",
             icon   : "measure",
             count  : FE.countCollectionItems(model.measurements),
+            expandable: true,
             content: () => FE.createModelCollectionPanel(modelId, "measurements")
         },
         {
             key    : "transforms",
             label  : "Transforms",
             icon   : "settings",
-            content: () => THOTH.UI.createModelEditor(modelId)
+            openPanel: (sectionKey) => FE.openTransformPanel(modelId, sectionKey)
         },
         {
             key    : "metadata",
@@ -517,27 +525,38 @@ FE.appendModelSceneRows = (elParent, modelId, model) => {
 
     for (const section of sections) {
         const sectionKey = `model:${modelId}:${section.key}`;
+        const isSectionOpen = FE.sceneTreeExpanded.has(sectionKey);
         elParent.append(THOTH.UI.createSceneTreeRow({
-            label   : section.label,
-            icon    : section.icon,
-            count   : section.count,
-            active  : FE.sceneTreeActiveKey === sectionKey,
-            level   : 1,
-            onselect: () => FE.openSceneTreePanel(
-                sectionKey,
-                `${modelId} - ${section.label}`,
-                section.content()
-            )
+            label     : section.label,
+            icon      : section.icon,
+            count     : section.count,
+            active    : FE.sceneTreeActiveKey === sectionKey,
+            level     : 1,
+            expandable: section.expandable === true,
+            open      : isSectionOpen,
+            onexpand  : section.expandable ? () => FE.toggleSceneTreeNode(sectionKey) : undefined,
+            onselect  : () => {
+                if (section.openPanel) {
+                    section.openPanel(sectionKey);
+                    return;
+                }
+
+                FE.openSceneTreePanel(
+                    sectionKey,
+                    `${modelId} - ${section.label}`,
+                    section.content()
+                );
+            }
         }));
 
-        if (section.key === "selections") {
-            FE.appendAnnotationRows(elParent, modelId, section.key, model.selections);
-        }
-        else if (section.key === "measurements") {
-            FE.appendAnnotationRows(elParent, modelId, section.key, model.measurements);
-        }
-        else if (section.key === "semantic_annotations") {
-            FE.appendAnnotationRows(elParent, modelId, section.key, model.semantic_annotations);
+        if (!isSectionOpen) continue;
+
+        if (section.key === "selections" ||
+            section.key === "measurements" ||
+            section.key === "semantic_annotations") {
+            const elChildren = THOTH.UI.createSceneTreeChildren();
+            FE.appendAnnotationRows(elChildren, modelId, section.key, model[section.key]);
+            elParent.append(elChildren);
         }
     }
 };
@@ -828,6 +847,11 @@ FE.addNewSelection = (selectionId, modelId) => {
     if (!selection) return;
 
     const selectionKey = THOTH.Selections._makeKey(selection.model_id, selectionId);
+    const modelKey = `model:${selection.model_id}`;
+    const selectionsKey = `${modelKey}:selections`;
+
+    FE.sceneTreeExpanded.add(modelKey);
+    FE.sceneTreeExpanded.add(selectionsKey);
 
     // Resurrect selection if it already exists
     if (FE.selectionControllerMap.has(selectionKey)) {
@@ -876,11 +900,7 @@ FE.addModel = (modelName) => {
         return;
     }
     // Create new
-    //const newModelController = THOTH.UI.createModelController(modelName);
-    const newModelController = THOTH.UI.createModelController(
-        modelName,
-        () => THOTH.fire("selectModel", modelName)
-    );
+    const newModelController = THOTH.UI.createModelController(modelName);
     FE.modelMap.set(modelName, newModelController);
     FE.modelList.append(newModelController);
     FE.refreshSceneTree();

@@ -151,7 +151,6 @@ Events.setup = () => {
     THOTH.onPhoton   = ATON.Photon.on;
     THOTH.firePhoton = ATON.Photon.fire;
 
-   // Events.setupTransformControls();
     //Events.setupModelEvents();
 
     Events.setupInputEL();
@@ -780,16 +779,7 @@ Events.setupModelEvents = () => {
             field   : "scale"
         }, value, prevValue);
     });
-    //select model
-    THOTH.on("selectModel", (modelName) => {
-        THOTH.Transforms.attachGizmo(modelName);
-    });
 };
-//
-Events.setupTransformControls = (ModelName) => {
-    THOTH.Transforms.attachGizmo(ModelName);
-};
-
 Events.setupToolboxEvents = () => {
     // Resize
     window.addEventListener('resize', () => {

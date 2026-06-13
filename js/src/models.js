@@ -400,11 +400,6 @@ Models.modelTransformRot = (modelName, value) => {
     });
 };
 
-//add transform controls to scene node
-Models.addTransformControls = (modelName) => {
-    THOTH.Transforms?.attachGizmo(modelName);
-};
-
 Models.deactivateTransformControls = () => {
     THOTH.Transforms?.detachGizmo();
 };

@@ -481,6 +481,10 @@ UI.createSceneTreeRow = (options = {}) => {
         }
     });
     elLabel.classList.add("flex-grow-1", "text-start");
+    if (options.selectable === false || !options.onselect) {
+        elLabel.disabled = true;
+        elLabel.classList.add("opacity-100");
+    }
 
     if (options.active) elLabel.classList.add("aton-btn-highlight");
 
@@ -540,13 +544,7 @@ UI.createModelController = (modelName) => {
         ATON.UI.createButton({
             text   : modelName,
             size   : "small",
-            onpress: ()=> {
-            THOTH.fire("selectModel", modelName);
-            ATON.UI.showSidePanel({
-                header: modelName,
-                body: UI.createModelEditor(modelName)
-            });
-            }
+            onpress: () => {}
         }),     
     );
     const elController = UI.createSplitRow({
@@ -769,57 +767,11 @@ UI.createSemAnnotationController = (annotationId) => {
 
 // Editors
 
-UI.createModelEditor = (modelName) => {
-    const model = THOTH.Models.modelMap.get(modelName);
-
+UI.createModelTransformEditor = (modelName) => {
     const elBody = ATON.UI.createContainer();
+    const elTransformOptions = ATON.UI.createContainer();
 
-    // Top buttons
-    const elModelHead = UI.createSplitRow({
-        colLeft  : 4,
-        itemsLeft: ATON.UI.createButton({
-            icon   : ATON.PATH_RES + "icons/back.png",
-           onpress: () => {
-
-                THOTH.Models.deactivateTransformControls();
-                ATON.UI.showSidePanel({
-                    header: "Scene",
-                    body  : THOTH.FE.modelsPanel
-                    });
-            }
-        }),
-        itemsRight: ATON.UI.createButton({
-            text   : "Focus",
-            icon   : ATON.PATH_RES + "icons/focus.png",
-            classes: "btn-default",
-            onpress: () => ATON.Nav.requestPOVbyNode(model, 0.2)
-        }),
-    });
-
-    // Options
-    const elVPOptions = ATON.UI.createContainer();
-    elVPOptions.append(
-        ATON.UI.createButton({
-            icon   : "visibility",
-            size   : "small",
-             onpress: () => THOTH.SVP.toggleVPNodes(modelName)
-            // onpress: () => THOTH.SVP.toggleVPNodes(true, modelName)
-        }),
-        ATON.UI.createButton({
-            text   : "Build Viewpoints",
-            variant: "info",
-            icon   : "pov",
-            onpress: () => UI.modalBuildVP(modelName),
-        }),
-        ATON.UI.createButton({
-            text   : "Delete All",
-            variant: "secondary",
-            icon   : "cancel",
-             onpress: () => THOTH.SVP.deleteSVPNodes(modelName),
-        })
-    ) 
-     const elTransformOptions = ATON.UI.createContainer();
-        elTransformOptions.append(
+    elTransformOptions.append(
         ATON.UI.createButton({
             text   : "Move",
             size   : "medium",
@@ -841,58 +793,31 @@ UI.createModelEditor = (modelName) => {
                 if (THOTH.transform) THOTH.transform.setMode("scale");
             })
         })
-    )
+    );
+
     const transformContent = ATON.UI.createContainer();
 
     transformContent.append(
-    elTransformOptions,
-    UI.modelTransformControl({
-
-        node    : modelName,
-        position: true,
-        scale   : true,
-        rotation: true
-    })
-); 
+        elTransformOptions,
+        UI.modelTransformControl({
+            node    : modelName,
+            position: true,
+            scale   : true,
+            rotation: true
+        })
+    );
 
     const elOptions = ATON.UI.createTreeGroup({
         items: [
-            {
-                title  : "Meshes",
-                open   : true,
-                content: UI.createMeshList(modelName)
-            },
-            {
-                title  : "Viewpoints",
-                open   : true,
-                content: elVPOptions
-            },
             {
                 title  : "Transform",
                 open   : true,
                 content: transformContent
             },
-            {
-                title  : "Artefact",
-                open   : false,
-                content: THOTH.Artefacts.createDetailsView(modelName)
-            },
-            {
-                title  : "Metadata",
-                open   : false,
-                content: ATON.UI.createButton({
-                    text   : "Edit Metadata",
-                    icon   : "list",
-                    size   : "small",
-                    tooltip: "Edit metadata",
-                    onpress: () => THOTH.requireAuth("edit metadata", () => {
-                        UI.modalModelMetadata(modelName);
-                    })
-                })
-            },
         ]
     });
-    elBody.append(elModelHead, elOptions);
+
+    elBody.append(elOptions);
     return elBody;
 };
 
