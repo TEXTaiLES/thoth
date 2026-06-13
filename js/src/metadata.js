@@ -14,11 +14,6 @@ MD.setup = () => {
     MD.schemaMap = MD.buildSchemaMap(THOTH.config.schemaListUrl);
 };
 
-MD.parseSceneMetadata = (data) => {
-    THOTH.sceneMetadata = MD.toCanonicalMetadata(data);
-};
-
-
 // Utils
 
 MD.buildSchemaMap = (schemaListUrl) => {
@@ -286,52 +281,6 @@ MD.validateSchema = (data) => {
     return MD._validateObjectSchema(data);
 };
 
-
-// Layers
-
-MD.changeLayerSchema = (layerId, schemaName) => {
-    const layer = THOTH.Selections?.getSelectionById(layerId);
-    if (!layer) return;
-
-    layer.metadata = MD.createMetadataRecord(schemaName, MD.getAttributes(layer.metadata));
-};
-
-MD.inheritLayerMedatataFromScene = (layerId) => {
-    const sceneMetadata = THOTH.sceneMetadata;
-    const layerMetadata = THOTH.Selections?.getSelectionById(layerId)?.metadata;
-    
-    let l = {
-        id      : layerId,
-        data    : sceneMetadata,
-        prevData: layerMetadata
-    };
-
-    THOTH.fire("editLayerMetadata", l);
-};
-
-MD.editLayerMetadata = (layerId, data) => {
-    if (layerId === undefined) return;
-    
-    const layer = THOTH.Selections?.getSelectionById(layerId);
-    if (!layer) return;
-    
-    layer.metadata = data;
-};  
-
-
-// Scene
-
-MD.changeSceneSchema = (schemaName) => {
-    THOTH.sceneMetadata = MD.createMetadataRecord(
-        schemaName,
-        MD.getAttributes(THOTH.sceneMetadata)
-    );
-}
-
-MD.editSceneMetadata = (data) => {
-    if (data === undefined) return;
-    THOTH.sceneMetadata = MD.toCanonicalMetadata(data);
-};
 
 MD.editModelMetadata = (modelId, data, prevData) => {
     if (!modelId || data === undefined) return;

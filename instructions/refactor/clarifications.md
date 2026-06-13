@@ -20,6 +20,8 @@ Use this file to record the resolved implementation decisions for the refactor. 
 
 **Answer:** No backward compatibility is necessary. If it complicates the code, do not include it.
 
+**Milestone 09 resolution:** Legacy top-level `layers`, `measurements`, `semantic_annotations`, `sceneMetadata`, and active `scenegraph` parser registration were removed from THOTH startup. Canonical runtime loading starts from `models`.
+
 ## 4. Measurement geodesic paths
 
 **Question:** Should geodesic paths be persisted in scene JSON, recomputed on load, or treated as runtime cache?
@@ -98,6 +100,8 @@ Use this file to record the resolved implementation decisions for the refactor. 
 
 **Answer:** Use "Selections" everywhere user-facing.
 
+**Milestone 09 resolution:** The legacy `THOTH.Layers` shim and active layer-named controller maps were removed. Remaining selection UI uses "Selections" wording.
+
 ## 17. Operation persistence
 
 **Question:** Should operations be persisted to the server as a log, or only applied to in-memory state and exported scene JSON?
@@ -109,4 +113,3 @@ Use this file to record the resolved implementation decisions for the refactor. 
 **Question:** After this file is answered, should Codex regenerate all numbered milestone files or only update files affected by changed answers?
 
 **Answer:** Regenerate all numbered milestone files so they remain self-contained and consistent.
-

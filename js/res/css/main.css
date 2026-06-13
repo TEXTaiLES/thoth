@@ -145,7 +145,7 @@
     background-color: rgba(var(--bs-body-bg-rgb), 1.0);
 }
 
-.deleted-layer {
+.deleted-selection {
     display: none;
 }
 

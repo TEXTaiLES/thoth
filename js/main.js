@@ -15,7 +15,6 @@ import Toolbox             from "./src/toolbox.js";
 import History             from "./src/history.js";
 import Events              from "./src/events.js";
 import SVP                 from "./src/svp.js";
-import Layers              from "./src/layers.js";
 import Selections          from "./src/selections.js";
 import Models              from "./src/models.js";
 import FE                  from "./src/fe.js";
@@ -49,7 +48,6 @@ THOTH.Events  = Events;
 THOTH.SVP     = SVP;
 THOTH.Models  = Models;
 THOTH.Selections = Selections;
-THOTH.Layers  = Layers;
 THOTH.FE      = FE;
 THOTH.MD      = MD;
 THOTH.Collab  = Collab;
@@ -104,31 +102,9 @@ THOTH.setup = () => {
         THOTH.Models.parseModels(THOTH.SceneStore.getScene().models);
     });
     
-    // Model parser
-    ATON.SceneHub.addSceneParser("scenegraph", scenegraph => {
-        THOTH.SceneStore.parseScene({ scenegraph });
-        THOTH.Models.parseSceneGraph(scenegraph)
-    });
-    // Layer parsers
-    ATON.SceneHub.addSceneParser("layers", layers => {
-        const modelId = THOTH.Selections?._getDefaultModelId();
-        THOTH.Layers.parseLayers(layers, modelId);
-    });
-    // Metadata parser
-    ATON.SceneHub.addSceneParser("sceneMetadata", data => {
-        THOTH.MD.parseSceneMetadata(data);
-    });
     // Init collaborative
     ATON.SceneHub.addSceneParser("collaborative", data => {
         THOTH.Collab.parseCollab(data);
-    });
-    // Measurement parser
-    ATON.SceneHub.addSceneParser("measurements", measurements => {
-        THOTH.MSR.parseMeasurements(measurements);
-    });
-    // Semantic annotation parser
-    ATON.SceneHub.addSceneParser("semantic_annotations", annotations => {
-        THOTH.SemAnnotations.parseAnnotations(annotations);
     });
     // Linked objects parser
     ATON.SceneHub.addSceneParser("linked_objects", linked_objects => {
@@ -150,8 +126,6 @@ THOTH.setup = () => {
         ATON.on("ConfigLoaded", () => {
             // Init selections
             THOTH.Selections.setup();
-            // Init layer shim
-            THOTH.Layers.setup();
             // Init models
             THOTH.Models.setup();
             // Init artefacts
@@ -275,8 +249,6 @@ THOTH.highlightSelection = (selection, highlightColor, modelName, meshName) => {
 THOTH.highlightAllSelections = () => {
     THOTH.Selections?.refreshAllHighlights();
 };
-
-THOTH.highlightAllLayers = THOTH.highlightAllSelections;
 
 THOTH.clearHighlights = () => {
     for (const modelName of THOTH.Models.modelMap.keys()) {
@@ -503,7 +475,7 @@ THOTH.onLogin = (u) => {
 
     // Allow events
     THOTH.Events.setupPhotonEvents();
-    THOTH.Events.setupLayerEvents();
+    THOTH.Events.setupSelectionEvents();
     THOTH.Events.setupModelEvents();
     THOTH.Events.setupMeasurementEvents();
     THOTH.Events.setupSemanticAnnotationEvents();

@@ -119,13 +119,6 @@ Selections._applyLocal = (type, modelId, selectionId, value, prevValue, field) =
     return THOTH.Ops.applyLocal(operation);
 };
 
-Selections._syncLayerShim = () => {
-    if (!THOTH.Layers) return;
-
-    THOTH.Layers.layerMap = Selections.selectionMap;
-    THOTH.Layers.activeLayer = Selections.activeSelection;
-};
-
 
 // Runtime mutation
 
@@ -138,9 +131,7 @@ Selections.applySelectionData = (modelId, selectionId, data = {}) => {
     Selections.selectionMap.set(Selections._makeKey(modelId, selectionId), selection);
     THOTH.SceneStore?.setModelCollectionItem(modelId, "selections", selectionId, selection);
 
-    if (THOTH.FE?.addNewLayer) THOTH.FE.addNewLayer(selectionId, modelId);
-
-    Selections._syncLayerShim();
+    if (THOTH.FE?.addNewSelection) THOTH.FE.addNewSelection(selectionId, modelId);
     Selections.refreshHighlights(modelId);
 
     return selection;
@@ -155,7 +146,7 @@ Selections.deleteSelection = (modelId, selectionId) => {
         Selections.setActiveSelection(null, null);
     }
 
-    if (THOTH.FE?.deleteLayer) THOTH.FE.deleteLayer(selectionId, modelId);
+    if (THOTH.FE?.deleteSelection) THOTH.FE.deleteSelection(selectionId, modelId);
     Selections.refreshHighlights(modelId);
 };
 
@@ -192,8 +183,7 @@ Selections.createSelection = (modelId, data = {}) => {
 Selections.setActiveSelection = (modelId, selectionId) => {
     if (modelId === null || selectionId === null) {
         Selections.activeSelection = undefined;
-        Selections._syncLayerShim();
-        THOTH.FE?.handleElementHighlight(null, THOTH.FE.layerMap);
+        THOTH.FE?.handleElementHighlight(null, THOTH.FE.selectionControllerMap);
         return;
     }
 
@@ -202,10 +192,9 @@ Selections.setActiveSelection = (modelId, selectionId) => {
     if (!selection || selection.trash) return;
 
     Selections.activeSelection = selection;
-    Selections._syncLayerShim();
     THOTH.FE?.handleElementHighlight(
         Selections._makeKey(selection.model_id, selection.id),
-        THOTH.FE.layerMap
+        THOTH.FE.selectionControllerMap
     );
 };
 

@@ -23,6 +23,8 @@ The implementation must preserve the working ATON integration and existing visua
 - Keep local JSON download as the default export path.
 - Keep all THOTH modules under `wapps/thoth/js/src`.
 - Do not modify ATON internals.
+- Milestone 09 removed the legacy `THOTH.Layers` shim, legacy top-level annotation parsers, scene-level metadata UI/runtime paths, and active `scenegraph` parser registration. Runtime import is canonical `models` data.
+- Milestone 09 added a lightweight browser-independent Node acceptance test for canonical scene export, annotation normalization, operation inversion, and missing API endpoint behavior.
 
 ## Development Order
 
@@ -96,4 +98,4 @@ The refactor is complete when:
 - Unauthenticated users cannot mutate scene state or export.
 - Missing endpoint URLs fail with clear UI messages.
 - The right-side scene structure UI is the primary object navigation surface.
-
+- Static cleanup review has no active THOTH JS references to the retired layer shim, numeric history constants, old Photon mutation events, or scene-level metadata.

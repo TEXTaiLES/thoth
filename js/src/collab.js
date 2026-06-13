@@ -15,8 +15,6 @@ Collab.syncScene = (sobj) => {
     // Clear existing scene items
     THOTH.Selections.selectionMap = new Map();
     THOTH.Selections.activeSelection = undefined;
-    THOTH.Layers.layerMap = THOTH.Selections.selectionMap;
-    THOTH.Layers.activeLayer = undefined;
     THOTH.Models.modelMap = new Map();
     THOTH.SceneStore?.parseScene(sobj);
     if (THOTH.SemAnnotations.nodes) {
@@ -29,9 +27,8 @@ Collab.syncScene = (sobj) => {
     THOTH.MSR.msrSemMap = new Map();
     THOTH.SemAnnotations.semMap = new Map();
     THOTH.SemAnnotations.semNodeMap = new Map();
-    THOTH.sceneMetadata   = {};
     // Reset FE
-    THOTH.FE.setupLayerElements();
+    THOTH.FE.setupSelectionElements();
     THOTH.FE.setupModelElements();
     THOTH.FE.setupMsrElements();
     THOTH.FE.setupSemAnnotationElements();

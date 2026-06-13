@@ -407,7 +407,7 @@ UI.createColorPicker = (options) => {
     return el;
 };
 
-UI.createLayerStructureBlock = () => {
+UI.createSelectionStructureBlock = () => {
     const elBlock = ATON.UI.createContainer({
         classes: "border rounded-2 bg-body mt-2 mb-2 shadow-sm overflow-hidden"
     });
@@ -420,7 +420,7 @@ UI.createLayerStructureBlock = () => {
     });
     elHeader.append(ATON.UI.createButton({
         text: "Selection Structure",
-        icon: "layers",
+        icon: "collection-item",
         size: "small"
     }));
 
@@ -570,29 +570,23 @@ UI.createModelController = (modelName) => {
 UI.createSceneController = () => {
     const elController = UI.createSplitRow({
         classes   : "bg-body-secondary",
-        colLeft   : 7,
+        colLeft   : 12,
         itemsLeft : ATON.UI.createButton({
             text: "Scene",
             icon: "scene",
             size: "small"
-        }),
-        itemsRight: ATON.UI.createButton({
-            text   : "Scene Metadata",
-            icon   : "list",
-            size   : "small",
-            onpress: () => UI.modalSceneMetadata(),
-        }),
+        })
     });
     return elController;
 };
 
-UI.createLayerController = (layerId, modelId) => {
+UI.createSelectionController = (selectionId, modelId) => {
     const elLeft  = ATON.UI.createContainer();
     const elRight = ATON.UI.createContainer();
     
-    const layer = THOTH.Selections.getSelection(modelId, layerId);
-    const selectionKey = THOTH.Selections._makeKey(modelId, layerId);
-    const faceCount = THOTH.Selections.getFaceCount(layer);
+    const selection = THOTH.Selections.getSelection(modelId, selectionId);
+    const selectionKey = THOTH.Selections._makeKey(modelId, selectionId);
+    const faceCount = THOTH.Selections.getFaceCount(selection);
     
     // Name
     elLeft.classList.add("d-flex", "align-items-center");
@@ -601,9 +595,9 @@ UI.createLayerController = (layerId, modelId) => {
         ATON.UI.createButton({
             icon   : "visibility",
             size   : "small",
-            onpress: () => THOTH.Selections.updateVisibility(modelId, layerId, layer.visible === false),
+            onpress: () => THOTH.Selections.updateVisibility(modelId, selectionId, selection.visible === false),
         }),
-        THOTH.FE.layerNameMap.get(selectionKey),
+        THOTH.FE.selectionNameMap.get(selectionKey),
         (() => {
             const faceCountBtn = ATON.UI.createButton({
                 text: `${faceCount} faces`,
@@ -614,23 +608,23 @@ UI.createLayerController = (layerId, modelId) => {
         })(),
     );
     let elCP = UI.createColorPicker({
-        color  : layer.selection_color,
-        id     : `layer${layerId}CP`,
+        color  : selection.selection_color,
+        id     : `selection${selectionId}CP`,
         oninput: (color) => {
-            layer.selection_color = color;
-            layer.annotation.selection_color = color;
+            selection.selection_color = color;
+            selection.annotation.selection_color = color;
             THOTH.updateVisibility();
         },
         onchange: (color) => {
-            THOTH.Selections.updateSelection(modelId, layerId, {
+            THOTH.Selections.updateSelection(modelId, selectionId, {
                 annotation: {
-                    ...layer.annotation,
+                    ...selection.annotation,
                     selection_color: color
                 }
             }, "selection_color");
         },
     });
-    elCP.id = `layer${layerId}CP`;
+    elCP.id = `selection${selectionId}CP`;
     elRight.classList.add("d-flex", "justify-content-end", "align-items-center", "gap-1");
     elRight.append(
         // Metadata
@@ -638,14 +632,14 @@ UI.createLayerController = (layerId, modelId) => {
             icon   : "list",
             size   : "small",
             tooltip: "Edit selection",
-            onpress: () => UI.modalLayerDetails(layerId),
+            onpress: () => UI.modalSelectionDetails(selectionId),
         }),
         elCP,
         // Delete
         ATON.UI.createButton({
             icon   : ATON.PATH_RES + "icons/trash.png",
             size   : "small",
-            onpress: () => THOTH.fire("deleteLayer", (layerId))
+            onpress: () => THOTH.fire("deleteSelection", (selectionId))
         }),
     );
     
@@ -2041,39 +2035,31 @@ UI.createSchemaSelector = (schemaName, onapply) => {
     return elBody;
 };
 
-UI.modalLayerDetails = (layerId, data_temp) => {
-    const layer = THOTH.Selections.getSelectionById(layerId);
-    if (layer === undefined || layer.trash) return;
+UI.modalSelectionDetails = (selectionId, data_temp) => {
+    const selection = THOTH.Selections.getSelectionById(selectionId);
+    if (selection === undefined || selection.trash) return;
 
-    if (data_temp === undefined) data_temp = THOTH.MD.toCanonicalMetadata(layer.metadata || {});
+    if (data_temp === undefined) data_temp = THOTH.MD.toCanonicalMetadata(selection.metadata || {});
     
     if (!THOTH.MD.getSchemaName(data_temp)) {
         data_temp = THOTH.MD.createMetadataRecord(THOTH.MD.getDefaultSchemaName(), {});
     }
 
     const schemaName = THOTH.MD.getSchemaName(data_temp);
-    const prev_data  = structuredClone(layer) || {};
+    const prev_data  = structuredClone(selection) || {};
     const schema     = THOTH.MD.schemaMap.get(schemaName);
     const attributes = THOTH.MD.getAttributes(data_temp);
-    const annotationTemp = THOTH.Annotations?.normalize(layer) || structuredClone(layer);
+    const annotationTemp = THOTH.Annotations?.normalize(selection) || structuredClone(selection);
 
     const metadataBody = ATON.UI.createContainer({classes: "row g-0 w-100"});
     metadataBody.append(
-        ATON.UI.createButton({
-            text   : "Inherit from Scene",
-            variant: "info",
-            onpress: () => {
-                data_temp = structuredClone(THOTH.sceneMetadata);
-                UI.modalLayerDetails(layerId, data_temp);
-            }
-        }),
         UI.createMetadataEditor(schema, attributes),
     )
 
-    const elLayerActions = ATON.UI.createContainer({classes: "d-flex justify-content-end align-items-center gap-2"});
-    elLayerActions.append(
+    const elSelectionActions = ATON.UI.createContainer({classes: "d-flex justify-content-end align-items-center gap-2"});
+    elSelectionActions.append(
         UI.createColorPicker({
-            color: layer.selection_color,
+            color: selection.selection_color,
             onchange: (c) => {
                 annotationTemp.annotation.selection_color = c;
                 THOTH.updateVisibility();
@@ -2084,20 +2070,20 @@ UI.modalLayerDetails = (layerId, data_temp) => {
             tooltip: "Delete selection",
             icon   : ATON.PATH_RES + "icons/trash.png",
             onpress: () => {
-                THOTH.fire("deleteLayer", (layerId));
+                THOTH.fire("deleteSelection", (selectionId));
                 ATON.UI.hideModal();
             }
         }),
     );
 
-    const elLayerInfo = UI.createSplitRow({
+    const elSelectionInfo = UI.createSplitRow({
         colLeft: 8,
         itemsLeft: ATON.UI.createButton({
-            text   : layer.name || `Selection ${layerId}`,
-            icon   : "layers",
+            text   : selection.name || `Selection ${selectionId}`,
+            icon   : "collection-item",
             onpress: () => {}
         }),
-        itemsRight: elLayerActions,
+        itemsRight: elSelectionActions,
     });
     
     // Body
@@ -2107,7 +2093,7 @@ UI.modalLayerDetails = (layerId, data_temp) => {
             {
                 title  : "Selection details",
                 open   : true,
-                content: elLayerInfo
+                content: elSelectionInfo
             },
             ...UI.createAnnotationSharedItems(annotationTemp, {
                 visibility: true
@@ -2119,7 +2105,7 @@ UI.modalLayerDetails = (layerId, data_temp) => {
                 content: UI.createSchemaSelector(schemaName, (v) => {
                     if (v !== schemaName) {
                         data_temp = THOTH.MD.createPropertiesfromSchema(v);
-                        UI.modalLayerDetails(layerId, data_temp);
+                        UI.modalSelectionDetails(selectionId, data_temp);
                     }
                 })
             },
@@ -2137,8 +2123,8 @@ UI.modalLayerDetails = (layerId, data_temp) => {
             const sharedData = UI.collectAnnotationSharedFields(annotationTemp);
             if (!sharedData) return;
 
-            THOTH.fire("editLayerMetadata", {
-                id            : layerId,
+            THOTH.fire("editSelectionMetadata", {
+                id            : selectionId,
                 data          : data_temp,
                 annotationData: sharedData,
                 prevData      : prev_data
@@ -2149,7 +2135,7 @@ UI.modalLayerDetails = (layerId, data_temp) => {
     });
 
     ATON.UI.showModal({
-        header: `Edit selection with id: ${layerId}`,
+        header: `Edit selection with id: ${selectionId}`,
         body  : elBody,
         footer: elFooter,
         wide  : true,
@@ -2206,61 +2192,6 @@ UI.modalModelMetadata = (modelId, data_temp) => {
         wide  : true,
     });
 };
-
-UI.modalSceneMetadata = (data_temp) => {
-    if (data_temp === undefined) data_temp = THOTH.MD.toCanonicalMetadata(THOTH.sceneMetadata || {});
-    
-    if (!THOTH.MD.getSchemaName(data_temp)) {
-        data_temp = THOTH.MD.createMetadataRecord(THOTH.MD.getDefaultSchemaName(), {});
-    }
-
-    const schemaName = THOTH.MD.getSchemaName(data_temp);
-    const prev_data  = THOTH.sceneMetadata || {};
-    const schema     = THOTH.MD.schemaMap.get(schemaName);
-    const attributes = THOTH.MD.getAttributes(data_temp);
-
-    // Body
-    const elBody = ATON.UI.createTreeGroup({
-        items: [
-            // Schema
-            {
-                title  : "Metadata schema",
-                open   : true,
-                content: UI.createSchemaSelector(schemaName, (v) => {
-                    if (v !== schemaName) {
-                        data_temp = THOTH.MD.createPropertiesfromSchema(v);
-                        UI.modalSceneMetadata(data_temp);
-                    }
-                })
-            },
-            // Metadata
-            {
-                title  : "Metadata",
-                open   : true,
-                content: UI.createMetadataEditor(schema, attributes),
-            }
-        ]
-    });    
-
-    // Footer
-    const elFooter = UI.createModalFooter({
-        onsuccess: () => {
-            THOTH.fire("editSceneMetadata", {
-                data    : data_temp,
-                prevData: prev_data
-            });
-            ATON.UI.hideModal();
-        },
-        successText: "Save changes"
-    });
-
-    ATON.UI.showModal({
-        header: `Edit scene metadata`,
-        body  : elBody,
-        footer: elFooter,
-        wide  : true,
-    });
-};  
 
 UI.createModalFooter = (options) => {
     const elFooter = ATON.UI.createContainer();

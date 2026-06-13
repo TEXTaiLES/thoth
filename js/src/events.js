@@ -15,11 +15,10 @@ Events.authRequiredEvents = new Map([
     [ "modelTransformPos", "edit transforms" ],
     [ "modelTransformRot", "edit transforms" ],
     [ "modelTransformScale", "edit transforms" ],
-    [ "createLayer", "create selections" ],
-    [ "deleteLayer", "delete selections" ],
-    [ "editLayerMetadata", "edit metadata" ],
-    [ "renameLayer", "edit selections" ],
-    [ "editSceneMetadata", "edit metadata" ],
+    [ "createSelection", "create selections" ],
+    [ "deleteSelection", "delete selections" ],
+    [ "editSelectionMetadata", "edit metadata" ],
+    [ "renameSelection", "edit selections" ],
     [ "selectMeasure", "create measurements" ],
     [ "addMeasurementPoint", "create measurements" ],
     [ "createMeasurement", "create measurements" ],
@@ -71,8 +70,8 @@ Events.getPointModelId = (point) => {
     return Events.getDefaultModelId();
 };
 
-Events.getLayerData = (layerId) => {
-    return Events.clone(THOTH.Selections?.getSelectionById(layerId));
+Events.getSelectionData = (selectionId) => {
+    return Events.clone(THOTH.Selections?.getSelectionById(selectionId));
 };
 
 Events.mergeSelection = (baseSelection = {}, selection = {}, mode = "add") => {
@@ -96,8 +95,8 @@ Events.mergeSelection = (baseSelection = {}, selection = {}, mode = "add") => {
     return nextSelection;
 };
 
-Events.applySelectionEdit = (layerId, selection, mode) => {
-    const prevData = Events.getLayerData(layerId);
+Events.applySelectionEdit = (selectionId, selection, mode) => {
+    const prevData = Events.getSelectionData(selectionId);
     if (!prevData) return;
 
     const modelId = Object.keys(selection)[0] || prevData.model_id || Events.getDefaultModelId();
@@ -117,11 +116,11 @@ Events.applySelectionEdit = (layerId, selection, mode) => {
     };
 
     Events.applyLocal("selection.update", {
-        model_id  : modelId,
-        collection: "selections",
-        item_id   : layerId,
-        field     : "selected_faces"
-    }, data, prevData);
+            model_id  : modelId,
+            collection: "selections",
+            item_id   : selectionId,
+            field     : "selected_faces"
+        }, data, prevData);
 };
 
 Events.getMeasurementData = (measurementId) => {
@@ -224,7 +223,7 @@ Events.setupActiveEL = () => {
         }
         // Brush
         if (THOTH.Toolbox.brushEnabled) {
-            if (!Events.activeLayerExists()) {
+            if (!Events.activeSelectionExists()) {
                 THOTH.FE.showToast("No Selection Selected");
                 return;
             }
@@ -233,7 +232,7 @@ Events.setupActiveEL = () => {
         }
         // Eraser
         if (THOTH.Toolbox.eraserEnabled) {
-            if (!Events.activeLayerExists()) {
+            if (!Events.activeSelectionExists()) {
                 THOTH.FE.showToast("No Selection Selected");
                 return;
             }
@@ -242,7 +241,7 @@ Events.setupActiveEL = () => {
         }
         // Lasso
         if (THOTH.Toolbox.lassoEnabled) {
-            if (!Events.activeLayerExists()) {
+            if (!Events.activeSelectionExists()) {
                 THOTH.FE.showToast("No Selection Selected");
                 return;
             }
@@ -250,7 +249,7 @@ Events.setupActiveEL = () => {
         }
     });
     THOTH.on("MouseLeftUp", () => {
-        if (!Events.activeLayerExists()) return;
+        if (!Events.activeSelectionExists()) return;
         
         // Brush
         if (THOTH.Toolbox.brushEnabled) {
@@ -270,7 +269,7 @@ Events.setupActiveEL = () => {
     THOTH.on("MouseRightDown", () => {
         // Brush
         if (THOTH.Toolbox.brushEnabled) {
-            if (!Events.activeLayerExists()) {
+            if (!Events.activeSelectionExists()) {
                 THOTH.FE.showToast("No Selection Selected");
                 return;
             }
@@ -278,7 +277,7 @@ Events.setupActiveEL = () => {
         }
         // Eraser
         if (THOTH.Toolbox.eraserEnabled) {
-            if (!Events.activeLayerExists()) {
+            if (!Events.activeSelectionExists()) {
                 THOTH.FE.showToast("No Selection Selected");
                 return;
             }
@@ -286,7 +285,7 @@ Events.setupActiveEL = () => {
         }
         // Lasso
         if (THOTH.Toolbox.lassoEnabled) {
-            if (!Events.activeLayerExists()) {
+            if (!Events.activeSelectionExists()) {
                 THOTH.FE.showToast("No Selection Selected");
                 return;
             }
@@ -294,7 +293,7 @@ Events.setupActiveEL = () => {
         }
     });
     THOTH.on("MouseRightUp", (e) => {
-        if (!Events.activeLayerExists()) return;
+        if (!Events.activeSelectionExists()) return;
 
         // Brush
         if (THOTH.Toolbox.brushEnabled) {
@@ -319,7 +318,7 @@ Events.setupActiveEL = () => {
         THOTH.Toolbox.moveSelector();
         THOTH.Toolbox.getPixelPointerCoords(e);
         
-        if (!Events.activeLayerExists()) return;
+        if (!Events.activeSelectionExists()) return;
         
         if (THOTH._bLeftMouseDown) {
             // Brush
@@ -618,18 +617,18 @@ Events.setupSemanticAnnotationEvents = () => {
     });
 };
 
-Events.setupLayerEvents = () => {
-    // Create/Delet
-    THOTH.on("createLayer", (data) => {
+Events.setupSelectionEvents = () => {
+    // Create/Delete
+    THOTH.on("createSelection", (data) => {
         const modelId = data?.modelId || Events.getDefaultModelId();
-        const layerId = THOTH.Selections.getNextSelectionId(modelId);
-        const layerData = {
-            id        : layerId,
+        const selectionId = THOTH.Selections.getNextSelectionId(modelId);
+        const selectionData = {
+            id        : selectionId,
             name      : "New Selection",
             metadata  : {},
             annotation: {
                 selected_faces : {},
-                selection_color: THOTH.Utils.getHighlightColor(layerId)
+                selection_color: THOTH.Utils.getHighlightColor(selectionId)
             },
             visible   : true,
             trash     : false
@@ -638,25 +637,25 @@ Events.setupLayerEvents = () => {
         Events.applyLocal("selection.create", {
             model_id  : modelId,
             collection: "selections",
-            item_id   : layerId
-        }, layerData);
-        THOTH.Selections.setActiveSelection(modelId, layerId);
+            item_id   : selectionId
+        }, selectionData);
+        THOTH.Selections.setActiveSelection(modelId, selectionId);
     });
-    THOTH.on("deleteLayer", (layerId) => {
-        const prevData = Events.getLayerData(layerId);
+    THOTH.on("deleteSelection", (selectionId) => {
+        const prevData = Events.getSelectionData(selectionId);
         if (!prevData) return;
 
         Events.applyLocal("selection.delete", {
-            model_id  : prevData.model_id || Events.getAnnotationModelId("selections", layerId),
+            model_id  : prevData.model_id || Events.getAnnotationModelId("selections", selectionId),
             collection: "selections",
-            item_id   : layerId
+            item_id   : selectionId
         }, null, prevData);
     });
-    // Edit layer data
-    THOTH.on("editLayerMetadata", (l) => {
-        const layerId  = l.id;
+    // Edit selection data
+    THOTH.on("editSelectionMetadata", (l) => {
+        const selectionId  = l.id;
         const data     = l.data;
-        const currentData = Events.getLayerData(layerId);
+        const currentData = Events.getSelectionData(selectionId);
         const prevData = l.prevData?.id !== undefined ? l.prevData : currentData;
         if (!prevData) return;
 
@@ -667,16 +666,16 @@ Events.setupLayerEvents = () => {
         };
 
         Events.applyLocal("selection.update", {
-            model_id  : prevData.model_id || Events.getAnnotationModelId("selections", layerId),
+            model_id  : prevData.model_id || Events.getAnnotationModelId("selections", selectionId),
             collection: "selections",
-            item_id   : layerId,
+            item_id   : selectionId,
             field     : "metadata"
         }, nextData, prevData);
     });
-    THOTH.on("renameLayer", (l) => {
+    THOTH.on("renameSelection", (l) => {
         const id   = l.id;
         const data = l.data;
-        const prevData = l.prevData || Events.getLayerData(id);
+        const prevData = l.prevData || Events.getSelectionData(id);
         if (!prevData) return;
 
         Events.applyLocal("selection.update", {
@@ -689,12 +688,7 @@ Events.setupLayerEvents = () => {
             name: data
         }, prevData);
     });
-    THOTH.on("editSceneMetadata", (l) => {
-        const data     = l.data;
-        THOTH.MD.editSceneMetadata(data);
-    });
-
-    // Layer keybinds
+    // Selection keybinds
     THOTH.on("KeyDown", (k) => {
         // Ignore if modal
         if (ATON.UI._bModal) return;
@@ -702,15 +696,12 @@ Events.setupLayerEvents = () => {
         // Selections
         if (k.startsWith("Digit")) {
             const id = Number(k.replace("Digit", ""));
-            if (THOTH._bShiftDown) THOTH.UI.modalLayerDetails(id);
+            if (THOTH._bShiftDown) THOTH.UI.modalSelectionDetails(id);
             else THOTH.Selections.setActiveSelection(undefined, id);
         }
         if (k === "KeyN") {
-            if (THOTH._bShiftDown) THOTH.fire("createLayer");
+            if (THOTH._bShiftDown) THOTH.fire("createSelection");
             else THOTH.fire("selectNone");
-        }
-        if (k === "KeyS") {
-            if (THOTH._bShiftDown) THOTH.UI.modalSceneMetadata();
         }
     });
 };
@@ -914,12 +905,12 @@ Events.setupToolboxEvents = () => {
         
         // Get only faces that don't already belong to selection
         const activeSelection = THOTH.Selections.getActiveSelection();
-        const layerId   = activeSelection.id;
+        const selectionId = activeSelection.id;
         const selection = THOTH.Toolbox.endBrush();
         
         if (Object.keys(selection).length === 0) return;
 
-        Events.applySelectionEdit(layerId, selection, "add");
+        Events.applySelectionEdit(selectionId, selection, "add");
 
         THOTH.Toolbox.tempSelection = null;
     });
@@ -949,13 +940,13 @@ Events.setupToolboxEvents = () => {
         
         // Get only faces that already belong to selection
         const activeSelection = THOTH.Selections.getActiveSelection();
-        const layerId   = activeSelection.id;
+        const selectionId = activeSelection.id;
         const selection = THOTH.Toolbox.endEraser();
         
         // Return if selection is empty
         if (Object.keys(selection).length === 0) return;
         
-        Events.applySelectionEdit(layerId, selection, "delete");
+        Events.applySelectionEdit(selectionId, selection, "delete");
 
         THOTH.Toolbox.tempSelection = null;
     });
@@ -963,12 +954,12 @@ Events.setupToolboxEvents = () => {
         if (!THOTH.Toolbox.enabled || THOTH.Toolbox.paused) return;
 
         const activeSelection = THOTH.Selections.getActiveSelection();
-        const layerId   = activeSelection.id;
+        const selectionId = activeSelection.id;
         const selection = THOTH.Toolbox.endLassoAdd();
 
         if (Object.keys(selection).length === 0) return;
 
-        Events.applySelectionEdit(layerId, selection, "add");
+        Events.applySelectionEdit(selectionId, selection, "add");
 
         THOTH.Toolbox.tempSelection = null;
     });
@@ -976,12 +967,12 @@ Events.setupToolboxEvents = () => {
         if (!THOTH.Toolbox.enabled || THOTH.Toolbox.paused) return;
 
         const activeSelection = THOTH.Selections.getActiveSelection();
-        const layerId   = activeSelection.id;
+        const selectionId = activeSelection.id;
         const selection = THOTH.Toolbox.endLassoDel();
 
         if (Object.keys(selection).length === 0) return;
 
-        Events.applySelectionEdit(layerId, selection, "delete");
+        Events.applySelectionEdit(selectionId, selection, "delete");
 
         THOTH.Toolbox.tempSelection = null;
     });
@@ -1014,7 +1005,7 @@ Events.setupCollaborativeEvents = () => {
 
 // Utils
 
-Events.activeLayerExists = () => {
+Events.activeSelectionExists = () => {
     if (THOTH.Selections?.getActiveSelection() === undefined) return false;
     else return true;
 };

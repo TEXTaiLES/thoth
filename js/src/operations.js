@@ -116,12 +116,12 @@ Ops._applySelectionRuntime = (action, modelId, itemId, value) => {
         if (!selection) return;
 
         if (value.name !== undefined) {
-            const layerNameBtn = THOTH.FE.layerNameMap.get(THOTH.Selections._makeKey(selection.model_id, itemId));
-            if (layerNameBtn) layerNameBtn.textContent = value.name;
+            const selectionNameBtn = THOTH.FE.selectionNameMap.get(THOTH.Selections._makeKey(selection.model_id, itemId));
+            if (selectionNameBtn) selectionNameBtn.textContent = value.name;
         }
         if (value.visible !== undefined) {
-            const layerController = THOTH.FE.layerMap.get(THOTH.Selections._makeKey(selection.model_id, itemId));
-            THOTH.FE.toggleControllerVisibility(layerController, value.visible);
+            const selectionController = THOTH.FE.selectionControllerMap.get(THOTH.Selections._makeKey(selection.model_id, itemId));
+            THOTH.FE.toggleControllerVisibility(selectionController, value.visible);
         }
         return;
     }

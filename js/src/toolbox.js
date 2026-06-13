@@ -273,7 +273,7 @@ Toolbox.endBrush = () => {
     const activeSelection = THOTH.Selections?.getActiveSelection();
     if (!activeSelection) return {};
 
-    // Get only faces that don't already belong to layer
+    // Get only faces that don't already belong to the selection
     for (const model of Object.keys(Toolbox.tempSelection)) {
         if (model !== activeSelection.model_id) {
             delete Toolbox.tempSelection[model];
@@ -283,12 +283,12 @@ Toolbox.endBrush = () => {
         const selectedFaces = THOTH.Selections._getFaces(activeSelection);
         
         for (const mesh of Object.keys(Toolbox.tempSelection[model])) {
-            const activeLayerSelection = new Set(selectedFaces[mesh] || []);
+            const activeSelectionFaces = new Set(selectedFaces[mesh] || []);
             
             if (Toolbox.tempSelection[model][mesh].size === 0) continue;
             
             Toolbox.tempSelection[model][mesh] = 
-            [...Toolbox.tempSelection[model][mesh]].filter(f => !activeLayerSelection.has(f));
+            [...Toolbox.tempSelection[model][mesh]].filter(f => !activeSelectionFaces.has(f));
         }
     }
     return Toolbox.tempSelection;
@@ -298,7 +298,7 @@ Toolbox.endEraser = () => {
     const activeSelection = THOTH.Selections?.getActiveSelection();
     if (!activeSelection) return {};
 
-    // Get only faces that already belong to layer
+    // Get only faces that already belong to the selection
     for (const model of Object.keys(Toolbox.tempSelection)) {
         if (model !== activeSelection.model_id) {
             delete Toolbox.tempSelection[model];
@@ -308,12 +308,12 @@ Toolbox.endEraser = () => {
         const selectedFaces = THOTH.Selections._getFaces(activeSelection);
         
         for (const mesh of Object.keys(Toolbox.tempSelection[model])) {
-            const activeLayerSelection = new Set(selectedFaces[mesh] || []);
+            const activeSelectionFaces = new Set(selectedFaces[mesh] || []);
             
             if (Toolbox.tempSelection[model][mesh].size === 0) continue;
 
             Toolbox.tempSelection[model][mesh] =
-            [...Toolbox.tempSelection[model][mesh]].filter(f => activeLayerSelection.has(f));
+            [...Toolbox.tempSelection[model][mesh]].filter(f => activeSelectionFaces.has(f));
         }
     }
     return Toolbox.tempSelection;
@@ -368,7 +368,7 @@ Toolbox.endLassoAdd = () => {
 
     const tempSelection = {}
     
-    // Get only faces that don't already belong to the layer
+    // Get only faces that don't already belong to the selection
     const modelName = activeSelection.model_id;
     const meshes = THOTH.Models.getModelMeshes(modelName);
     if (!meshes) {
@@ -382,10 +382,10 @@ Toolbox.endLassoAdd = () => {
         const newFaces = Toolbox.processLassoSelection(mesh);
         if (newFaces === undefined || newFaces?.length === 0) continue;
         
-        const activeLayerSelection = new Set(selectedFaces[meshName] || []);
+        const activeSelectionFaces = new Set(selectedFaces[meshName] || []);
         
         tempSelection[modelName] = tempSelection[modelName] || {};
-        tempSelection[modelName][meshName] = [...newFaces.filter(f => !activeLayerSelection.has(f))];
+        tempSelection[modelName][meshName] = [...newFaces.filter(f => !activeSelectionFaces.has(f))];
     }
     Toolbox.cleanupLasso();
     Toolbox._lassoIsActive = false;
@@ -399,7 +399,7 @@ Toolbox.endLassoDel = () => {
 
     const tempSelection = {}
     
-    // Get only faces that don't already belong to the layer
+    // Get only faces that already belong to the selection
     const modelName = activeSelection.model_id;
     const meshes = THOTH.Models.getModelMeshes(modelName);
     if (!meshes) {
@@ -413,10 +413,10 @@ Toolbox.endLassoDel = () => {
         const newFaces = Toolbox.processLassoSelection(mesh);
         if (newFaces === undefined || newFaces?.length === 0) continue;
         
-        const activeLayerSelection = new Set(selectedFaces[meshName] || []);
+        const activeSelectionFaces = new Set(selectedFaces[meshName] || []);
         
         tempSelection[modelName] = tempSelection[modelName] || {};
-        tempSelection[modelName][meshName] = [...newFaces.filter(f => activeLayerSelection.has(f))];
+        tempSelection[modelName][meshName] = [...newFaces.filter(f => activeSelectionFaces.has(f))];
     }
     Toolbox.cleanupLasso();
     Toolbox._lassoIsActive = false;
