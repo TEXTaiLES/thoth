@@ -18,6 +18,7 @@ FE.setup = () => {
     // General
     FE.topToolbar    = FE.setupTopToolbar();
     FE.userToolbar   = FE.setupUserToolbar();
+    FE.rightToolbar  = FE.setupRightToolbar();
     FE.settingsPanel = FE.setupSettingsPanel();
     FE.sensorPanel   = FE.setupSensorPanel();
 
@@ -25,6 +26,7 @@ FE.setup = () => {
     FE.setupModelElements();
     FE.setupMsrElements();
     FE.setupSemAnnotationElements();
+    FE.refreshSceneTree();
 
     // Toast
     FE.toast = FE.createToast();
@@ -81,12 +83,14 @@ FE.setupToolboxElements = () => {
     }
 
     FE.syncAuthControls();
+    FE.refreshSceneTree();
 };
 
 FE.syncAuthControls = () => {
     const isAuthenticated = THOTH.isAuthenticated?.() === true;
     const controls = [
         FE.exportButton,
+        FE.addModelButton,
         FE.toolMap?.get("measure"),
         FE.toolMap?.get("semantic"),
         FE.toolMap?.get("brush"),
@@ -277,6 +281,13 @@ FE.setupMsrList = (msrMap) => {
 FE.setupTopToolbar = () => {
     const topToolbar = ATON.UI.get("topToolbar");
 
+    FE.addModelButton = ATON.UI.createButton({
+        icon   : "add",
+        text   : "Add model",
+        tooltip: "Add model",
+        onpress: () => THOTH.requireAuth("import models", () => THOTH.UI.modalAddModel()),
+    });
+
     topToolbar.append(
         // TEXTaiLES
         ATON.UI.createButton({
@@ -285,56 +296,7 @@ FE.setupTopToolbar = () => {
             onpress : () => window.open("https://www.echoes-eccch.eu/textailes/", "_blank"),
             tooltip : "Go to the TEXTaiLES website"
         }),
-        // Scene
-        ATON.UI.createButton({
-            icon   : 'scene',
-            text   : "Models",
-            onpress: () => ATON.UI.showSidePanel({
-                header: "Scene",
-                body  : FE.modelsPanel
-            }),
-            tooltip: "Models options"
-        }),
-        // Selections
-        ATON.UI.createButton({
-            icon   : "layers",
-            text   : "Selections",
-            onpress: () => ATON.UI.showSidePanel({
-                header: "Selections",
-                body  : FE.layersPanel
-            }),
-            tooltop : "Selections"
-        }),
-        // msr
-        ATON.UI.createButton({
-            icon   : "measure",
-            text   : "Measurements",
-            onpress: () => ATON.UI.showSidePanel({
-                header: "Measurements",
-                body: FE.msrPanel
-            }),
-            tooltip: "Measurements"
-        }),
-        // Semantics
-        ATON.UI.createButton({
-            icon   : "list",
-            text   : "Semantics",
-            onpress: () => ATON.UI.showSidePanel({
-                header: "Semantic Annotations",
-                body  : FE.semPanel
-            }),
-            tooltip: "Semantic annotations"
-        }),
-        // Sensors
-        ATON.UI.createButton({
-            icon   : "light",
-            text   : "Sensors ",
-            onpress: () => ATON.UI.showSidePanel({
-                header: "Sensor Stream",
-                body  : FE.sensorPanel
-            }),
-            tooltop : "Sensor Data"
-        }), 
+        FE.addModelButton,
         // Settings
         ATON.UI.createButton({
             icon   : "settings",
@@ -357,6 +319,15 @@ FE.setupTopToolbar = () => {
     FE.syncMainToolbarOffset(topToolbar);
     
     return topToolbar;
+};
+
+FE.setupRightToolbar = () => {
+    const rightToolbar = ATON.UI.get("rightToolbar");
+
+    FE.sceneTreeExpanded = FE.sceneTreeExpanded || new Set();
+    FE.sceneTreeActiveKey = FE.sceneTreeActiveKey || null;
+
+    return rightToolbar;
 };
 
 FE.syncMainToolbarOffset = (topToolbar) => {
@@ -420,6 +391,254 @@ FE.setupToolOptToolbar = () => {
     const toolOptToolbar = ATON.UI.get("toolOptToolbar");
 
     return toolOptToolbar;
+};
+
+FE.refreshSceneTree = () => {
+    if (!FE.rightToolbar || !THOTH.UI?.createSceneTreeRow) return;
+
+    const elTree = ATON.UI.createContainer({
+        classes: "thoth-scene-tree"
+    });
+
+    const scene = THOTH.SceneStore?.getScene?.();
+    const models = scene?.models || {};
+    const modelIds = Object.keys(models).filter(modelId => models[modelId]?.trash !== true);
+
+    elTree.append(THOTH.UI.createSceneTreeRow({
+        label   : "Scene Structure",
+        icon    : "scene",
+        active  : FE.sceneTreeActiveKey === "scene",
+        count   : modelIds.length,
+        onselect: () => FE.openSceneTreePanel("scene", "Scene", FE.modelsPanel)
+    }));
+
+    for (const modelId of modelIds) {
+        const model = models[modelId];
+        const modelKey = `model:${modelId}`;
+        const isOpen = FE.sceneTreeExpanded.has(modelKey);
+
+        elTree.append(THOTH.UI.createSceneTreeRow({
+            label     : modelId,
+            icon      : "scene",
+            expandable: true,
+            open      : isOpen,
+            active    : FE.sceneTreeActiveKey === modelKey,
+            onexpand  : () => FE.toggleSceneTreeNode(modelKey),
+            onselect  : () => FE.openModelPanel(modelId)
+        }));
+
+        if (!isOpen) continue;
+
+        const elChildren = THOTH.UI.createSceneTreeChildren();
+        FE.appendModelSceneRows(elChildren, modelId, model);
+        elTree.append(elChildren);
+    }
+
+    FE.rightToolbar.replaceChildren(elTree);
+};
+
+FE.toggleSceneTreeNode = (key) => {
+    if (!FE.sceneTreeExpanded) FE.sceneTreeExpanded = new Set();
+
+    if (FE.sceneTreeExpanded.has(key)) FE.sceneTreeExpanded.delete(key);
+    else FE.sceneTreeExpanded.add(key);
+
+    FE.refreshSceneTree();
+};
+
+FE.openSceneTreePanel = (key, header, body) => {
+    FE.sceneTreeActiveKey = key;
+    ATON.UI.showSidePanel({
+        header: header,
+        body  : body
+    });
+    FE.refreshSceneTree();
+};
+
+FE.openModelPanel = (modelId) => {
+    THOTH.fire?.("selectModel", modelId);
+    FE.openSceneTreePanel(`model:${modelId}`, modelId, THOTH.UI.createModelEditor(modelId));
+};
+
+FE.appendModelSceneRows = (elParent, modelId, model) => {
+    const sections = [
+        {
+            key    : "artefact",
+            label  : "Artefact",
+            icon   : "collection-item",
+            count  : FE.countObjectFields(model.artefact),
+            content: () => THOTH.Artefacts.createDetailsView(modelId)
+        },
+        {
+            key    : "selections",
+            label  : "Selections",
+            icon   : "layers",
+            count  : FE.countCollectionItems(model.selections),
+            content: () => FE.createModelCollectionPanel(modelId, "selections")
+        },
+        {
+            key    : "semantic_annotations",
+            label  : "Semantic Annotations",
+            icon   : "list",
+            count  : FE.countCollectionItems(model.semantic_annotations),
+            content: () => FE.createModelCollectionPanel(modelId, "semantic_annotations")
+        },
+        {
+            key    : "measurements",
+            label  : "Measurements",
+            icon   : "measure",
+            count  : FE.countCollectionItems(model.measurements),
+            content: () => FE.createModelCollectionPanel(modelId, "measurements")
+        },
+        {
+            key    : "transforms",
+            label  : "Transforms",
+            icon   : "settings",
+            content: () => THOTH.UI.createModelEditor(modelId)
+        },
+        {
+            key    : "metadata",
+            label  : "Metadata",
+            icon   : "list",
+            count  : FE.countObjectFields(model.metadata?.attributes),
+            content: () => FE.createMetadataPanel(modelId)
+        },
+        {
+            key    : "sensors",
+            label  : "Sensors",
+            icon   : "light",
+            count  : Array.isArray(model.sensors) ? model.sensors.length : 0,
+            content: () => THOTH.UI.createPlaceholderPanel(
+                "Sensors",
+                "Sensor data is reserved as a model-scoped placeholder in this phase."
+            )
+        }
+    ];
+
+    for (const section of sections) {
+        const sectionKey = `model:${modelId}:${section.key}`;
+        elParent.append(THOTH.UI.createSceneTreeRow({
+            label   : section.label,
+            icon    : section.icon,
+            count   : section.count,
+            active  : FE.sceneTreeActiveKey === sectionKey,
+            level   : 1,
+            onselect: () => FE.openSceneTreePanel(
+                sectionKey,
+                `${modelId} - ${section.label}`,
+                section.content()
+            )
+        }));
+
+        if (section.key === "selections") {
+            FE.appendAnnotationRows(elParent, modelId, section.key, model.selections);
+        }
+        else if (section.key === "measurements") {
+            FE.appendAnnotationRows(elParent, modelId, section.key, model.measurements);
+        }
+        else if (section.key === "semantic_annotations") {
+            FE.appendAnnotationRows(elParent, modelId, section.key, model.semantic_annotations);
+        }
+    }
+};
+
+FE.appendAnnotationRows = (elParent, modelId, collectionName, collection = {}) => {
+    const itemIds = Object.keys(collection).filter(itemId => collection[itemId]?.trash !== true);
+
+    for (const itemId of itemIds) {
+        const item = collection[itemId];
+        const itemKey = `model:${modelId}:${collectionName}:${itemId}`;
+        elParent.append(THOTH.UI.createSceneTreeRow({
+            label   : item.name || itemId,
+            icon    : "collection-item",
+            active  : FE.sceneTreeActiveKey === itemKey,
+            level   : 2,
+            onselect: () => FE.openAnnotationPanel(itemKey, collectionName, itemId, modelId)
+        }));
+    }
+};
+
+FE.openAnnotationPanel = (key, collectionName, itemId, modelId) => {
+    FE.sceneTreeActiveKey = key;
+
+    if (collectionName === "selections") {
+        THOTH.Selections.setActiveSelection(modelId, itemId);
+        THOTH.UI.modalLayerDetails(itemId);
+    }
+    else if (collectionName === "measurements") {
+        THOTH.UI.modalMsrDetails(itemId);
+    }
+    else if (collectionName === "semantic_annotations") {
+        THOTH.UI.modalSemAnnotationDetails(itemId);
+    }
+
+    FE.refreshSceneTree();
+};
+
+FE.createMetadataPanel = (modelId) => {
+    const elBody = ATON.UI.createContainer();
+    elBody.append(ATON.UI.createButton({
+        text   : "Edit Metadata",
+        icon   : "list",
+        variant: "info",
+        onpress: () => THOTH.requireAuth("edit metadata", () => THOTH.UI.modalModelMetadata(modelId))
+    }));
+    return elBody;
+};
+
+FE.createModelCollectionPanel = (modelId, collectionName) => {
+    const model = THOTH.SceneStore?.getModel?.(modelId);
+    const collection = model?.[collectionName] || {};
+    const elBody = ATON.UI.createContainer({
+        classes: "d-grid gap-1"
+    });
+
+    if (collectionName === "selections") {
+        elBody.append(ATON.UI.createButton({
+            text   : "New Selection",
+            icon   : "add",
+            variant: "info",
+            onpress: () => THOTH.fire("createLayer", { modelId: modelId })
+        }));
+    }
+
+    const itemIds = Object.keys(collection).filter(itemId => collection[itemId]?.trash !== true);
+    if (itemIds.length === 0) {
+        elBody.append(THOTH.UI.createPlaceholderPanel(
+            FE.getCollectionLabel(collectionName),
+            "No items for this model."
+        ));
+        return elBody;
+    }
+
+    for (const itemId of itemIds) {
+        const item = collection[itemId];
+        const itemKey = `model:${modelId}:${collectionName}:${itemId}`;
+        elBody.append(THOTH.UI.createSceneTreeRow({
+            label   : item.name || itemId,
+            icon    : "collection-item",
+            onselect: () => FE.openAnnotationPanel(itemKey, collectionName, itemId, modelId)
+        }));
+    }
+
+    return elBody;
+};
+
+FE.getCollectionLabel = (collectionName) => {
+    if (collectionName === "selections") return "Selections";
+    if (collectionName === "measurements") return "Measurements";
+    if (collectionName === "semantic_annotations") return "Semantic Annotations";
+
+    return collectionName;
+};
+
+FE.countCollectionItems = (collection = {}) => {
+    return Object.keys(collection).filter(itemId => collection[itemId]?.trash !== true).length;
+};
+
+FE.countObjectFields = (value = {}) => {
+    if (!value || typeof value !== "object") return 0;
+    return Object.keys(value).filter(key => value[key] !== undefined && value[key] !== "").length;
 };
 
 FE.setupHistoryToolbar = (historyList) => {
@@ -619,6 +838,7 @@ FE.addNewLayer = (layerId, modelId) => {
         }
         const nameButton = FE.layerNameMap.get(selectionKey);
         if (nameButton) nameButton.textContent = selection.name;
+        FE.refreshSceneTree();
         return;
     }
 
@@ -635,12 +855,14 @@ FE.addNewLayer = (layerId, modelId) => {
 
     // Add to list
     FE.layerList.append(newLayerController);
+    FE.refreshSceneTree();
 };
 
 FE.deleteLayer = (layerId, modelId) => {
     const selectionKey = THOTH.Selections._makeKey(modelId, layerId);
     const controller = FE.layerMap.get(selectionKey);
     if (controller) controller.style.display = 'none';
+    FE.refreshSceneTree();
 };
 
 
@@ -650,6 +872,7 @@ FE.addModel = (modelName) => {
     // Handle resurrection for undo
     if (FE.modelMap.has(modelName)) {
         FE.modelMap.get(modelName).style.display = 'flex';
+        FE.refreshSceneTree();
         return;
     }
     // Create new
@@ -660,10 +883,13 @@ FE.addModel = (modelName) => {
     );
     FE.modelMap.set(modelName, newModelController);
     FE.modelList.append(newModelController);
+    FE.refreshSceneTree();
 };
 
 FE.deleteModel = (modelName) => {
-    FE.modelMap.get(modelName).style.display = 'none';
+    const controller = FE.modelMap.get(modelName);
+    if (controller) controller.style.display = 'none';
+    FE.refreshSceneTree();
 };
 
 
@@ -673,6 +899,7 @@ FE.addMsr = (msrId) => {
     // Resurrect measurement if it already exists
     if (FE.msrMap.has(msrId)) {
         FE.msrMap.get(msrId).style.display = "flex";
+        FE.refreshSceneTree();
         return;
     }
 
@@ -691,10 +918,13 @@ FE.addMsr = (msrId) => {
 
     // Add to list
     FE.msrList.append(newMsrController);
+    FE.refreshSceneTree();
 };
 
 FE.deleteMsr = (msrId) => {
-    FE.msrMap.get(msrId).style.display = 'none';
+    const controller = FE.msrMap.get(msrId);
+    if (controller) controller.style.display = 'none';
+    FE.refreshSceneTree();
     // Add logic ? 
 };
 
@@ -704,6 +934,7 @@ FE.deleteMsr = (msrId) => {
 FE.addSemAnnotation = (annotationId) => {
     if (FE.semMap.has(annotationId)) {
         FE.semMap.get(annotationId).style.display = "flex";
+        FE.refreshSceneTree();
         return;
     }
 
@@ -718,10 +949,13 @@ FE.addSemAnnotation = (annotationId) => {
     FE.semMap.set(annotationId, newSemController);
 
     FE.semList.append(newSemController);
+    FE.refreshSceneTree();
 };
 
 FE.deleteSemAnnotation = (annotationId) => {
-    FE.semMap.get(annotationId).style.display = "none";
+    const controller = FE.semMap.get(annotationId);
+    if (controller) controller.style.display = "none";
+    FE.refreshSceneTree();
 };
 
 

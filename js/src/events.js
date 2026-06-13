@@ -620,8 +620,8 @@ Events.setupSemanticAnnotationEvents = () => {
 
 Events.setupLayerEvents = () => {
     // Create/Delet
-    THOTH.on("createLayer", () => {
-        const modelId = Events.getDefaultModelId();
+    THOTH.on("createLayer", (data) => {
+        const modelId = data?.modelId || Events.getDefaultModelId();
         const layerId = THOTH.Selections.getNextSelectionId(modelId);
         const layerData = {
             id        : layerId,

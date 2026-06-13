@@ -454,6 +454,75 @@ UI.createLayerStructureBlock = () => {
     return elBlock;
 };
 
+UI.createSceneTreeRow = (options = {}) => {
+    const elRow = ATON.UI.createContainer({
+        classes: "thoth-scene-tree-row"
+    });
+
+    if (options.classes) elRow.className = elRow.className + " " + options.classes;
+    if (options.level !== undefined) elRow.dataset.level = options.level;
+
+    const elExpand = ATON.UI.createButton({
+        text   : options.expandable ? (options.open ? "-" : "+") : "",
+        size   : "small",
+        classes: "thoth-scene-tree-expand",
+        tooltip: options.expandable ? "Expand" : "",
+        onpress: options.expandable && options.onexpand ? () => options.onexpand() : undefined
+    });
+    elExpand.disabled = !options.expandable;
+
+    const elLabel = ATON.UI.createButton({
+        text   : options.label || "",
+        icon   : options.icon,
+        size   : "small",
+        tooltip: options.tooltip || options.label || "",
+        onpress: () => {
+            if (options.onselect) options.onselect();
+        }
+    });
+    elLabel.classList.add("flex-grow-1", "text-start");
+
+    if (options.active) elLabel.classList.add("aton-btn-highlight");
+
+    elRow.append(elExpand, elLabel);
+
+    if (options.count !== undefined) {
+        const elCount = document.createElement("span");
+        elCount.classList.add("small", "thoth-scene-tree-count");
+        elCount.textContent = String(options.count);
+        elRow.append(elCount);
+    }
+
+    elRow.expandButton = elExpand;
+    elRow.labelButton  = elLabel;
+
+    return elRow;
+};
+
+UI.createSceneTreeChildren = () => {
+    return ATON.UI.createContainer({
+        classes: "thoth-scene-tree-children"
+    });
+};
+
+UI.createPlaceholderPanel = (title, message) => {
+    const elBody = ATON.UI.createContainer({
+        classes: "p-2"
+    });
+
+    const elTitle = document.createElement("h6");
+    elTitle.classList.add("mb-2");
+    elTitle.textContent = title || "";
+
+    const elMessage = document.createElement("p");
+    elMessage.classList.add("mb-0", "text-body-secondary");
+    elMessage.textContent = message || "";
+
+    elBody.append(elTitle, elMessage);
+
+    return elBody;
+};
+
 
 // Controllers
 
