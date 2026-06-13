@@ -113,12 +113,12 @@ FE.syncAuthControls = () => {
 
 FE.initLayerNameMap = () => {
     const layerNameMap = new Map();
-    for (const [layerId, layer] of THOTH.Layers.layerMap) {
+    for (const [selectionKey, layer] of THOTH.Layers.layerMap) {
         const layerNameBtn = ATON.UI.createButton({
             text   : layer.name,
-            onpress: () => THOTH.Layers.setActiveLayer(layerId),
+            onpress: () => THOTH.Selections.setActiveSelection(layer.model_id, layer.id),
         });
-        layerNameMap.set(layerId, layerNameBtn);
+        layerNameMap.set(selectionKey, layerNameBtn);
     }
     return layerNameMap;
 };
@@ -295,15 +295,15 @@ FE.setupTopToolbar = () => {
             }),
             tooltip: "Models options"
         }),
-        // Layers
+        // Selections
         ATON.UI.createButton({
             icon   : "layers",
-            text   : "Layers",
+            text   : "Selections",
             onpress: () => ATON.UI.showSidePanel({
-                header: "Annotation Layers",
+                header: "Selections",
                 body  : FE.layersPanel
             }),
-            tooltop : "Layers"
+            tooltop : "Selections"
         }),
         // msr
         ATON.UI.createButton({
@@ -546,7 +546,7 @@ FE.setupLayersPanel = (elLayerList) => {
     const elBody       = ATON.UI.createContainer({classes: "d-flex flex-column h-100"});
     const elTopOptions = ATON.UI.createContainer({classes: "row g-0 align-items-center w-100 rounded-2 px-2 py-1 mb-1"});
 
-    // Layer structure
+    // Selection structure
     const elLayerStructure = THOTH.UI.createLayerStructureBlock();
     elLayerStructure.classList.add("flex-shrink-0");
     elLayerStructure.style.marginTop = "auto";
@@ -560,10 +560,10 @@ FE.setupLayersPanel = (elLayerList) => {
     // Top buttons
     elTopOptions.append(
         ATON.UI.createButton({
-            text   : "New Layer",
+            text   : "New Selection",
             icon   : "add",
             variant: "info",
-            tooltip: "Create new layer",
+            tooltip: "Create new selection",
             onpress: () => THOTH.fire("createLayer"),
         }),
     );
@@ -601,33 +601,46 @@ FE.setupSemAnnotationPanel = (elSemList) => {
 };
 
 
-// Layers
+// Selections
 
-FE.addNewLayer = (layerId) => {
+FE.addNewLayer = (layerId, modelId) => {
+    const selection = THOTH.Selections.getSelection(modelId, layerId) ||
+        THOTH.Selections.getSelectionById(layerId);
+    if (!selection) return;
+
+    const selectionKey = THOTH.Selections._makeKey(selection.model_id, layerId);
+
     // Resurrect layer if it already exists
-    if (FE.layerMap.has(layerId)) {
-        FE.layerMap.get(layerId).style.display = 'flex';
+    if (FE.layerMap.has(selectionKey)) {
+        const controller = FE.layerMap.get(selectionKey);
+        controller.style.display = 'flex';
+        if (controller.faceCountBtn) {
+            controller.faceCountBtn.textContent = `${THOTH.Selections.getFaceCount(selection)} faces`;
+        }
+        const nameButton = FE.layerNameMap.get(selectionKey);
+        if (nameButton) nameButton.textContent = selection.name;
         return;
     }
 
     // Create new name button
     const newLayerNameBtn = ATON.UI.createButton({
-        text   : THOTH.Layers.layerMap.get(layerId).name,
-        onpress: () => THOTH.Layers.setActiveLayer(layerId)
+        text   : selection.name,
+        onpress: () => THOTH.Selections.setActiveSelection(selection.model_id, layerId)
     });
-    FE.layerNameMap.set(layerId, newLayerNameBtn);
+    FE.layerNameMap.set(selectionKey, newLayerNameBtn);
     
     // Create new controller
-    const newLayerController = THOTH.UI.createLayerController(layerId);
-    FE.layerMap.set(layerId, newLayerController);
+    const newLayerController = THOTH.UI.createLayerController(layerId, selection.model_id);
+    FE.layerMap.set(selectionKey, newLayerController);
 
     // Add to list
     FE.layerList.append(newLayerController);
 };
 
-FE.deleteLayer = (layerId) => {
-    FE.layerMap.get(layerId).style.display = 'none';
-    if (THOTH.Layers.activeLayer === layerId) THOTH.Layers.setActiveLayer(layerId);
+FE.deleteLayer = (layerId, modelId) => {
+    const selectionKey = THOTH.Selections._makeKey(modelId, layerId);
+    const controller = FE.layerMap.get(selectionKey);
+    if (controller) controller.style.display = 'none';
 };
 
 

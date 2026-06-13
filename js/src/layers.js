@@ -1,237 +1,123 @@
 /*===========================================================================
 
     THOTH
-    Layer management
-
-    Authors: 
-        Stelios Alvanos (steliosalvanos@gmail.com)
+    Legacy layer shim for model-scoped selections
 
 ===========================================================================*/
 let Layers = {};
 
 
-
-// Setup
-
 Layers.setup = () => {
-    // Create layer map for easy access
-    Layers.layerMap = new Map();
-};
+    if (THOTH.Selections?.selectionMap) {
+        Layers.layerMap = THOTH.Selections.selectionMap;
+    }
+    else {
+        Layers.layerMap = new Map();
+    }
 
-Layers.parseLayers = (layers) => {
-    if (layers === undefined) return;
-
-    for (const layerId in layers) {
-        const id = Number(layerId);
-        const layer = Layers.normalizeLayer(id, layers[layerId]);
-        Layers.layerMap.set(id, layer);
-        THOTH.FE.addNewLayer(id);
-    };
-
-    // Active layer
     Layers.activeLayer = undefined;
 };
 
-
-// Management
-
-Layers.normalizeLayer = (layerId, data = {}) => {
-    const base = THOTH.Annotations?.createBaseAnnotation(layerId, data) || {
-        id                            : layerId,
-        name                          : data.name || "",
-        description                   : data.description || "",
-        related_rgb_images            : data.related_rgb_images || [],
-        related_multispectral_images  : data.related_multispectral_images || [],
-        related_artefacts             : data.related_artefacts || [],
-        annotation                    : data.annotation || {},
-        visible                       : data.visible !== false
-    };
-
-    const selectionColor = data.selection_color ||
-        data.highlightColor ||
-        base.annotation.selection_color ||
-        THOTH.Utils.getHighlightColor(layerId);
-
-    return {
-        ...base,
-        metadata      : data.metadata || {},
-        selection     : data.selection || base.annotation.selection || {},
-        selection_color: selectionColor,
-        highlightColor: selectionColor,
-        trash         : data.trash === true
-    };
+Layers._getModelId = (selectionId) => {
+    return THOTH.Selections?.getSelectionById(selectionId)?.model_id ||
+        THOTH.Annotations?.getModelId("selections", selectionId);
 };
 
-Layers.createLayer = (layerId) => {
-    if (layerId === undefined) return;
+Layers.parseLayers = (layers, modelId) => {
+    THOTH.Selections?.parseSelections(modelId, layers);
+    Layers.layerMap = THOTH.Selections?.selectionMap || Layers.layerMap;
+};
 
-    const layer = Layers.layerMap.get(layerId);
+Layers.normalizeLayer = (layerId, data = {}) => {
+    return THOTH.Selections?.normalizeSelection(layerId, data) || data;
+};
 
-    // Resolve id conflict
-    if (layer !== undefined) {
-        if (layer.trash === true) Layers.resurrectLayer(layerId);
-        else alert(`Layer id conflict ${layerId}`);
-
-        return;
-    }
-
-    // Build layer data
-    const layerData = Layers.normalizeLayer(layerId, {
-        name          : "New Layer",
-        metadata      : {},
-        selection     : {},
-        annotation    : {},
-        visible       : true,
-        highlightColor: THOTH.Utils.getHighlightColor(layerId),
-        trash         : false
-    });
-
-    // Append to map
-    Layers.layerMap.set(layerId, layerData);
-
-    // Update front end
-    THOTH.FE.addNewLayer(layerId);
+Layers.createLayer = (layerId, data = {}) => {
+    const modelId = data.model_id || Layers._getModelId(layerId);
+    return THOTH.Selections?.applySelectionData(modelId, layerId, data);
 };
 
 Layers.deleteLayer = (layerId) => {
-    if (layerId === undefined) return;
-
-    const layer = Layers.layerMap.get(layerId);
-
-    layer.trash = true;
-    THOTH.Layers.setActiveLayer(null);
-
-    // Update FE
-    THOTH.FE.deleteLayer(layerId);
-    
-    THOTH.updateVisibility();
+    const modelId = Layers._getModelId(layerId);
+    return THOTH.Selections?.deleteSelection(modelId, layerId);
 };
 
 Layers.resurrectLayer = (layerId) => {
-    if (layerId === undefined) return;
+    const modelId = Layers._getModelId(layerId);
+    const selection = THOTH.Selections?.getSelection(modelId, layerId);
+    if (!selection) return;
 
-    const layer = Layers.layerMap.get(layerId);
-    if (!layer.trash) return;
-    
-    layer.trash = false;
-    
-    // Update FE
-    THOTH.FE.addNewLayer(layerId);
-    
+    selection.trash = false;
+    THOTH.FE?.addNewLayer(layerId, modelId);
     THOTH.updateVisibility();
 };
 
 Layers.renameLayer = (layerId, newName) => {
-    if (layerId === undefined) return;
-    
-    const layer = Layers.layerMap.get(layerId);
-    if (!layer) return;
-
-    Object.assign(layer, THOTH.Annotations?.normalize({
-        ...layer,
-        name: newName
-    }) || { name: newName });
-    let layerNameBtn = THOTH.FE.layerNameMap.get(layerId);
-    layerNameBtn.textContent = newName;
+    const modelId = Layers._getModelId(layerId);
+    THOTH.Selections?.updateSelection(modelId, layerId, { name: newName }, "name");
 };
 
 Layers.addToSelection = (layerId, selection) => {
-    const layer = Layers.layerMap.get(layerId);
+    const modelId = Layers._getModelId(layerId);
+    const current = THOTH.Selections?.getSelection(modelId, layerId);
+    if (!current) return;
 
-    const tempSelection = layer.selection || {};
-    for (const modelName of Object.keys(selection)) {
-        tempSelection[modelName] = tempSelection[modelName] || {};
+    const selectedFaces = THOTH.Selections._clone(THOTH.Selections._getFaces(current)) || {};
+    for (const meshId in selection) {
+        selectedFaces[meshId] = Array.from(new Set([
+            ...(selectedFaces[meshId] || []),
+            ...(selection[meshId] || [])
+        ]));
+    }
 
-        for (const meshName of Object.keys(selection[modelName])) {
-            tempSelection[modelName][meshName] =
-            [...THOTH.Toolbox.addFacesToSelection(selection[modelName][meshName], layer.selection[modelName][meshName])];
-        }
-    }  
-    
-    layer.selection = tempSelection;
-    THOTH.updateVisibility();
+    THOTH.Selections.updateFaces(modelId, layerId, selectedFaces);
 };
 
 Layers.delFromSelection = (layerId, selection) => {
-    const layer = Layers.layerMap.get(layerId);
+    const modelId = Layers._getModelId(layerId);
+    const current = THOTH.Selections?.getSelection(modelId, layerId);
+    if (!current) return;
 
-    const tempSelection = layer.selection || {};
-    for (const modelName of Object.keys(selection)) {
-        tempSelection[modelName] = tempSelection[modelName] || {};
+    const selectedFaces = THOTH.Selections._clone(THOTH.Selections._getFaces(current)) || {};
+    for (const meshId in selection) {
+        const deleteSet = new Set(selection[meshId] || []);
+        selectedFaces[meshId] = (selectedFaces[meshId] || []).filter(face => !deleteSet.has(face));
+    }
 
-        for (const meshName of Object.keys(selection[modelName])) {
-            tempSelection[modelName][meshName] =
-            [...THOTH.Toolbox.delFacesFromSelection(selection[modelName][meshName], layer.selection[modelName][meshName])];
-        }
-    }  
-
-    layer.selection = tempSelection;
-    THOTH.updateVisibility();
+    THOTH.Selections.updateFaces(modelId, layerId, selectedFaces);
 };
 
-
-// Visibility
-
 Layers.hideLayer = (layerId) => {
-    if (layerId === undefined) return;
-
-    const layer = Layers.layerMap.get(layerId);
-
-    layer.visible = false;
-    THOTH.updateVisibility();
+    const modelId = Layers._getModelId(layerId);
+    THOTH.Selections?.updateVisibility(modelId, layerId, false);
 };
 
 Layers.showLayer = (layerId) => {
-    if (layerId === undefined) return;
-
-    const layer = Layers.layerMap.get(layerId);
-
-    layer.visible = true;
-    THOTH.updateVisibility();
+    const modelId = Layers._getModelId(layerId);
+    THOTH.Selections?.updateVisibility(modelId, layerId, true);
 };
 
 Layers.toggleVisibility = (layerId) => {
-    if (layerId === undefined) return;
+    const modelId = Layers._getModelId(layerId);
+    const selection = THOTH.Selections?.getSelection(modelId, layerId);
+    if (!selection) return;
 
-    const layer = Layers.layerMap.get(layerId);
-    if (layer === undefined) return;
-
-    if (THOTH.Annotations) {
-        const applied = THOTH.Annotations.setVisible(
-            THOTH.Annotations.getModelId("selections", layerId),
-            "selections",
-            layerId,
-            layer.visible === false
-        );
-        if (applied) return;
-    }
-
-    if (layer.visible) Layers.hideLayer(layerId);
-    else Layers.showLayer(layerId);
+    THOTH.Selections.updateVisibility(modelId, layerId, selection.visible === false);
 };
-
-
-// Export
 
 Layers.getExportData = () => {
-    const layerObjects = {};
-    for (const [id, layer] of Layers.layerMap.entries()) {
-        if (!layer || layer.trash === true) continue;
-        layerObjects[id] = THOTH.Annotations?.toExportAnnotation(layer) || layer;
-    }
-    return layerObjects;
+    return {};
 };
 
-
-// Misc
-
-Layers.setActiveLayer = (layerId) => {
-    if (layerId === null || Layers.layerMap.has(layerId)) {
-        Layers.activeLayer = Layers.layerMap.get(layerId);
-        THOTH.FE.handleElementHighlight(layerId, THOTH.FE.layerMap);
+Layers.setActiveLayer = (layerId, modelId) => {
+    if (layerId === null) {
+        THOTH.Selections?.setActiveSelection(null, null);
+        return;
     }
-};
 
+    const resolvedModelId = modelId || Layers._getModelId(layerId);
+    THOTH.Selections?.setActiveSelection(resolvedModelId, layerId);
+};
 
 
 export default Layers;

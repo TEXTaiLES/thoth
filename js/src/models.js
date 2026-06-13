@@ -80,7 +80,7 @@ Models.parseModels = (models) => {
 
         THOTH.Artefacts?.parseModelArtefact(modelId, modelData.artefact);
         THOTH.Transforms?.parseModelTransform(modelId, modelData.transforms);
-        THOTH.Layers?.parseLayers(modelData.selections);
+        THOTH.Selections?.parseSelections(modelId, modelData.selections);
         THOTH.MSR?.parseMeasurements(modelData.measurements);
         THOTH.SemAnnotations?.parseAnnotations(modelData.semantic_annotations);
 

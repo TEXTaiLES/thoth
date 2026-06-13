@@ -290,13 +290,15 @@ MD.validateSchema = (data) => {
 // Layers
 
 MD.changeLayerSchema = (layerId, schemaName) => {
-    const layer = THOTH.Layers.layerMap.get(layerId);
+    const layer = THOTH.Selections?.getSelectionById(layerId);
+    if (!layer) return;
+
     layer.metadata = MD.createMetadataRecord(schemaName, MD.getAttributes(layer.metadata));
 };
 
 MD.inheritLayerMedatataFromScene = (layerId) => {
     const sceneMetadata = THOTH.sceneMetadata;
-    const layerMetadata = THOTH.Layers.layerMap.get(layerId).metadata;
+    const layerMetadata = THOTH.Selections?.getSelectionById(layerId)?.metadata;
     
     let l = {
         id      : layerId,
@@ -310,7 +312,7 @@ MD.inheritLayerMedatataFromScene = (layerId) => {
 MD.editLayerMetadata = (layerId, data) => {
     if (layerId === undefined) return;
     
-    const layer = THOTH.Layers.layerMap.get(layerId);
+    const layer = THOTH.Selections?.getSelectionById(layerId);
     if (!layer) return;
     
     layer.metadata = data;

@@ -13,7 +13,10 @@ let Collab = {};
 
 Collab.syncScene = (sobj) => {
     // Clear existing scene items
-    THOTH.Layers.layerMap = new Map();
+    THOTH.Selections.selectionMap = new Map();
+    THOTH.Selections.activeSelection = undefined;
+    THOTH.Layers.layerMap = THOTH.Selections.selectionMap;
+    THOTH.Layers.activeLayer = undefined;
     THOTH.Models.modelMap = new Map();
     THOTH.SceneStore?.parseScene(sobj);
     if (THOTH.SemAnnotations.nodes) {

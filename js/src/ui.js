@@ -419,7 +419,7 @@ UI.createLayerStructureBlock = () => {
         classes: "border-bottom px-3 py-2"
     });
     elHeader.append(ATON.UI.createButton({
-        text: "General Layer Structure",
+        text: "Selection Structure",
         icon: "layers",
         size: "small"
     }));
@@ -430,22 +430,21 @@ UI.createLayerStructureBlock = () => {
 
     const elText = document.createElement("p");
     elText.classList.add("mb-2");
-    // elText.textContent = "Each annotation layer is stored with this structure:";
+    // elText.textContent = "Each selection is stored with this structure:";
 
     const elStructure = document.createElement("pre");
     elStructure.classList.add("bg-body-secondary", "rounded-2", "p-3", "mb-0");
     elStructure.style.fontSize  = "0.78rem";
     elStructure.style.lineHeight = "1.45";
     elStructure.style.overflowX  = "auto";
-    elStructure.textContent = `scene_layer
-|-- metadata
-layers
-|-- layer_1
-|   |-- name
-|   |-- metadata
-|   |-- selection
-|   |-- ...
-|-- layer_2
+    elStructure.textContent = `models
+|-- model_1
+|   |-- selections
+|   |   |-- selection_1
+|   |   |   |-- name
+|   |   |   |-- annotation
+|   |   |   |   |-- selected_faces
+|   |   |   |   |-- selection_color
 |   |-- name
 | ...`;
 
@@ -504,7 +503,7 @@ UI.createSceneController = () => {
         classes   : "bg-body-secondary",
         colLeft   : 7,
         itemsLeft : ATON.UI.createButton({
-            text: "Scene Layer",
+            text: "Scene",
             icon: "scene",
             size: "small"
         }),
@@ -518,11 +517,13 @@ UI.createSceneController = () => {
     return elController;
 };
 
-UI.createLayerController = (layerId) => {
+UI.createLayerController = (layerId, modelId) => {
     const elLeft  = ATON.UI.createContainer();
     const elRight = ATON.UI.createContainer();
     
-    const layer = THOTH.Layers.layerMap.get(layerId);
+    const layer = THOTH.Selections.getSelection(modelId, layerId);
+    const selectionKey = THOTH.Selections._makeKey(modelId, layerId);
+    const faceCount = THOTH.Selections.getFaceCount(layer);
     
     // Name
     elLeft.classList.add("d-flex", "align-items-center");
@@ -531,17 +532,33 @@ UI.createLayerController = (layerId) => {
         ATON.UI.createButton({
             icon   : "visibility",
             size   : "small",
-            onpress: () => THOTH.Layers.toggleVisibility(layerId),
+            onpress: () => THOTH.Selections.updateVisibility(modelId, layerId, layer.visible === false),
         }),
-        THOTH.FE.layerNameMap.get(layerId),
+        THOTH.FE.layerNameMap.get(selectionKey),
+        (() => {
+            const faceCountBtn = ATON.UI.createButton({
+                text: `${faceCount} faces`,
+                size: "small"
+            });
+            elLeft.faceCountBtn = faceCountBtn;
+            return faceCountBtn;
+        })(),
     );
     let elCP = UI.createColorPicker({
-        color  : layer.highlightColor,
+        color  : layer.selection_color,
         id     : `layer${layerId}CP`,
         oninput: (color) => {
-            layer.highlightColor = color;
             layer.selection_color = color;
+            layer.annotation.selection_color = color;
             THOTH.updateVisibility();
+        },
+        onchange: (color) => {
+            THOTH.Selections.updateSelection(modelId, layerId, {
+                annotation: {
+                    ...layer.annotation,
+                    selection_color: color
+                }
+            }, "selection_color");
         },
     });
     elCP.id = `layer${layerId}CP`;
@@ -549,10 +566,9 @@ UI.createLayerController = (layerId) => {
     elRight.append(
         // Metadata
         ATON.UI.createButton({
-            text   : "Metadata",
             icon   : "list",
             size   : "small",
-            tooltip: "Edit metadata",
+            tooltip: "Edit selection",
             onpress: () => UI.modalLayerDetails(layerId),
         }),
         elCP,
@@ -570,6 +586,7 @@ UI.createLayerController = (layerId) => {
         itemsLeft : elLeft,
         itemsRight: elRight,
     });
+    elController.faceCountBtn = elLeft.faceCountBtn;
     
     return elController;
 };
@@ -1947,7 +1964,7 @@ UI.createSchemaSelector = (schemaName, onapply) => {
 };
 
 UI.modalLayerDetails = (layerId, data_temp) => {
-    const layer = THOTH.Layers.layerMap.get(layerId);
+    const layer = THOTH.Selections.getSelectionById(layerId);
     if (layer === undefined || layer.trash) return;
 
     if (data_temp === undefined) data_temp = THOTH.MD.toCanonicalMetadata(layer.metadata || {});
@@ -1978,16 +1995,15 @@ UI.modalLayerDetails = (layerId, data_temp) => {
     const elLayerActions = ATON.UI.createContainer({classes: "d-flex justify-content-end align-items-center gap-2"});
     elLayerActions.append(
         UI.createColorPicker({
-            color: layer.highlightColor,
+            color: layer.selection_color,
             onchange: (c) => {
-                layer.highlightColor = c;
-                layer.selection_color = c;
+                annotationTemp.annotation.selection_color = c;
                 THOTH.updateVisibility();
             }
         }),
         ATON.UI.createButton({
-            text   : "Delete Layer",
-            tooltip: "Delete Layer",
+            text   : "Delete Selection",
+            tooltip: "Delete selection",
             icon   : ATON.PATH_RES + "icons/trash.png",
             onpress: () => {
                 THOTH.fire("deleteLayer", (layerId));
@@ -2009,9 +2025,9 @@ UI.modalLayerDetails = (layerId, data_temp) => {
     // Body
     const elBody = ATON.UI.createTreeGroup({
         items: [
-            // Layer details
+            // Selection details
             {
-                title  : "Layer details",
+                title  : "Selection details",
                 open   : true,
                 content: elLayerInfo
             },
@@ -2055,7 +2071,7 @@ UI.modalLayerDetails = (layerId, data_temp) => {
     });
 
     ATON.UI.showModal({
-        header: `Edit layer with id: ${layerId}`,
+        header: `Edit selection with id: ${layerId}`,
         body  : elBody,
         footer: elFooter,
         wide  : true,

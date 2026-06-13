@@ -16,6 +16,7 @@ import History             from "./src/history.js";
 import Events              from "./src/events.js";
 import SVP                 from "./src/svp.js";
 import Layers              from "./src/layers.js";
+import Selections          from "./src/selections.js";
 import Models              from "./src/models.js";
 import FE                  from "./src/fe.js";
 import MD                  from "./src/metadata.js";
@@ -47,6 +48,7 @@ THOTH.History = History;
 THOTH.Events  = Events;
 THOTH.SVP     = SVP;
 THOTH.Models  = Models;
+THOTH.Selections = Selections;
 THOTH.Layers  = Layers;
 THOTH.FE      = FE;
 THOTH.MD      = MD;
@@ -109,7 +111,8 @@ THOTH.setup = () => {
     });
     // Layer parsers
     ATON.SceneHub.addSceneParser("layers", layers => {
-        THOTH.Layers.parseLayers(layers);
+        const modelId = THOTH.Selections?._getDefaultModelId();
+        THOTH.Layers.parseLayers(layers, modelId);
     });
     // Metadata parser
     ATON.SceneHub.addSceneParser("sceneMetadata", data => {
@@ -145,7 +148,9 @@ THOTH.setup = () => {
 
     ATON.on("AllFlaresReady", () =>{
         ATON.on("ConfigLoaded", () => {
-            // Init layers
+            // Init selections
+            THOTH.Selections.setup();
+            // Init layer shim
             THOTH.Layers.setup();
             // Init models
             THOTH.Models.setup();
@@ -267,26 +272,11 @@ THOTH.highlightSelection = (selection, highlightColor, modelName, meshName) => {
 
 };
 
-THOTH.highlightAllLayers = () => {
-    // All layers
-    for (const [ , layer] of THOTH.Layers.layerMap) {
-        if (layer.trash) continue;
-        if (layer.visible === false) continue;
-        
-        const selection      = layer.selection;
-        const highlightColor = THOTH.Utils.hex2rgb(layer.highlightColor);
-        for (const modelName of Object.keys(selection)) {
-            for (const meshName of Object.keys(selection[modelName])) {
-                THOTH.highlightSelection(
-                    selection[modelName][meshName],
-                    highlightColor,
-                    modelName,
-                    meshName
-                );
-            }
-        }
-    }
+THOTH.highlightAllSelections = () => {
+    THOTH.Selections?.refreshAllHighlights();
 };
+
+THOTH.highlightAllLayers = THOTH.highlightAllSelections;
 
 THOTH.clearHighlights = () => {
     for (const modelName of THOTH.Models.modelMap.keys()) {
@@ -307,7 +297,7 @@ THOTH.clearHighlights = () => {
 
 THOTH.updateVisibility = () => {
     THOTH.clearHighlights();
-    THOTH.highlightAllLayers();
+    THOTH.highlightAllSelections();
 };
 
 THOTH.updateSceneScale = (model) => {

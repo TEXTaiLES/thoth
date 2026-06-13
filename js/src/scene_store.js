@@ -205,6 +205,10 @@ SceneStore._getExportValue = (value) => {
 };
 
 SceneStore._getExportAnnotationCollection = (modelId, collectionName, collection = {}) => {
+    if (collectionName === "selections" && typeof THOTH !== "undefined" && THOTH.Selections) {
+        return THOTH.Selections.getExportData(modelId);
+    }
+
     if (typeof THOTH !== "undefined" && THOTH.Annotations) {
         return THOTH.Annotations.getExportData(modelId, collectionName);
     }

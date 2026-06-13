@@ -100,38 +100,34 @@ Ops._replaceMapValue = (map, itemId, value) => {
     map.set(itemId, Ops._clone(value));
 };
 
-Ops._applySelectionRuntime = (action, itemId, value) => {
+Ops._applySelectionRuntime = (action, modelId, itemId, value) => {
+    const resolvedModelId = modelId || value?.model_id || THOTH.Annotations?.getModelId("selections", itemId);
+
     if (action === "create") {
-        THOTH.Layers.createLayer(itemId);
-        const layer = THOTH.Layers.layerMap.get(itemId);
-        if (layer && value) Object.assign(layer, Ops._clone(value), { trash: false });
-        THOTH.updateVisibility();
+        THOTH.Selections?.applySelectionData(resolvedModelId, itemId, {
+            ...Ops._clone(value),
+            trash: false
+        });
         return;
     }
 
     if (action === "update") {
-        let layer = THOTH.Layers.layerMap.get(itemId);
-        if (!layer && value) {
-            THOTH.Layers.createLayer(itemId);
-            layer = THOTH.Layers.layerMap.get(itemId);
-        }
-        if (!layer || !value) return;
+        const selection = THOTH.Selections?.applySelectionData(resolvedModelId, itemId, Ops._clone(value));
+        if (!selection) return;
 
-        Object.assign(layer, Ops._clone(value));
         if (value.name !== undefined) {
-            const layerNameBtn = THOTH.FE.layerNameMap.get(itemId);
+            const layerNameBtn = THOTH.FE.layerNameMap.get(THOTH.Selections._makeKey(selection.model_id, itemId));
             if (layerNameBtn) layerNameBtn.textContent = value.name;
         }
         if (value.visible !== undefined) {
-            const layerController = THOTH.FE.layerMap.get(itemId);
+            const layerController = THOTH.FE.layerMap.get(THOTH.Selections._makeKey(selection.model_id, itemId));
             THOTH.FE.toggleControllerVisibility(layerController, value.visible);
         }
-        THOTH.updateVisibility();
         return;
     }
 
     if (action === "delete") {
-        THOTH.Layers.deleteLayer(itemId);
+        THOTH.Selections?.deleteSelection(resolvedModelId, itemId);
     }
 };
 
@@ -209,9 +205,16 @@ Ops._applyCollection = (operation) => {
     const modelId = Ops._getModelId(operation);
     const itemId  = Ops._getItemId(operation);
     let value     = operation.value;
+    if (value && modelId !== undefined && value.model_id === undefined) {
+        value = {
+            ...value,
+            model_id: modelId
+        };
+        operation.value = value;
+    }
 
     if (info.prefix === "selection") {
-        Ops._applySelectionRuntime(info.action, itemId, value);
+        Ops._applySelectionRuntime(info.action, modelId, itemId, value);
     }
     else if (info.prefix === "measurement") {
         Ops._applyMeasurementRuntime(info.action, itemId, value, operation);
