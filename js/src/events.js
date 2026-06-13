@@ -7,7 +7,6 @@
         Stelios Alvanos (steliosalvanos@gmail.com)
 
 ===========================================================================*/
-import {TransformControls} from "./transform_controls.js";
 let Events = {};
 
 Events.authRequiredEvents = new Map([
@@ -15,6 +14,7 @@ Events.authRequiredEvents = new Map([
     [ "deleteModel", "delete models" ],
     [ "modelTransformPos", "edit transforms" ],
     [ "modelTransformRot", "edit transforms" ],
+    [ "modelTransformScale", "edit transforms" ],
     [ "createLayer", "create selections" ],
     [ "deleteLayer", "delete selections" ],
     [ "editLayerMetadata", "edit metadata" ],
@@ -705,126 +705,26 @@ Events.setupModelEvents = () => {
             field   : "rotation"
         }, value, prevValue);
     }); 
+    THOTH.on("modelTransformScale", (l) => {
+        const prevValue = Events.clone(THOTH.SceneStore.getModel(l.modelName)?.transforms);
+        const value = {
+            ...prevValue,
+            scale: l.value
+        };
+
+        Events.applyLocal("model.update_transform", {
+            model_id: l.modelName,
+            field   : "scale"
+        }, value, prevValue);
+    });
     //select model
     THOTH.on("selectModel", (modelName) => {
-        const selmodel  = THOTH.Models.modelMap.get(modelName);
-        if (!selmodel) {
-            console.warn("model not found");
-        return;
-        }    
-        if (!THOTH.transform) {
-            THOTH.Models.addTransformControls(modelName);
-            Events.setupTransformControls(modelName);
-            //Disable camera controls while dragging
-            THOTH.transform.addEventListener("dragging-changed", (event) => {
-            ATON.Nav._controls.enabled = !event.value;
-            });
-        }
-        //THOTH.transform.attach(selmodel.children[0]);
-        THOTH.transform.attach(selmodel);
-        //prevent it from being hidden inside geometry
-        THOTH.transform.traverse(o => {
-            if (o.material) {
-                o.material.depthTest = false;
-                o.material.transparent = false;
-                o.material.opacity = 1;
-            }
-        });
-        THOTH.transform.visible = true;
-        THOTH.transform.setSize(1,1,1);
-        THOTH.transform.updateMatrixWorld(true);
+        THOTH.Transforms.attachGizmo(modelName);
     });
 };
 //
 Events.setupTransformControls = (ModelName) => {
-
-    //let transformStart = null;
-
-    THOTH.transform.addEventListener("mouseDown", () => {
-
-        const obj = THOTH.transform.object;
-        if (!obj) return;
-
-        Events.transformStart = {
-            position: {
-                x: obj.position.x,
-                y: obj.position.y,
-                z: obj.position.z
-            },
-            rotation: {
-                x: obj.rotation.x,
-                y: obj.rotation.y,
-                z: obj.rotation.z
-            }
-        };
-    });
-
-    THOTH.transform.addEventListener("change", () => {
-
-        const obj = THOTH.transform.object;
-        if (!obj) return;
-
-        THOTH.UI.syncTransformUI(obj);
-    });
-
-    THOTH.transform.addEventListener("mouseUp", () => {
-
-    const obj = THOTH.transform.object;
-    if (!obj || !Events.transformStart) return;
-   // if (!obj) return;
-
-    const modelName = obj.name;
-    const mode = THOTH.transform.getMode();
-
-    if (mode === "translate") {
-
-        const newPos = {
-            x: obj.position.x,
-            y: obj.position.y,
-            z: obj.position.z
-        };
-
-        const prevValue = Events.clone(THOTH.SceneStore.getModel(modelName)?.transforms);
-        const value = {
-            ...prevValue,
-            translation: newPos
-        };
-
-        Events.applyLocal("model.update_transform", {
-            model_id: modelName,
-            field   : "translation"
-        }, value, {
-            ...prevValue,
-            translation: Events.transformStart.position
-        });
-
-    }
-    if (mode === "rotate") {
-
-        const newRot = {
-            x: obj.rotation.x,
-            y: obj.rotation.y,
-            z: obj.rotation.z
-        };
-
-        const prevValue = Events.clone(THOTH.SceneStore.getModel(modelName)?.transforms);
-        const value = {
-            ...prevValue,
-            rotation: newRot
-        };
-
-        Events.applyLocal("model.update_transform", {
-            model_id: modelName,
-            field   : "rotation"
-        }, value, {
-            ...prevValue,
-            rotation: Events.transformStart.rotation
-        });
-    }
-    Events.transformStart = null;
-
-});
-
+    THOTH.Transforms.attachGizmo(ModelName);
 };
 
 Events.setupToolboxEvents = () => {

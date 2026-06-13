@@ -15,7 +15,7 @@ MD.setup = () => {
 };
 
 MD.parseSceneMetadata = (data) => {
-    THOTH.sceneMetadata = data;
+    THOTH.sceneMetadata = MD.toCanonicalMetadata(data);
 };
 
 
@@ -39,9 +39,12 @@ MD._loadSchemaList = async (schemaListUrl, schemaMap) => {
         ATON.REQ.get(
             schemaListUrl,
             schemaList => MD._loadSchemas(schemaList, schemaMap),
-            error => THOTH.FE?.showToast?.("Error loading schemas: " + error)
+            () => MD._loadLocalSchemaList(schemaMap)
         );
+        return;
     }
+
+    MD._loadLocalSchemaList(schemaMap);
 };
 
 MD._loadSchemas = (schemaList, schemaMap) => {
@@ -62,6 +65,14 @@ MD._loadSchemas = (schemaList, schemaMap) => {
             schema => schemaMap.set(schemaName, schema)
         );
     }
+};
+
+MD._loadLocalSchemaList = (schemaMap) => {
+    ATON.REQ.get(
+        THOTH.PATH_RES_SCHEMA + "list_of_schemas.json",
+        schemaList => MD._loadSchemas(schemaList, schemaMap),
+        error => THOTH.FE?.showToast?.("Error loading schemas: " + error)
+    );
 };
 
 MD._normalizeType = (type) => {
@@ -143,18 +154,63 @@ MD._buildPropertiesFromGroups = (groups) => {
 MD.createPropertiesfromSchema = (schemaName) => {
     const data = MD.schemaMap.get(schemaName);
 
-    if (!data) return { schemaName: schemaName };
+    if (!data) return MD.createMetadataRecord(schemaName, {});
     
-    const metadata = Array.isArray(data.groups)
+    const attributes = Array.isArray(data.groups)
         ? MD._buildPropertiesFromGroups(data.groups)
         : MD._buildPropertiesFromObjectSchema(data);
-    metadata.schemaName = schemaName;
 
-    return metadata;
+    return MD.createMetadataRecord(schemaName, attributes);
+};
+
+MD.createMetadataRecord = (schemaName, attributes = {}) => {
+    const schema = MD.schemaMap?.get(schemaName) || {};
+
+    return {
+        schema: {
+            name       : schemaName || "",
+            version    : schema.version || "",
+            description: schema.description || "",
+            url        : schema.url || schema.$id || ""
+        },
+        attributes: structuredClone(attributes)
+    };
+};
+
+MD.toCanonicalMetadata = (data = {}) => {
+    if (data.schema || data.attributes) {
+        const schemaName = data.schema?.name || data.schemaName || MD.getDefaultSchemaName();
+
+        return {
+            schema: {
+                name       : schemaName,
+                version    : data.schema?.version || "",
+                description: data.schema?.description || "",
+                url        : data.schema?.url || ""
+            },
+            attributes: structuredClone(data.attributes || {})
+        };
+    }
+
+    const schemaName = data.schemaName || MD.getDefaultSchemaName();
+    const attributes = structuredClone(data);
+    delete attributes.schemaName;
+
+    return MD.createMetadataRecord(schemaName, attributes);
+};
+
+MD.getSchemaName = (metadata = {}) => {
+    return metadata.schema?.name || metadata.schemaName || MD.getDefaultSchemaName();
+};
+
+MD.getAttributes = (metadata = {}) => {
+    return metadata.attributes || metadata;
 };
 
 MD.getDefaultSchemaName = () => {
     const configuredSchemaName = THOTH.config.defaultSchemaName || "puc_schema";
+
+    if (!MD.schemaMap) return configuredSchemaName;
 
     if (MD.schemaMap.has(configuredSchemaName)) return configuredSchemaName;
     if (MD.schemaMap.has(`${configuredSchemaName}.json`)) return `${configuredSchemaName}.json`;
@@ -235,7 +291,7 @@ MD.validateSchema = (data) => {
 
 MD.changeLayerSchema = (layerId, schemaName) => {
     const layer = THOTH.Layers.layerMap.get(layerId);
-    layer.metadata.schemaName = schemaName;
+    layer.metadata = MD.createMetadataRecord(schemaName, MD.getAttributes(layer.metadata));
 };
 
 MD.inheritLayerMedatataFromScene = (layerId) => {
@@ -264,12 +320,29 @@ MD.editLayerMetadata = (layerId, data) => {
 // Scene
 
 MD.changeSceneSchema = (schemaName) => {
-    THOTH.sceneMetadata.schemaName = schemaName;
+    THOTH.sceneMetadata = MD.createMetadataRecord(
+        schemaName,
+        MD.getAttributes(THOTH.sceneMetadata)
+    );
 }
 
 MD.editSceneMetadata = (data) => {
     if (data === undefined) return;
-    THOTH.sceneMetadata = data;
+    THOTH.sceneMetadata = MD.toCanonicalMetadata(data);
+};
+
+MD.editModelMetadata = (modelId, data, prevData) => {
+    if (!modelId || data === undefined) return;
+
+    THOTH.Ops.applyLocal(THOTH.Ops.makeOperation(
+        "model.update_metadata",
+        {
+            model_id: modelId,
+            field   : "metadata"
+        },
+        MD.toCanonicalMetadata(data),
+        prevData
+    ));
 };
 
 

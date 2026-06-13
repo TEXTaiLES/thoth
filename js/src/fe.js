@@ -34,10 +34,8 @@ FE.setup = () => {
     //gizmos state
     const originalHideSidePanel = ATON.UI.hideSidePanel;
     ATON.UI.hideSidePanel = (options) => {
-    if (THOTH.transform) {
-            THOTH.transform.detach();
-        }
-    return originalHideSidePanel(options);
+        THOTH.Transforms?.detachGizmo();
+        return originalHideSidePanel(options);
     };
 };
 

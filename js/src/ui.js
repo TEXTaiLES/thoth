@@ -89,6 +89,7 @@ UI.modelTransformControl = (options) => {
         }, "scale");
         el.append(ATON.UI.elem("<label class='form-label hathor-text-block' for='"+elScale.id+"'>Scale</label>") );
         el.append(elScale);
+        UI.activeTransformControls.scale = elScale;
     }
 
     // Rotation
@@ -186,6 +187,9 @@ UI.createVectorControl = (options, transform)=>{
                     //THOTH.fire("modelTransformRotInput", (l)); 
                     THOTH.fire("modelTransformRot", (l)); 
                 }
+                else if (transform === "scale") {
+                    THOTH.fire("modelTransformScale", (l));
+                }
                 if (options.onupdate) options.onupdate();
             }
         }))
@@ -212,6 +216,9 @@ UI.createVectorControl = (options, transform)=>{
         else if (transform === "rotation") {
             THOTH.fire("modelTransformRot", l);
         }
+        else if (transform === "scale") {
+            THOTH.fire("modelTransformScale", l);
+        }
          
         if (options.onupdate) options.onupdate();
     };
@@ -233,6 +240,9 @@ UI.createVectorControl = (options, transform)=>{
           //  THOTH.fire("modelTransformRotInput", (l));
             THOTH.fire("modelTransformRot", (l));
         }
+        else if (transform === "scale") {
+            THOTH.fire("modelTransformScale", l);
+        }
       
         if (options.onupdate) options.onupdate();
     };
@@ -253,6 +263,9 @@ UI.createVectorControl = (options, transform)=>{
         else if (transform === "rotation") {
             //THOTH.fire("modelTransformRotInput", (l));
             THOTH.fire("modelTransformRot", (l));
+        }
+        else if (transform === "scale") {
+            THOTH.fire("modelTransformScale", l);
         }
         if (options.onupdate) options.onupdate();
     };
@@ -739,13 +752,14 @@ UI.createModelEditor = (modelName) => {
             onpress: () => THOTH.requireAuth("edit transforms", () => {
                 if (THOTH.transform) THOTH.transform.setMode("rotate");
             })
-        }),/*
+        }),
         ATON.UI.createButton({
             text   : "Scale",
             size: "medium",
-            onpress: () =>THOTH.transform.setMode("scale"),
+            onpress: () => THOTH.requireAuth("edit transforms", () => {
+                if (THOTH.transform) THOTH.transform.setMode("scale");
+            })
         })
-            */
     )
     const transformContent = ATON.UI.createContainer();
 
@@ -755,7 +769,7 @@ UI.createModelEditor = (modelName) => {
 
         node    : modelName,
         position: true,
-        scale   : false,
+        scale   : true,
         rotation: true
     })
 ); 
@@ -776,6 +790,24 @@ UI.createModelEditor = (modelName) => {
                 title  : "Transform",
                 open   : true,
                 content: transformContent
+            },
+            {
+                title  : "Artefact",
+                open   : false,
+                content: THOTH.Artefacts.createDetailsView(modelName)
+            },
+            {
+                title  : "Metadata",
+                open   : false,
+                content: ATON.UI.createButton({
+                    text   : "Edit Metadata",
+                    icon   : "list",
+                    size   : "small",
+                    tooltip: "Edit metadata",
+                    onpress: () => THOTH.requireAuth("edit metadata", () => {
+                        UI.modalModelMetadata(modelName);
+                    })
+                })
             },
         ]
     });
@@ -1821,13 +1853,16 @@ UI.modalLayerDetails = (layerId, data_temp) => {
     const layer = THOTH.Layers.layerMap.get(layerId);
     if (layer === undefined || layer.trash) return;
 
-    if (data_temp === undefined) data_temp = structuredClone(layer.metadata) || {};
+    if (data_temp === undefined) data_temp = THOTH.MD.toCanonicalMetadata(layer.metadata || {});
     
-    if (!data_temp.schemaName) data_temp.schemaName = THOTH.MD.getDefaultSchemaName();
+    if (!THOTH.MD.getSchemaName(data_temp)) {
+        data_temp = THOTH.MD.createMetadataRecord(THOTH.MD.getDefaultSchemaName(), {});
+    }
 
-    const schemaName = data_temp.schemaName;
+    const schemaName = THOTH.MD.getSchemaName(data_temp);
     const prev_data  = structuredClone(layer.metadata) || {};
     const schema     = THOTH.MD.schemaMap.get(schemaName);
+    const attributes = THOTH.MD.getAttributes(data_temp);
 
     const metadataBody = ATON.UI.createContainer({classes: "row g-0 w-100"});
     metadataBody.append(
@@ -1839,7 +1874,7 @@ UI.modalLayerDetails = (layerId, data_temp) => {
                 UI.modalLayerDetails(layerId, data_temp);
             }
         }),
-        UI.createMetadataEditor(schema, data_temp),
+        UI.createMetadataEditor(schema, attributes),
     )
 
     const elLayerActions = ATON.UI.createContainer({classes: "d-flex justify-content-end align-items-center gap-2"});
@@ -1925,14 +1960,68 @@ UI.modalLayerDetails = (layerId, data_temp) => {
     });
 }; 
 
-UI.modalSceneMetadata = (data_temp) => {
-    if (data_temp === undefined) data_temp = structuredClone(THOTH.sceneMetadata) || {};
-    
-    if (!data_temp.schemaName) data_temp.schemaName = THOTH.MD.getDefaultSchemaName();
+UI.modalModelMetadata = (modelId, data_temp) => {
+    const model = THOTH.SceneStore.getModel(modelId);
+    if (!model || model.trash) return;
 
-    const schemaName = data_temp.schemaName;
+    if (data_temp === undefined) data_temp = THOTH.MD.toCanonicalMetadata(model.metadata || {});
+
+    if (!THOTH.MD.getSchemaName(data_temp)) {
+        data_temp = THOTH.MD.createMetadataRecord(THOTH.MD.getDefaultSchemaName(), {});
+    }
+
+    const schemaName = THOTH.MD.getSchemaName(data_temp);
+    const prev_data  = structuredClone(model.metadata) || {};
+    const schema     = THOTH.MD.schemaMap.get(schemaName);
+    const attributes = THOTH.MD.getAttributes(data_temp);
+
+    const elBody = ATON.UI.createTreeGroup({
+        items: [
+            {
+                title  : "Metadata schema",
+                open   : true,
+                content: UI.createSchemaSelector(schemaName, (v) => {
+                    if (v !== schemaName) {
+                        data_temp = THOTH.MD.createPropertiesfromSchema(v);
+                        UI.modalModelMetadata(modelId, data_temp);
+                    }
+                })
+            },
+            {
+                title  : "Metadata",
+                open   : true,
+                content: UI.createMetadataEditor(schema, attributes),
+            }
+        ]
+    });
+
+    const elFooter = UI.createModalFooter({
+        onsuccess: () => {
+            THOTH.MD.editModelMetadata(modelId, data_temp, prev_data);
+            ATON.UI.hideModal();
+        },
+        successText: "Save changes"
+    });
+
+    ATON.UI.showModal({
+        header: `Edit metadata for ${modelId}`,
+        body  : elBody,
+        footer: elFooter,
+        wide  : true,
+    });
+};
+
+UI.modalSceneMetadata = (data_temp) => {
+    if (data_temp === undefined) data_temp = THOTH.MD.toCanonicalMetadata(THOTH.sceneMetadata || {});
+    
+    if (!THOTH.MD.getSchemaName(data_temp)) {
+        data_temp = THOTH.MD.createMetadataRecord(THOTH.MD.getDefaultSchemaName(), {});
+    }
+
+    const schemaName = THOTH.MD.getSchemaName(data_temp);
     const prev_data  = THOTH.sceneMetadata || {};
     const schema     = THOTH.MD.schemaMap.get(schemaName);
+    const attributes = THOTH.MD.getAttributes(data_temp);
 
     // Body
     const elBody = ATON.UI.createTreeGroup({
@@ -1952,7 +2041,7 @@ UI.modalSceneMetadata = (data_temp) => {
             {
                 title  : "Metadata",
                 open   : true,
-                content: UI.createMetadataEditor(schema, data_temp),
+                content: UI.createMetadataEditor(schema, attributes),
             }
         ]
     });    

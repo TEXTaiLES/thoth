@@ -29,6 +29,8 @@ import SceneStore          from "./src/scene_store.js";
 import Ops                 from "./src/operations.js";
 import API                 from "./src/api_client.js";
 import Auth                from "./src/auth.js";
+import Artefacts           from "./src/artefacts.js";
+import Transforms          from "./src/transforms.js";
 
 
 // Realize 
@@ -57,6 +59,8 @@ THOTH.SceneStore = SceneStore;
 THOTH.Ops     = Ops;
 THOTH.API     = API;
 THOTH.Auth    = Auth;
+THOTH.Artefacts = Artefacts;
+THOTH.Transforms = Transforms;
 
 
 THOTH.BASE_URL        = "../thoth";
@@ -143,8 +147,12 @@ THOTH.setup = () => {
             THOTH.Layers.setup();
             // Init models
             THOTH.Models.setup();
+            // Init artefacts
+            THOTH.Artefacts.setup();
             // Init metadata
             THOTH.MD.setup();
+            // Init transforms
+            THOTH.Transforms.setup();
             // Init history
             THOTH.History.setup();
             // Init operations

@@ -78,7 +78,7 @@ SceneStore._normalizeTransforms = (data = {}) => {
 
     return {
         translation: SceneStore._normalizeVector(
-            transforms.translation || transform.translation || transform.position,
+            transforms.translation || transforms.position || transform.translation || transform.position,
             { x: 0, y: 0, z: 0 }
         ),
         rotation: SceneStore._normalizeVector(
@@ -89,6 +89,50 @@ SceneStore._normalizeTransforms = (data = {}) => {
             transforms.scale || transform.scale,
             { x: 1, y: 1, z: 1 }
         )
+    };
+};
+
+SceneStore._normalizeArtefact = (data = {}) => {
+    const artefact = SceneStore._isObject(data) ? data : {};
+
+    return {
+        ...SceneStore._clone(artefact),
+        title      : artefact.title || artefact.name || "",
+        gltf_file  : artefact.gltf_file || artefact.url || artefact.path || artefact.src || "",
+        description: artefact.description || "",
+        owner      : artefact.owner || "",
+        keywords   : Array.isArray(artefact.keywords) ? SceneStore._clone(artefact.keywords) : [],
+        copyright  : artefact.copyright || ""
+    };
+};
+
+SceneStore._normalizeMetadata = (data = {}) => {
+    const metadata = SceneStore._isObject(data) ? data : {};
+    const schemaName = metadata.schemaName || metadata.schema?.name || "puc_schema";
+
+    if (metadata.schema || metadata.attributes) {
+        return {
+            schema: {
+                name       : schemaName,
+                version    : metadata.schema?.version || "",
+                description: metadata.schema?.description || "",
+                url        : metadata.schema?.url || ""
+            },
+            attributes: SceneStore._normalizeObjectMap(metadata.attributes)
+        };
+    }
+
+    const attributes = SceneStore._clone(metadata);
+    delete attributes.schemaName;
+
+    return {
+        schema: {
+            name       : schemaName,
+            version    : "",
+            description: "",
+            url        : ""
+        },
+        attributes: SceneStore._normalizeObjectMap(attributes)
     };
 };
 
@@ -107,8 +151,8 @@ SceneStore._normalizeSensors = (data) => {
 SceneStore._normalizeModel = (modelId, data = {}) => {
     return {
         id: data.id || modelId,
-        artefact: SceneStore._normalizeObjectMap(data.artefact),
-        metadata: SceneStore._normalizeObjectMap(data.metadata),
+        artefact: SceneStore._normalizeArtefact(data.artefact),
+        metadata: SceneStore._normalizeMetadata(data.metadata),
         transforms: SceneStore._normalizeTransforms(data),
         selections: SceneStore._normalizeObjectMap(data.selections),
         measurements: SceneStore._normalizeObjectMap(data.measurements),
@@ -209,6 +253,12 @@ SceneStore.setModelField = (modelId, fieldName, value) => {
 
     if (fieldName === "transforms") {
         model.transforms = SceneStore._normalizeTransforms({ transforms: value });
+    }
+    else if (fieldName === "artefact") {
+        model.artefact = SceneStore._normalizeArtefact(value);
+    }
+    else if (fieldName === "metadata") {
+        model.metadata = SceneStore._normalizeMetadata(value);
     }
     else if (fieldName === "sensors") {
         model.sensors = SceneStore._normalizeSensors(value);

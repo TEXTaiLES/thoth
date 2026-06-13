@@ -162,8 +162,10 @@ Ops._applyModel = (operation) => {
     switch (operation.type) {
         case "model.create": {
             THOTH.SceneStore.ensureModel(modelId, value);
-            const modelURL = value.artefact?.gltf_file || value.artefact?.url || modelId;
-            THOTH.Models.addModelFromURL(modelURL);
+            THOTH.Artefacts?.parseModelArtefact(modelId, value.artefact || {});
+            THOTH.Transforms?.parseModelTransform(modelId, value.transforms || {});
+            const modelURL = THOTH.Artefacts?.getModelURL(modelId) || modelId;
+            THOTH.Models.addModelFromURL(modelURL, modelId);
             break;
         }
         case "model.delete":
@@ -177,13 +179,7 @@ Ops._applyModel = (operation) => {
             THOTH.SceneStore.setModelField(modelId, "metadata", value);
             break;
         case "model.update_transform":
-            THOTH.SceneStore.setModelField(modelId, "transforms", value);
-            if (value.translation) THOTH.Models.modelTransformPos(modelId, value.translation);
-            if (value.rotation) THOTH.Models.modelTransformRot(modelId, value.rotation);
-            if (value.scale) {
-                const model = THOTH.Models.modelMap.get(modelId);
-                if (model) model.scale.set(Number(value.scale.x), Number(value.scale.y), Number(value.scale.z));
-            }
+            THOTH.Transforms.applyModelTransform(modelId, value);
             break;
         default:
             console.warn("Unsupported model operation:", operation.type);

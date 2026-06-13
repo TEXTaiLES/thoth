@@ -7,7 +7,6 @@
         Stelios Alvanos (steliosalvanos@gmail.com)
 
 ===========================================================================*/
-import {TransformControls} from "./transform_controls.js";
 let Models = {};
 
 // Setup
@@ -46,12 +45,10 @@ Models.parseSceneGraph = (sg) => {
         
         if (N.toYup) G.setYup();
 
-        THOTH.SceneStore?.ensureModel(nid, {
-            artefact: {
-                gltf_file: Models._getNodeURL(N)
-            },
-            transforms: Models._canonicalTransformsFromSceneGraph(N.transform)
+        THOTH.Artefacts?.parseModelArtefact(nid, {
+            gltf_file: Models._getNodeURL(N)
         });
+        THOTH.Transforms?.parseModelTransform(nid, N.transform);
     }
     // edges
     for (const parid in edges) {
@@ -81,9 +78,15 @@ Models.parseModels = (models) => {
         const modelData = models[modelId];
         if (modelData.trash === true) continue;
 
-        const modelURL = Models._getArtefactURL(modelData.artefact);
+        THOTH.Artefacts?.parseModelArtefact(modelId, modelData.artefact);
+        THOTH.Transforms?.parseModelTransform(modelId, modelData.transforms);
+
+        const modelURL = THOTH.Artefacts?.getModelURL(modelId);
         const G = ATON.getOrCreateSceneNode(modelId).removeChildren();
-        Models._applyCanonicalTransforms(modelData.transforms, G);
+        Models._applyCanonicalTransforms(
+            THOTH.Transforms?.getModelTransform(modelId) || modelData.transforms,
+            G
+        );
 
         if (modelURL) {
             G.load(modelURL, () => {
@@ -119,9 +122,7 @@ Models.getModelURL = (modelName) => {
 
     const model = Models.modelMap.get(modelName);
     if (model === undefined) {
-        return Models._getArtefactURL(
-            THOTH.SceneStore?.getModel(modelName)?.artefact
-        );
+        return THOTH.Artefacts?.getModelURL(modelName);
     }
     
     const url = Object.keys(model._reqURLs || {})[0];
@@ -175,27 +176,8 @@ Models.getModelTransforms = (modelName) => {
 };
 
 Models.getCanonicalModelTransforms = (modelName) => {
-    if (!modelName) return;
     const model = Models.modelMap.get(modelName);
-    if (!model) return;
-
-    return {
-        translation: {
-            x: Number(model.position.x),
-            y: Number(model.position.y),
-            z: Number(model.position.z)
-        },
-        rotation: {
-            x: Number(model.rotation.x),
-            y: Number(model.rotation.y),
-            z: Number(model.rotation.z)
-        },
-        scale: {
-            x: Number(model.scale.x),
-            y: Number(model.scale.y),
-            z: Number(model.scale.z)
-        }
-    };
+    return THOTH.Transforms?.fromNode(model);
 };
 
 Models._getNodeURL = (nodeData) => {
@@ -265,15 +247,13 @@ Models._applyCanonicalTransforms = (transforms = {}, model) => {
 
 // Model Management
 
-Models.addModelFromURL = (modelURL) => {
+Models.addModelFromURL = (modelURL, modelId) => {
     if (!modelURL) return;
 
     // modelURL can act as modelName
-    const modelName = modelURL.split('/').filter(Boolean).pop();
-    THOTH.SceneStore?.ensureModel(modelName, {
-        artefact: {
-            gltf_file: modelURL
-        }
+    const modelName = modelId || modelURL.split('/').filter(Boolean).pop();
+    THOTH.Artefacts?.parseModelArtefact(modelName, {
+        gltf_file: modelURL
     });
     
     if (ATON.getSceneNode(modelName) !== undefined) {
@@ -400,53 +380,30 @@ Models.toggleVisibility = (modelName) => {
 Models.modelTransformPos = (modelName, value) => {
     if (modelName === undefined) return;
 
-    const model = Models.modelMap.get(modelName);
-    model.position.set(Number(value.x), Number(value.y), Number(value.z));
-    THOTH.SceneStore?.setModelField(
-        modelName,
-        "transforms",
-        Models.getCanonicalModelTransforms(modelName)
-    );
-      if (THOTH.transform && THOTH.transform.object === model) {
-        THOTH.transform.updateMatrixWorld(true);
-    }
+    const transforms = THOTH.Transforms?.getModelTransform(modelName);
+    THOTH.Transforms?.applyModelTransform(modelName, {
+        ...transforms,
+        translation: value
+    });
 };
 
 Models.modelTransformRot = (modelName, value) => {
     if (modelName === undefined) return;
 
-    const model = Models.modelMap.get(modelName);
-    model.rotation.set(Number(value.x), Number(value.y), Number(value.z));
-    THOTH.SceneStore?.setModelField(
-        modelName,
-        "transforms",
-        Models.getCanonicalModelTransforms(modelName)
-    );
-      if (THOTH.transform && THOTH.transform.object === model) {
-        THOTH.transform.updateMatrixWorld(true);
-    }
+    const transforms = THOTH.Transforms?.getModelTransform(modelName);
+    THOTH.Transforms?.applyModelTransform(modelName, {
+        ...transforms,
+        rotation: value
+    });
 };
 
 //add transform controls to scene node
-Models.addTransformControls = () => {
-    THOTH.transform = new TransformControls(
-            ATON.Nav._camera,
-            ATON._renderer.domElement
-        );
-
-   const gizmoNode = new ATON.Node("transformGizmo");
-   ATON._mainRoot.add(gizmoNode);
-   gizmoNode.add(THOTH.transform);
+Models.addTransformControls = (modelName) => {
+    THOTH.Transforms?.attachGizmo(modelName);
 };
 
 Models.deactivateTransformControls = () => {
-
-    if (!THOTH.transform) return;
-
-    THOTH.transform.detach();
-
-    THOTH.transform.visible = false;
-
+    THOTH.Transforms?.detachGizmo();
 };
 
 
