@@ -111,6 +111,8 @@ Models.onLoad = (model) => {
             Models.initMeshColors(N);
         }
     });
+
+    Models.refreshModelPicking(model);
     
     THOTH.updateSceneScale(model);
     THOTH.FE.addModel(model.name);
@@ -245,6 +247,25 @@ Models._applyCanonicalTransforms = (transforms = {}, model) => {
     model.position.set(translation.x, translation.y, translation.z);
     model.rotation.set(rotation.x, rotation.y, rotation.z);
     model.scale.set(scale.x, scale.y, scale.z);
+};
+
+Models.refreshModelPicking = (model) => {
+    if (!model || !ATON.Utils?.updatePickGraph) return;
+
+    const refresh = () => {
+        if (!model.parent) return;
+
+        ATON.Utils.updatePickGraph(model, model.type);
+    };
+
+    if (model.parent) {
+        refresh();
+        return;
+    }
+
+    const requestFrame = globalThis.requestAnimationFrame ||
+        ((callback) => setTimeout(callback, 0));
+    requestFrame(refresh);
 };
 
 

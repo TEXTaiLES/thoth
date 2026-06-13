@@ -251,6 +251,8 @@ Ops._applyCollection = (operation) => {
         THOTH.SceneStore.setModelCollectionItem(modelId, info.collection, itemId, operation.value);
     }
 
+    THOTH.FE?.refreshSceneTree?.();
+
     return true;
 };
 

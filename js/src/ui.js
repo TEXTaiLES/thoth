@@ -56,6 +56,54 @@ UI.createBool = (options) => {
     return container;
 };
 
+UI.createToolOptionsPanel = (title, content) => {
+    const elBody = ATON.UI.createContainer({
+        classes: "thoth-tool-options-panel"
+    });
+
+    const elHeader = ATON.UI.createContainer({
+        classes: "thoth-tool-options-header"
+    });
+    const elContent = ATON.UI.createContainer({
+        classes: "thoth-tool-options-content"
+    });
+    const elToggle = ATON.UI.createButton({
+        text   : `${title} -`,
+        tooltip: "Toggle options",
+        onpress: () => {
+            const isCollapsed = elContent.classList.toggle("d-none");
+            elBody.classList.toggle("thoth-tool-options-collapsed", isCollapsed);
+            elToggle.textContent = isCollapsed ? `${title} +` : `${title} -`;
+        }
+    });
+
+    elHeader.append(elToggle);
+
+    elBody.append(elHeader);
+    if (content) elContent.append(content);
+    elBody.append(elContent);
+
+    return elBody;
+};
+
+UI.createToolOptionRow = (label, control, tooltip) => {
+    const elRow = ATON.UI.createContainer({
+        classes: "thoth-tool-option-row"
+    });
+    const elLabel = ATON.UI.createButton({
+        text   : label,
+        tooltip: tooltip || label
+    });
+
+    elLabel.classList.add("thoth-tool-option-label");
+    if (control) control.classList.add("thoth-tool-option-control");
+
+    elRow.append(elLabel);
+    if (control) elRow.append(control);
+
+    return elRow;
+};
+
 UI.modelTransformControl = (options) => {
     // Same as ATON's but with parsable modelName 
     let baseid = ATON.Utils.generateID("ftrans");
@@ -497,6 +545,19 @@ UI.createSceneTreeRow = (options = {}) => {
         elRow.append(elCount);
     }
 
+    if (Array.isArray(options.actions) && options.actions.length > 0) {
+        const elActions = ATON.UI.createContainer({
+            classes: "d-flex align-items-center gap-1"
+        });
+
+        for (const action of options.actions) {
+            if (action) elActions.append(action);
+        }
+
+        elRow.append(elActions);
+        elRow.actions = elActions;
+    }
+
     elRow.expandButton = elExpand;
     elRow.labelButton  = elLabel;
 
@@ -840,12 +901,7 @@ UI.createMeshList = (modelName) => {
 // Options
 
 UI.createMeasureOptions = () => {
-    const elHeader = ATON.UI.createContainer({classes: "bg-body-secondary"});
-    elHeader.append(ATON.UI.createButton({
-        text: "Measure Options"
-    }));
-
-    const elBody = ATON.UI.createContainer();
+    const elContent = ATON.UI.createContainer();
     
     // Distance type map
     const distanceTypeMap = new Map();
@@ -873,105 +929,80 @@ UI.createMeasureOptions = () => {
     THOTH.FE.handleElementHighlight(THOTH.MSR.distanceType,distanceTypeMap);
 
     const elOptions = ATON.UI.createContainer();
+    elOptions.classList.add("d-flex", "align-items-center", "gap-1", "justify-content-end");
     elOptions.append(elBtnEuclidean,elBtnGeodesic);
 
-    const elDistance = UI.createSplitRow({
-        colLeft: 7,
-        itemsLeft: ATON.UI.createButton({
-            text: "Type of distance:",
-            tooltip: "Select type of distance for measurement",
-        }),
-        itemsRight: elOptions,
-    });
-    const elResult = ATON.UI.createContainer({ classes: "bg-body-tertiary p-2" });
+    const elDistance = UI.createToolOptionRow(
+        "Type of distance",
+        elOptions,
+        "Select type of distance for measurement"
+    );
+    const elResult = ATON.UI.createContainer({ classes: "thoth-tool-option-result" });
   //  elResult.textContent = "Distance: ";  // default text
    // THOTH.MSR.elResult = elResult; 
-    elBody.append(elHeader, elDistance, elResult);
+    elContent.append(elDistance, elResult);
 
-    return elBody;
+    return UI.createToolOptionsPanel("Measure Options", elContent);
 };
 
 UI.createBrushOptions = () => {
-    const elHeader = ATON.UI.createContainer({classes: "bg-body-secondary"});
-    elHeader.append(ATON.UI.createButton({
-        text: "Brush/Eraser Options"
-    }));
-    
-    const elBody = ATON.UI.createContainer();
+    const elContent = ATON.UI.createContainer();
+
     // Size
-    const elBrushSize = UI.createSplitRow({
-        colLeft: 7,
-        itemsLeft: ATON.UI.createButton({
-            text   : "Size",
-            tooltop: "Select the size of the tool",
-        }),
-        itemsRight: ATON.UI.createSlider({
+    const elBrushSize = UI.createToolOptionRow(
+        "Size",
+        ATON.UI.createSlider({
             range  : [
                 THOTH.Toolbox.selectorSizeMin,
                 THOTH.Toolbox.selectorSizeMax
             ],
             value  : THOTH.Toolbox.selectorSize,
             oninput: (v) => THOTH.Toolbox.setSelectorSize(v)
-        })
-    });
-    elBody.append(elHeader, elBrushSize);
+        }),
+        "Select the size of the tool"
+    );
+    elContent.append(elBrushSize);
     
-    return elBody;
+    return UI.createToolOptionsPanel("Brush/Eraser Options", elContent);
 };
 
 UI.createLassoOptions = () => {
-    const elHeader = ATON.UI.createContainer({classes: "bg-body-secondary"});
-    elHeader.append(ATON.UI.createButton({
-        text: "Brush/Eraser Options"
-    }));
-    
-    const elBody = ATON.UI.createContainer();
+    const elContent = ATON.UI.createContainer();
+
     // Precision
-    const elPrecision = UI.createSplitRow({
-        colLeft: 7,
-        itemsLeft: ATON.UI.createButton({
-            text   : "Pixel precision",
-            tooltip: "Select the precision of the lasso tool. \n" +
-            "Higher precision leads to more accurate selection but lower performance"
-        }),
-        itemsRight: ATON.UI.createSlider({
+    const elPrecision = UI.createToolOptionRow(
+        "Pixel precision",
+        ATON.UI.createSlider({
             range  : [0.1, 1],
             value  : THOTH.Toolbox.lassoPrecision,
             step    : 0.1,
             oninput : (v) => THOTH.Toolbox.lassoPrecision = v,
-        })
-    });
-    // Normal
-    const elNormal = UI.createSplitRow({
-        colLeft: 7,
-        itemsLeft: ATON.UI.createButton({
-            text: "Normal threshold",
-            tooltip: "Select the threshold for face selection. \n" +
-            "-1: Highest tolerance. \n" + 
-            "+1: Lower tolerance"
         }),
-        itemsRight: ATON.UI.createSlider({
+        "Select the precision of the lasso tool. Higher precision leads to more accurate selection but lower performance"
+    );
+    // Normal
+    const elNormal = UI.createToolOptionRow(
+        "Normal threshold",
+        ATON.UI.createSlider({
             range  : [-1, 1],
             step   : 0.1,
             value  : THOTH.Toolbox.normalThreshold,
             oninput: (v) => THOTH.Toolbox.normalThreshold = v,
-        })
-    });
-    // Occluded
-    const elOccluded = UI.createSplitRow({
-        colLeft: 7,
-        itemsLeft: ATON.UI.createButton({
-            text: "Select occluded faces",
-            tooltip: "Select obscured areas.\n"
         }),
-        itemsRight: UI.createBool({
+        "Select the threshold for face selection. -1: Highest tolerance. +1: Lower tolerance"
+    );
+    // Occluded
+    const elOccluded = UI.createToolOptionRow(
+        "Select occluded faces",
+        UI.createBool({
             onchange: (input) => THOTH.Toolbox.selectObstructedFaces = input,
             tooltip : "Select occluded faces",
-        })
-    });
-    elBody.append(elHeader, elPrecision, elNormal, elOccluded);
+        }),
+        "Select obscured areas"
+    );
+    elContent.append(elPrecision, elNormal, elOccluded);
 
-    return elBody;
+    return UI.createToolOptionsPanel("Lasso Options", elContent);
 };
 
 
@@ -1235,9 +1266,11 @@ UI.modalAddModel = () => {
                     const elInput = ATON.UI.createTagsComponent({
                         list       : itemNames,
                         label      : "Input models",
+                        icon       : "add",
                         onaddtag   : (k) => modelList.add(k),
                         onremovetag: (k) => modelList.delete(k)
                     });
+                    elInput.classList.add("thoth-add-model-tags");
         
                     // Footer
                     const elFooter = UI.createModalFooter({
@@ -1960,26 +1993,12 @@ UI.createSchemaSelector = (schemaName, onapply) => {
     return elBody;
 };
 
-UI.modalSelectionDetails = (selectionId, data_temp) => {
+UI.modalSelectionDetails = (selectionId) => {
     const selection = THOTH.Selections.getSelectionById(selectionId);
     if (selection === undefined || selection.trash) return;
 
-    if (data_temp === undefined) data_temp = THOTH.MD.toCanonicalMetadata(selection.metadata || {});
-    
-    if (!THOTH.MD.getSchemaName(data_temp)) {
-        data_temp = THOTH.MD.createMetadataRecord(THOTH.MD.getDefaultSchemaName(), {});
-    }
-
-    const schemaName = THOTH.MD.getSchemaName(data_temp);
     const prev_data  = structuredClone(selection) || {};
-    const schema     = THOTH.MD.schemaMap.get(schemaName);
-    const attributes = THOTH.MD.getAttributes(data_temp);
     const annotationTemp = THOTH.Annotations?.normalize(selection) || structuredClone(selection);
-
-    const metadataBody = ATON.UI.createContainer({classes: "row g-0 w-100"});
-    metadataBody.append(
-        UI.createMetadataEditor(schema, attributes),
-    )
 
     const elSelectionActions = ATON.UI.createContainer({classes: "d-flex justify-content-end align-items-center gap-2"});
     elSelectionActions.append(
@@ -2022,24 +2041,7 @@ UI.modalSelectionDetails = (selectionId, data_temp) => {
             },
             ...UI.createAnnotationSharedItems(annotationTemp, {
                 visibility: true
-            }),
-            // Schema selection
-            {
-                title  : "Metadata schema",
-                open   : true,
-                content: UI.createSchemaSelector(schemaName, (v) => {
-                    if (v !== schemaName) {
-                        data_temp = THOTH.MD.createPropertiesfromSchema(v);
-                        UI.modalSelectionDetails(selectionId, data_temp);
-                    }
-                })
-            },
-            // Metadata
-            {
-                title  : "Metadata",
-                open   : true,
-                content: metadataBody,
-            }
+            })
         ]
     });
     // Footer
@@ -2050,7 +2052,7 @@ UI.modalSelectionDetails = (selectionId, data_temp) => {
 
             THOTH.fire("editSelectionMetadata", {
                 id            : selectionId,
-                data          : data_temp,
+                data          : selection.metadata || {},
                 annotationData: sharedData,
                 prevData      : prev_data
             });

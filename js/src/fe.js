@@ -468,19 +468,12 @@ FE.openTransformPanel = (modelId, key) => {
 FE.appendModelSceneRows = (elParent, modelId, model) => {
     const sections = [
         {
-            key    : "artefact",
-            label  : "Artefact",
-            icon   : "collection-item",
-            count  : FE.countObjectFields(model.artefact),
-            content: () => THOTH.Artefacts.createDetailsView(modelId)
-        },
-        {
             key    : "selections",
             label  : "Selections",
             icon   : "collection-item",
             count  : FE.countCollectionItems(model.selections),
             expandable: true,
-            content: () => FE.createModelCollectionPanel(modelId, "selections")
+            actions: () => FE.createCollectionActions(modelId, "selections")
         },
         {
             key    : "semantic_annotations",
@@ -488,7 +481,7 @@ FE.appendModelSceneRows = (elParent, modelId, model) => {
             icon   : "list",
             count  : FE.countCollectionItems(model.semantic_annotations),
             expandable: true,
-            content: () => FE.createModelCollectionPanel(modelId, "semantic_annotations")
+            actions: () => FE.createCollectionActions(modelId, "semantic_annotations")
         },
         {
             key    : "measurements",
@@ -496,7 +489,14 @@ FE.appendModelSceneRows = (elParent, modelId, model) => {
             icon   : "measure",
             count  : FE.countCollectionItems(model.measurements),
             expandable: true,
-            content: () => FE.createModelCollectionPanel(modelId, "measurements")
+            actions: () => FE.createCollectionActions(modelId, "measurements")
+        },
+        {
+            key    : "artefact",
+            label  : "Artefact",
+            icon   : "collection-item",
+            count  : FE.countObjectFields(model.artefact),
+            content: () => THOTH.Artefacts.createDetailsView(modelId)
         },
         {
             key    : "transforms",
@@ -509,7 +509,7 @@ FE.appendModelSceneRows = (elParent, modelId, model) => {
             label  : "Metadata",
             icon   : "list",
             count  : FE.countObjectFields(model.metadata?.attributes),
-            content: () => FE.createMetadataPanel(modelId)
+            openModal: (sectionKey) => FE.openMetadataModal(modelId, sectionKey)
         },
         {
             key    : "sensors",
@@ -534,10 +534,21 @@ FE.appendModelSceneRows = (elParent, modelId, model) => {
             level     : 1,
             expandable: section.expandable === true,
             open      : isSectionOpen,
+            actions   : section.actions ? section.actions() : undefined,
             onexpand  : section.expandable ? () => FE.toggleSceneTreeNode(sectionKey) : undefined,
             onselect  : () => {
+                if (section.expandable) {
+                    FE.toggleSceneTreeNode(sectionKey);
+                    return;
+                }
+
                 if (section.openPanel) {
                     section.openPanel(sectionKey);
+                    return;
+                }
+
+                if (section.openModal) {
+                    section.openModal(sectionKey);
                     return;
                 }
 
@@ -572,9 +583,101 @@ FE.appendAnnotationRows = (elParent, modelId, collectionName, collection = {}) =
             icon    : "collection-item",
             active  : FE.sceneTreeActiveKey === itemKey,
             level   : 2,
-            onselect: () => FE.openAnnotationPanel(itemKey, collectionName, itemId, modelId)
+            actions : FE.createAnnotationRowActions(modelId, collectionName, itemId, item),
+            onselect: () => FE.selectAnnotationRow(itemKey, collectionName, itemId, modelId)
         }));
     }
+};
+
+FE.createCollectionActions = (modelId, collectionName) => {
+    const actions = [];
+
+    if (collectionName === "selections") {
+        actions.push(ATON.UI.createButton({
+            icon   : "add",
+            size   : "small",
+            tooltip: "New Selection",
+            onpress: () => THOTH.fire("createSelection", { modelId: modelId })
+        }));
+    }
+
+    return actions;
+};
+
+FE.createAnnotationRowActions = (modelId, collectionName, itemId, item) => {
+    return [
+        ATON.UI.createButton({
+            icon   : "list",
+            size   : "small",
+            tooltip: "Edit details",
+            onpress: () => FE.openAnnotationPanel(
+                `model:${modelId}:${collectionName}:${itemId}`,
+                collectionName,
+                itemId,
+                modelId
+            )
+        }),
+        ATON.UI.createButton({
+            icon   : item?.visible === false ? THOTH.PATH_RES_ICONS + "visibility_no.png" : "visibility",
+            size   : "small",
+            tooltip: item?.visible === false ? "Show" : "Hide",
+            onpress: () => FE.toggleAnnotationVisibility(modelId, collectionName, itemId, item)
+        }),
+        ATON.UI.createButton({
+            icon   : ATON.PATH_RES + "icons/trash.png",
+            size   : "small",
+            tooltip: "Delete",
+            onpress: () => FE.deleteAnnotationItem(collectionName, itemId, item)
+        })
+    ];
+};
+
+FE.toggleAnnotationVisibility = (modelId, collectionName, itemId, item) => {
+    if (collectionName === "selections") {
+        THOTH.Selections.updateVisibility(modelId, itemId, item?.visible === false);
+    }
+    else if (collectionName === "measurements") {
+        THOTH.fire("toggleMeasurementVisibility", itemId);
+    }
+    else if (collectionName === "semantic_annotations") {
+        THOTH.fire("toggleSemanticAnnotationVisibility", itemId);
+    }
+};
+
+FE.deleteAnnotationItem = (collectionName, itemId, item) => {
+    let didFire = false;
+
+    if (collectionName === "selections") {
+        didFire = THOTH.fire("deleteSelection", itemId);
+    }
+    else if (collectionName === "measurements") {
+        didFire = THOTH.fire("deleteMeasurement", {
+            id    : itemId,
+            point1: item?.points?.[0],
+            point2: item?.points?.[1]
+        });
+    }
+    else if (collectionName === "semantic_annotations") {
+        didFire = THOTH.fire("deleteSemanticAnnotation", itemId);
+    }
+
+    if (didFire === false) return;
+    if (item) item.trash = true;
+    FE.refreshSceneTree();
+};
+
+FE.selectAnnotationRow = (key, collectionName, itemId, modelId) => {
+    FE.sceneTreeActiveKey = key;
+
+    if (collectionName === "selections") {
+        THOTH.Selections.setActiveSelection(modelId, itemId);
+    }
+    else if (collectionName === "measurements") {
+        THOTH.FE.handleElementHighlight(itemId, THOTH.FE.msrMap);
+        THOTH.MSR.highlightMeasurement(itemId);
+    }
+
+    FE.refreshSceneTree();
 };
 
 FE.openAnnotationPanel = (key, collectionName, itemId, modelId) => {
@@ -594,61 +697,11 @@ FE.openAnnotationPanel = (key, collectionName, itemId, modelId) => {
     FE.refreshSceneTree();
 };
 
-FE.createMetadataPanel = (modelId) => {
-    const elBody = ATON.UI.createContainer();
-    elBody.append(ATON.UI.createButton({
-        text   : "Edit Metadata",
-        icon   : "list",
-        variant: "info",
-        onpress: () => THOTH.requireAuth("edit metadata", () => THOTH.UI.modalModelMetadata(modelId))
-    }));
-    return elBody;
-};
-
-FE.createModelCollectionPanel = (modelId, collectionName) => {
-    const model = THOTH.SceneStore?.getModel?.(modelId);
-    const collection = model?.[collectionName] || {};
-    const elBody = ATON.UI.createContainer({
-        classes: "d-grid gap-1"
-    });
-
-    if (collectionName === "selections") {
-        elBody.append(ATON.UI.createButton({
-            text   : "New Selection",
-            icon   : "add",
-            variant: "info",
-            onpress: () => THOTH.fire("createSelection", { modelId: modelId })
-        }));
-    }
-
-    const itemIds = Object.keys(collection).filter(itemId => collection[itemId]?.trash !== true);
-    if (itemIds.length === 0) {
-        elBody.append(THOTH.UI.createPlaceholderPanel(
-            FE.getCollectionLabel(collectionName),
-            "No items for this model."
-        ));
-        return elBody;
-    }
-
-    for (const itemId of itemIds) {
-        const item = collection[itemId];
-        const itemKey = `model:${modelId}:${collectionName}:${itemId}`;
-        elBody.append(THOTH.UI.createSceneTreeRow({
-            label   : item.name || itemId,
-            icon    : "collection-item",
-            onselect: () => FE.openAnnotationPanel(itemKey, collectionName, itemId, modelId)
-        }));
-    }
-
-    return elBody;
-};
-
-FE.getCollectionLabel = (collectionName) => {
-    if (collectionName === "selections") return "Selections";
-    if (collectionName === "measurements") return "Measurements";
-    if (collectionName === "semantic_annotations") return "Semantic Annotations";
-
-    return collectionName;
+FE.openMetadataModal = (modelId, key) => {
+    FE.sceneTreeActiveKey = key;
+    THOTH.Transforms?.detachGizmo();
+    THOTH.requireAuth("edit metadata", () => THOTH.UI.modalModelMetadata(modelId));
+    FE.refreshSceneTree();
 };
 
 FE.countCollectionItems = (collection = {}) => {
@@ -862,6 +915,10 @@ FE.addNewSelection = (selectionId, modelId) => {
         }
         const nameButton = FE.selectionNameMap.get(selectionKey);
         if (nameButton) nameButton.textContent = selection.name;
+        if (THOTH.Selections.getActiveSelection() === selection) {
+            FE.sceneTreeActiveKey = `model:${selection.model_id}:selections:${selection.id}`;
+            THOTH.Selections.setActiveSelection(selection.model_id, selection.id);
+        }
         FE.refreshSceneTree();
         return;
     }
@@ -879,6 +936,10 @@ FE.addNewSelection = (selectionId, modelId) => {
 
     // Add to list
     FE.selectionList.append(newSelectionController);
+    if (THOTH.Selections.getActiveSelection() === selection) {
+        FE.sceneTreeActiveKey = `model:${selection.model_id}:selections:${selection.id}`;
+        THOTH.Selections.setActiveSelection(selection.model_id, selection.id);
+    }
     FE.refreshSceneTree();
 };
 

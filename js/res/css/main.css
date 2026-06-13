@@ -116,7 +116,8 @@
     margin: var(--thoth-ui-margin);
     max-height: calc(100% - (var(--thoth-ui-margin)*2));
 
-    background-color: rgba(var(--bs-body-bg-rgb), 0.4) !important;
+    padding: 6px;
+    background-color: rgba(var(--bs-body-bg-rgb), 0.72) !important;
     border-radius: var(--bs-border-radius);
 
     -webkit-backdrop-filter: blur(var(--aton-blur-radius));
@@ -124,8 +125,8 @@
 
     overflow-y: auto;
 
-    width: auto;
-    max-width: none;
+    width: min(360px, calc(100vw - 96px)) !important;
+    max-width: min(360px, calc(100vw - 96px));
     white-space: nowrap;
     display: inline-block;
 
@@ -135,6 +136,93 @@
     bottom: var(--thoth-ui-margin);
     right: auto;
     top: auto;
+}
+
+.thoth-tool-options-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+}
+
+.thoth-tool-options-header {
+    border-bottom: 1px solid rgba(var(--bs-body-color-rgb), 0.18);
+    margin-bottom: 4px;
+    padding-bottom: 4px;
+}
+
+.thoth-tool-options-header .aton-btn {
+    width: 100%;
+    justify-content: flex-start;
+}
+
+.thoth-tool-options-collapsed {
+    width: auto !important;
+}
+
+.thoth-tool-options-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.thoth-tool-option-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 32px;
+    border-radius: 4px;
+    gap: 6px;
+    margin-bottom: 4px !important;
+    padding: 2px;
+}
+
+.thoth-tool-option-label {
+    flex: 1 1 auto;
+    justify-content: flex-start;
+    min-width: 0;
+    white-space: normal;
+}
+
+.thoth-tool-option-control {
+    flex: 0 0 min(170px, 46%);
+    min-width: 120px;
+}
+
+.thoth-tool-option-row .aton-range-container {
+    width: 100%;
+}
+
+.thoth-tool-option-row .aton-range {
+    width: 100%;
+}
+
+.thoth-tool-option-row .thoth-bool {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0;
+    width: 100%;
+}
+
+.thoth-tool-option-result {
+    border-radius: 4px;
+    padding: 6px;
+    background-color: rgba(var(--bs-body-bg-rgb), 0.38);
+}
+
+.thoth-add-model-tags .input-group {
+    align-items: stretch;
+}
+
+.thoth-add-model-tags .btn-accent {
+    min-width: 2.25rem;
+    background-color: var(--bs-info) !important;
+    border-color: var(--bs-info) !important;
+    color: var(--bs-body-bg) !important;
+}
+
+.thoth-add-model-tags .btn-accent:hover {
+    filter: brightness(1.08);
 }
 
 .thoth-btn:hover {

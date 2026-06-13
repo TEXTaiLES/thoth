@@ -17,7 +17,7 @@ Events.authRequiredEvents = new Map([
     [ "modelTransformScale", "edit transforms" ],
     [ "createSelection", "create selections" ],
     [ "deleteSelection", "delete selections" ],
-    [ "editSelectionMetadata", "edit metadata" ],
+    [ "editSelectionMetadata", "edit selections" ],
     [ "renameSelection", "edit selections" ],
     [ "selectMeasure", "create measurements" ],
     [ "addMeasurementPoint", "create measurements" ],
