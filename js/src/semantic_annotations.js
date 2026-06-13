@@ -38,14 +38,18 @@ SemAnnotations.setup = () => {
 };
 
 
-SemAnnotations.parseAnnotations = (annotations) => {
+SemAnnotations.parseAnnotations = (annotations, modelId) => {
     if (annotations === undefined) return;
 
     for (const id in annotations) {
-        const annotation = SemAnnotations.normalizeAnnotation(annotations[id]);
-        SemAnnotations.semMap.set(Number(id), annotation);
-        THOTH.FE.addSemAnnotation(Number(id));
-        SemAnnotations.addAnnotationSem(Number(id));
+        const annotation = SemAnnotations.normalizeAnnotation({
+            ...annotations[id],
+            id      : annotations[id]?.id ?? id,
+            model_id: modelId ?? annotations[id]?.model_id
+        });
+        SemAnnotations.semMap.set(id, annotation);
+        THOTH.FE.addSemAnnotation(id);
+        SemAnnotations.addAnnotationSem(id);
     }
 };
 
@@ -61,11 +65,17 @@ SemAnnotations.cloneAnnotation = (annotation) => {
 SemAnnotations.normalizeAnnotation = (annotation) => {
     if (!annotation) return annotation;
 
-    const normalized = THOTH.Annotations?.normalize(annotation) || structuredClone(annotation);
+    const point = annotation.point ||
+        SemAnnotations.fromCanonicalPoint(annotation.annotation?.point, annotation.model_id);
+    const normalized = THOTH.Annotations?.createBaseAnnotation(annotation.id, {
+        ...annotation,
+        annotation: {
+            point: SemAnnotations.toCanonicalPoint(point)
+        }
+    }) || structuredClone(annotation);
 
-    if (normalized.point) {
-        normalized.point = SemAnnotations.normalizePoint(normalized.point);
-    }
+    normalized.point = SemAnnotations.normalizePoint(point);
+    normalized.model_id = annotation.model_id;
 
     if (!normalized.name) normalized.name = `Semantic ${normalized.id}`;
     if (normalized.visible === undefined) normalized.visible = true;
@@ -84,13 +94,76 @@ SemAnnotations.normalizePoint = (point) => {
         point.meshName = point.mesh.name;
         delete point.mesh;
     }
+    if (!point.coords && point.x !== undefined) {
+        point.coords = new THREE.Vector3(
+            Number(point.x),
+            Number(point.y),
+            Number(point.z)
+        );
+    }
+    if (point.face_id !== undefined && point.faceId === undefined) {
+        point.faceId = point.face_id;
+    }
 
     return point;
+};
+
+SemAnnotations.toCanonicalPoint = (point) => {
+    const normalized = SemAnnotations.normalizePoint(point);
+    const coords = normalized?.coords || normalized || {};
+
+    return {
+        x      : Number(coords.x ?? 0),
+        y      : Number(coords.y ?? 0),
+        z      : Number(coords.z ?? 0),
+        face_id: normalized?.faceId ?? normalized?.face_id ?? null
+    };
+};
+
+SemAnnotations.fromCanonicalPoint = (point, modelId) => {
+    if (!point) return undefined;
+
+    return SemAnnotations.normalizePoint({
+        meshId  : point.meshId || point.mesh_id || modelId,
+        meshName: point.meshName || point.mesh_name,
+        faceId  : point.face_id ?? point.faceId ?? null,
+        coords  : new THREE.Vector3(
+            Number(point.x ?? point.coords?.x ?? 0),
+            Number(point.y ?? point.coords?.y ?? 0),
+            Number(point.z ?? point.coords?.z ?? 0)
+        )
+    });
+};
+
+SemAnnotations.toCanonicalAnnotation = (annotationId, data = {}) => {
+    const point = data.point || SemAnnotations.fromCanonicalPoint(data.annotation?.point, data.model_id);
+
+    return THOTH.Annotations?.createBaseAnnotation(annotationId, {
+        ...data,
+        id        : data.id ?? annotationId,
+        annotation: {
+            point: SemAnnotations.toCanonicalPoint(point)
+        }
+    }) || {
+        id        : data.id ?? annotationId,
+        annotation: {
+            point: SemAnnotations.toCanonicalPoint(point)
+        },
+        visible: data.visible !== false
+    };
 };
 
 SemAnnotations.getPointModel = (point) => {
     if (!point?.meshId) return null;
     return THOTH.Models?.modelMap?.get(point.meshId) ?? null;
+};
+
+SemAnnotations.getPointModelId = (point) => {
+    if (!point) return undefined;
+    if (point.meshId) return point.meshId;
+    if (point.mesh) return THOTH.Models?.getParent(point.mesh) ?? point.mesh.name;
+
+    return undefined;
 };
 
 SemAnnotations.getPointMesh = (point) => {
@@ -263,6 +336,7 @@ SemAnnotations.updateAnnotationSem = (annotationId) => {
 SemAnnotations.createAnnotationData = (annotationId, point, data = {}) => {
     return SemAnnotations.normalizeAnnotation({
         id         : annotationId,
+        model_id   : data.model_id || SemAnnotations.getPointModelId(point),
         name       : data.name || `Semantic ${annotationId}`,
         description: data.description || "",
         related_rgb_images          : data.related_rgb_images || [],
@@ -384,7 +458,7 @@ SemAnnotations.getExportData = () => {
 
     for (const [id, annotation] of SemAnnotations.semMap.entries()) {
         if (!annotation || annotation.trash === true) continue;
-        annotationObjects[id] = THOTH.Annotations?.toExportAnnotation(annotation) || annotation;
+        annotationObjects[id] = SemAnnotations.toCanonicalAnnotation(id, annotation);
     }
 
     return annotationObjects;

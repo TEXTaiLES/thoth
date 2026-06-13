@@ -22,12 +22,18 @@ Collab.syncScene = (sobj) => {
     if (THOTH.SemAnnotations.nodes) {
         THOTH.SemAnnotations.nodes.clear();
     }
+    if (THOTH.MSR.nodes) {
+        THOTH.MSR.nodes.clear();
+    }
+    THOTH.MSR.msrMap = new Map();
+    THOTH.MSR.msrSemMap = new Map();
     THOTH.SemAnnotations.semMap = new Map();
     THOTH.SemAnnotations.semNodeMap = new Map();
     THOTH.sceneMetadata   = {};
     // Reset FE
     THOTH.FE.setupLayerElements();
     THOTH.FE.setupModelElements();
+    THOTH.FE.setupMsrElements();
     THOTH.FE.setupSemAnnotationElements();
     // Parse scene
     ATON.SceneHub.parseScene(sobj);

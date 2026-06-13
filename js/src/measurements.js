@@ -61,17 +61,20 @@ MSR.setup = () => {
 };
 
 
-MSR.parseMeasurements = (measurements) => {
+MSR.parseMeasurements = (measurements, modelId) => {
     if (measurements === undefined) return;
 
     for (const id in measurements) {
-        const measurement = MSR.normalizeMeasurement(Number(id), measurements[id]);
+        const measurement = MSR.normalizeMeasurement(id, {
+            ...measurements[id],
+            model_id: modelId ?? measurements[id]?.model_id
+        });
         if (measurement?.points?.length) {
             measurement.points = measurement.points.map(MSR.normalizePoint);
         }
-        MSR.msrMap.set(Number(id), measurement);
-        THOTH.FE.addMsr(Number(id));
-        MSR.addMeasurementSem(Number(id));
+        MSR.msrMap.set(id, measurement);
+        THOTH.FE.addMsr(id);
+        MSR.addMeasurementSem(id);
     }
 };
 
@@ -127,28 +130,121 @@ MSR.normalizePoint = (point) => {
         point.meshName = point.mesh.name;
         delete point.mesh;
     }
+    if (!point.coords && point.x !== undefined) {
+        point.coords = new THREE.Vector3(
+            Number(point.x),
+            Number(point.y),
+            Number(point.z)
+        );
+    }
+    if (point.face_id !== undefined && point.faceId === undefined) {
+        point.faceId = point.face_id;
+    }
     return point;
 };
 
+MSR.toCanonicalPoint = (point) => {
+    const normalized = MSR.normalizePoint(point);
+    const coords = normalized?.coords || normalized || {};
+
+    return {
+        x      : Number(coords.x ?? 0),
+        y      : Number(coords.y ?? 0),
+        z      : Number(coords.z ?? 0),
+        face_id: normalized?.faceId ?? normalized?.face_id ?? null
+    };
+};
+
+MSR.fromCanonicalPoint = (point, modelId) => {
+    if (!point) return undefined;
+
+    return MSR.normalizePoint({
+        meshId  : point.meshId || point.mesh_id || modelId,
+        meshName: point.meshName || point.mesh_name,
+        faceId  : point.face_id ?? point.faceId ?? null,
+        coords  : new THREE.Vector3(
+            Number(point.x ?? point.coords?.x ?? 0),
+            Number(point.y ?? point.coords?.y ?? 0),
+            Number(point.z ?? point.coords?.z ?? 0)
+        )
+    });
+};
+
+MSR.toCanonicalMeasurement = (measurementId, data = {}) => {
+    let points = data.points;
+    if (!points?.length) points = [data.point1, data.point2].filter(Boolean);
+    if (!points?.length) {
+        points = [
+            MSR.fromCanonicalPoint(data.annotation?.point1, data.model_id),
+            MSR.fromCanonicalPoint(data.annotation?.point2, data.model_id)
+        ].filter(Boolean);
+    }
+
+    const point1 = points[0] || MSR.fromCanonicalPoint(data.annotation?.point1, data.model_id);
+    const point2 = points[1] || MSR.fromCanonicalPoint(data.annotation?.point2, data.model_id);
+    const distanceType = data.distanceType ||
+        data.distance_type ||
+        data.annotation?.distance_type ||
+        data.annotation?.distanceType ||
+        "euclidean";
+    const distance = Number(data.distance ?? data.annotation?.distance ?? 0);
+
+    return THOTH.Annotations?.createBaseAnnotation(measurementId, {
+        ...data,
+        id        : data.id ?? measurementId,
+        annotation: {
+            distance     : distance,
+            distance_type: distanceType,
+            point1       : MSR.toCanonicalPoint(point1),
+            point2       : MSR.toCanonicalPoint(point2)
+        }
+    }) || {
+        id        : data.id ?? measurementId,
+        annotation: {
+            distance     : distance,
+            distance_type: distanceType,
+            point1       : MSR.toCanonicalPoint(point1),
+            point2       : MSR.toCanonicalPoint(point2)
+        },
+        visible: data.visible !== false
+    };
+};
+
 MSR.normalizeMeasurement = (measurementId, data = {}) => {
-    const base = THOTH.Annotations?.createBaseAnnotation(measurementId, data) || {
+    const annotation = data.annotation || {};
+    const point1 = data.point1 || MSR.fromCanonicalPoint(annotation.point1, data.model_id);
+    const point2 = data.point2 || MSR.fromCanonicalPoint(annotation.point2, data.model_id);
+    const points = data.points || [point1, point2].filter(Boolean);
+    const distanceType = data.distanceType ||
+        data.distance_type ||
+        annotation.distance_type ||
+        annotation.distanceType ||
+        "euclidean";
+    const distance = Number(data.distance ?? annotation.distance ?? 0);
+    const canonical = MSR.toCanonicalMeasurement(measurementId, {
+        ...data,
+        distance,
+        distanceType,
+        points
+    });
+
+    const base = THOTH.Annotations?.createBaseAnnotation(measurementId, canonical) || {
         id                            : measurementId,
         name                          : data.name || "",
         description                   : data.description || "",
         related_rgb_images            : data.related_rgb_images || [],
         related_multispectral_images  : data.related_multispectral_images || [],
         related_artefacts             : data.related_artefacts || [],
-        annotation                    : data.annotation || {},
+        annotation                    : canonical.annotation || {},
         visible                       : data.visible !== false
     };
 
-    const points = data.points || [data.point1, data.point2].filter(Boolean);
-
     return {
         ...base,
+        model_id    : data.model_id,
         name        : base.name || `Measurement ${measurementId}`,
-        distanceType: data.distanceType || base.annotation.distanceType || "euclidean",
-        distance    : Number(data.distance ?? base.annotation.distance ?? 0),
+        distanceType: distanceType,
+        distance    : distance,
         points      : points.map(MSR.normalizePoint),
         path        : data.path,
         trash       : data.trash === true
@@ -158,6 +254,14 @@ MSR.normalizeMeasurement = (measurementId, data = {}) => {
 MSR.getPointModel = (point) => {
     if (!point?.meshId) return null;
     return THOTH.Models?.modelMap?.get(point.meshId) ?? null;
+};
+
+MSR.getPointModelId = (point) => {
+    if (!point) return undefined;
+    if (point.meshId) return point.meshId;
+    if (point.mesh) return THOTH.Models?.getParent(point.mesh) ?? point.mesh.name;
+
+    return undefined;
 };
 
 MSR.getPointMesh = (point) => {
@@ -227,11 +331,16 @@ MSR.addMeasurementPoint = () => {
     const meshId = THOTH.Models?.getParent(mesh) ?? mesh.name;
 
     const mPoint = {
-        "meshId": meshId,
+        "meshId" : meshId,
         "meshName": mesh.name,
-        "faceId": idx,
-        "coords": coords
+        "faceId"  : idx,
+        "coords"  : coords
     };
+
+    if (MSR.points.length === 1 && MSR.getPointModelId(MSR.points[0]) !== meshId) {
+        THOTH.FE.showToast("Measurements cannot span different models.");
+        return undefined;
+    }
 
     MSR.points.push(mPoint);
     MSR.addMeasurementPointSem(mPoint);
@@ -256,7 +365,7 @@ MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
         return;
     }
 
-    const distanceType = options.distanceType;
+        const distanceType = options.distanceType || options.annotation?.distance_type;
     if (!distanceType) {
     console.warn("Missing distanceType", options);
     return;
@@ -274,6 +383,7 @@ MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
             distanceType: distanceType,
             distance    : distance,
             points      : [point1, point2],
+            model_id    : options.model_id,
             trash       : false,
             name        : `Measurement ${measurementId}`,
             visible     : true
@@ -291,6 +401,7 @@ MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
             distanceType : options.distanceType,
             distance     : options.distance,
             points       : [point1, point2],
+            model_id     : options.model_id,
             path         : options.path,
             trash        : false,
             name         : `Measurement ${measurementId}`,
@@ -332,6 +443,7 @@ MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
             distanceType : distanceType,
             distance     : distance,
             points       : [point1, point2],
+            model_id     : options.model_id,
             path         : worldPoints,
             trash        : false,
             name         : `Measurement ${measurementId}`,
@@ -851,7 +963,7 @@ MSR.getExportData = () => {
     const measurementObjects = {};
     for (const [id, measurement] of MSR.msrMap.entries()) {
         if (!measurement || measurement.trash === true) continue;
-        measurementObjects[id] = THOTH.Annotations?.toExportAnnotation(measurement) || measurement;
+        measurementObjects[id] = MSR.toCanonicalMeasurement(id, measurement);
     }
     return measurementObjects;
 };

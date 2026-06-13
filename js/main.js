@@ -22,7 +22,7 @@ import FE                  from "./src/fe.js";
 import MD                  from "./src/metadata.js";
 import Collab              from "./src/collab.js";
 import MSR                 from "./src/measurements.js";
-import SemAnnotations      from "./src/sem_annotations.js";
+import SemAnnotations      from "./src/semantic_annotations.js";
 import Sensor              from "./src/sensor.js";
 import {TransformControls} from "./src/transform_controls.js";
 import LinkedObjects       from "./src/linked_objects.js";

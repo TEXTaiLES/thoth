@@ -31,7 +31,28 @@ const RUNTIME_FIELDS = new Set([
     "path_cache",
     "mesh_cache",
     "temp_node",
-    "runtime_cache"
+    "runtime_cache",
+    "model_id",
+    "meshId",
+    "meshName",
+    "faceId",
+    "coords",
+    "distanceType"
+]);
+
+const TOP_LEVEL_RUNTIME_FIELDS = new Set([
+    "model_id",
+    "meshId",
+    "meshName",
+    "faceId",
+    "coords",
+    "point",
+    "point1",
+    "point2",
+    "points",
+    "distance",
+    "distanceType",
+    "distance_type"
 ]);
 
 const RELATION_FIELDS = [
@@ -123,6 +144,7 @@ Annotations._getAnnotationPayload = (data = {}) => {
     for (const key in data) {
         if (SHARED_FIELDS.has(key)) continue;
         if (RUNTIME_FIELDS.has(key)) continue;
+        if (TOP_LEVEL_RUNTIME_FIELDS.has(key)) continue;
         if (data[key]?.trash === true) continue;
 
         payload[key] = Annotations._clone(data[key]);

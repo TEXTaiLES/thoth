@@ -131,13 +131,18 @@ Ops._applySelectionRuntime = (action, modelId, itemId, value) => {
     }
 };
 
-Ops._applyMeasurementRuntime = (action, itemId, value, operation) => {
+Ops._applyMeasurementRuntime = (action, modelId, itemId, value, operation) => {
     if (action === "create") {
-        const points = value?.points || [value?.point1, value?.point2];
-        THOTH.MSR.addMeasurement(itemId, points[0], points[1], value);
+        const measurement = THOTH.MSR.normalizeMeasurement(itemId, {
+            ...value,
+            model_id: modelId
+        });
+        THOTH.MSR.addMeasurement(itemId, measurement.points[0], measurement.points[1], measurement);
 
-        const measurement = THOTH.MSR.msrMap.get(itemId);
-        if (measurement) operation.value = Ops._clone(measurement);
+        const storedMeasurement = THOTH.MSR.msrMap.get(itemId);
+        if (storedMeasurement) {
+            operation.value = THOTH.MSR.toCanonicalMeasurement(itemId, storedMeasurement);
+        }
         return;
     }
 
@@ -151,9 +156,12 @@ Ops._applyMeasurementRuntime = (action, itemId, value, operation) => {
     }
 };
 
-Ops._applySemanticAnnotationRuntime = (action, itemId, value) => {
+Ops._applySemanticAnnotationRuntime = (action, modelId, itemId, value) => {
     if (action === "create") {
-        THOTH.SemAnnotations.addAnnotation(itemId, value);
+        THOTH.SemAnnotations.addAnnotation(itemId, {
+            ...value,
+            model_id: modelId
+        });
         return;
     }
 
@@ -217,13 +225,21 @@ Ops._applyCollection = (operation) => {
         Ops._applySelectionRuntime(info.action, modelId, itemId, value);
     }
     else if (info.prefix === "measurement") {
-        Ops._applyMeasurementRuntime(info.action, itemId, value, operation);
+        Ops._applyMeasurementRuntime(info.action, modelId, itemId, value, operation);
     }
     else if (info.prefix === "semantic_annotation") {
-        Ops._applySemanticAnnotationRuntime(info.action, itemId, value);
+        Ops._applySemanticAnnotationRuntime(info.action, modelId, itemId, value);
     }
 
-    if (info.action !== "delete" && THOTH.Annotations) {
+    if (info.action !== "delete" && info.prefix === "measurement" && THOTH.MSR) {
+        value = THOTH.MSR.toCanonicalMeasurement(itemId, operation.value);
+        operation.value = value;
+    }
+    else if (info.action !== "delete" && info.prefix === "semantic_annotation" && THOTH.SemAnnotations) {
+        value = THOTH.SemAnnotations.toCanonicalAnnotation(itemId, operation.value);
+        operation.value = value;
+    }
+    else if (info.action !== "delete" && THOTH.Annotations) {
         value = THOTH.Annotations.normalize(operation.value);
         operation.value = value;
     }

@@ -65,7 +65,10 @@ Events.getDefaultModelId = () => {
 };
 
 Events.getPointModelId = (point) => {
-    return point?.meshId || Events.getDefaultModelId();
+    if (point?.meshId) return point.meshId;
+    if (point?.mesh) return THOTH.Models?.getParent(point.mesh) ?? point.mesh.name;
+
+    return Events.getDefaultModelId();
 };
 
 Events.getLayerData = (layerId) => {
@@ -438,13 +441,21 @@ Events.setupMeasurementEvents = () => {
         const msrId = THOTH.Utils.getFirstUnusedKey(THOTH.MSR.msrMap);
         const point1 = THOTH.MSR.points[0];
         const point2 = THOTH.MSR.points[1];
+        const modelId1 = Events.getPointModelId(point1);
+        const modelId2 = Events.getPointModelId(point2);
+
+        if (modelId1 !== modelId2) {
+            THOTH.FE.showToast("Measurements cannot span different models.");
+            return;
+        }
 
         Events.applyLocal("measurement.create", {
-            model_id  : Events.getPointModelId(point1),
+            model_id  : modelId1,
             collection: "measurements",
             item_id   : msrId
         }, {
             id          : msrId,
+            model_id    : modelId1,
             point1      : point1,
             point2      : point2,
             points      : [point1, point2],
@@ -548,11 +559,15 @@ Events.setupSemanticAnnotationEvents = () => {
     });
 
     THOTH.on("createSemanticAnnotation", (l) => {
+        const modelId = Events.getPointModelId(l.data?.point);
         Events.applyLocal("semantic_annotation.create", {
-            model_id  : Events.getPointModelId(l.data?.point),
+            model_id  : modelId,
             collection: "semantic_annotations",
             item_id   : l.id
-        }, l.data);
+        }, {
+            ...l.data,
+            model_id: modelId
+        });
     });
 
     THOTH.on("updateSemanticAnnotation", (l) => {

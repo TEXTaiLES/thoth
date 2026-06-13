@@ -1545,7 +1545,15 @@ UI.collectAnnotationSharedFields = (dataTemp) => {
     delete data._relatedMultispectralImagesText;
     delete data._relatedArtefactsText;
 
-    return THOTH.Annotations?.normalize(data) || data;
+    const normalized = THOTH.Annotations?.normalize(data) || data;
+
+    if (dataTemp.point) normalized.point = dataTemp.point;
+    if (dataTemp.points) normalized.points = dataTemp.points;
+    if (dataTemp.point1) normalized.point1 = dataTemp.point1;
+    if (dataTemp.point2) normalized.point2 = dataTemp.point2;
+    if (dataTemp.model_id) normalized.model_id = dataTemp.model_id;
+
+    return normalized;
 };
 
 UI.createAnnotationSharedItems = (dataTemp, options = {}) => {
@@ -1635,6 +1643,7 @@ UI.modalSemAnnotationDetails = (annotationId, draftData, options = {}) => {
         related_artefacts             : source.related_artefacts || [],
         annotation                    : source.annotation || {},
         point                         : source.point,
+        model_id                      : source.model_id,
         visible                       : source.visible !== false,
         trash                         : false
     };

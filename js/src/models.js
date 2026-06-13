@@ -81,8 +81,8 @@ Models.parseModels = (models) => {
         THOTH.Artefacts?.parseModelArtefact(modelId, modelData.artefact);
         THOTH.Transforms?.parseModelTransform(modelId, modelData.transforms);
         THOTH.Selections?.parseSelections(modelId, modelData.selections);
-        THOTH.MSR?.parseMeasurements(modelData.measurements);
-        THOTH.SemAnnotations?.parseAnnotations(modelData.semantic_annotations);
+        THOTH.MSR?.parseMeasurements(modelData.measurements, modelId);
+        THOTH.SemAnnotations?.parseAnnotations(modelData.semantic_annotations, modelId);
 
         const modelURL = THOTH.Artefacts?.getModelURL(modelId);
         const G = ATON.getOrCreateSceneNode(modelId).removeChildren();
