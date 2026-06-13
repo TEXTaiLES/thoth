@@ -539,7 +539,8 @@ UI.createLayerController = (layerId) => {
         color  : layer.highlightColor,
         id     : `layer${layerId}CP`,
         oninput: (color) => {
-            layer.highlightColor = color
+            layer.highlightColor = color;
+            layer.selection_color = color;
             THOTH.updateVisibility();
         },
     });
@@ -1980,6 +1981,7 @@ UI.modalLayerDetails = (layerId, data_temp) => {
             color: layer.highlightColor,
             onchange: (c) => {
                 layer.highlightColor = c;
+                layer.selection_color = c;
                 THOTH.updateVisibility();
             }
         }),

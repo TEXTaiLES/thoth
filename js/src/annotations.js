@@ -26,6 +26,7 @@ const RUNTIME_FIELDS = new Set([
     "three_node",
     "mesh",
     "material",
+    "highlightColor",
     "path",
     "path_cache",
     "mesh_cache",
@@ -38,6 +39,17 @@ const RELATION_FIELDS = [
     "related_multispectral_images",
     "related_artefacts"
 ];
+
+const SHARED_FIELDS = new Set([
+    "id",
+    "name",
+    "description",
+    "related_rgb_images",
+    "related_multispectral_images",
+    "related_artefacts",
+    "annotation",
+    "visible"
+]);
 
 
 // Setup
@@ -103,6 +115,22 @@ Annotations._stripRuntime = (value) => {
     return output;
 };
 
+Annotations._getAnnotationPayload = (data = {}) => {
+    const payload = Annotations._isObject(data.annotation)
+        ? Annotations._clone(data.annotation)
+        : {};
+
+    for (const key in data) {
+        if (SHARED_FIELDS.has(key)) continue;
+        if (RUNTIME_FIELDS.has(key)) continue;
+        if (data[key]?.trash === true) continue;
+
+        payload[key] = Annotations._clone(data[key]);
+    }
+
+    return Annotations._stripRuntime(payload);
+};
+
 Annotations._getOperationPrefix = (modality) => {
     return MODALITIES[modality]?.operationPrefix;
 };
@@ -121,7 +149,7 @@ Annotations._getFallbackModelId = () => {
 
 Annotations._makeTarget = (modelId, modality, annotationId, field) => {
     const target = {
-        model_id  : modelId || Annotations._getFallbackModelId(),
+        model_id  : modelId ?? Annotations._getFallbackModelId(),
         collection: modality,
         item_id   : annotationId
     };
@@ -152,7 +180,7 @@ Annotations.createBaseAnnotation = (id, data = {}) => {
         related_rgb_images            : Annotations._normalizeRelations(base.related_rgb_images),
         related_multispectral_images  : Annotations._normalizeRelations(base.related_multispectral_images),
         related_artefacts             : Annotations._normalizeRelations(base.related_artefacts),
-        annotation                    : Annotations._isObject(base.annotation) ? Annotations._clone(base.annotation) : {},
+        annotation                    : Annotations._getAnnotationPayload(base),
         visible                       : base.visible !== false
     };
 };
@@ -173,7 +201,17 @@ Annotations.clone = (annotation) => {
 
 Annotations.toExportAnnotation = (annotation) => {
     const normalized = Annotations.normalize(annotation);
-    return Annotations._stripRuntime(normalized);
+
+    return {
+        id                          : normalized.id,
+        name                        : normalized.name,
+        description                 : normalized.description,
+        related_rgb_images          : normalized.related_rgb_images,
+        related_multispectral_images: normalized.related_multispectral_images,
+        related_artefacts           : normalized.related_artefacts,
+        annotation                  : Annotations._getAnnotationPayload(normalized),
+        visible                     : normalized.visible !== false
+    };
 };
 
 
@@ -219,7 +257,7 @@ Annotations.update = (modelId, modality, annotationId, data) => {
     const prefix = Annotations._getOperationPrefix(modality);
     if (!prefix) return false;
 
-    const resolvedModelId = modelId || Annotations.getModelId(modality, annotationId);
+    const resolvedModelId = modelId ?? Annotations.getModelId(modality, annotationId);
     const prevValue = Annotations.clone(Annotations.get(resolvedModelId, modality, annotationId));
     if (!prevValue) return false;
 
@@ -237,7 +275,7 @@ Annotations.delete = (modelId, modality, annotationId) => {
     const prefix = Annotations._getOperationPrefix(modality);
     if (!prefix) return false;
 
-    const resolvedModelId = modelId || Annotations.getModelId(modality, annotationId);
+    const resolvedModelId = modelId ?? Annotations.getModelId(modality, annotationId);
     const prevValue = Annotations.clone(Annotations.get(resolvedModelId, modality, annotationId));
     if (!prevValue) return false;
 
@@ -250,7 +288,7 @@ Annotations.setVisible = (modelId, modality, annotationId, visible) => {
     const prefix = Annotations._getOperationPrefix(modality);
     if (!prefix) return false;
 
-    const resolvedModelId = modelId || Annotations.getModelId(modality, annotationId);
+    const resolvedModelId = modelId ?? Annotations.getModelId(modality, annotationId);
     const prevValue = Annotations.clone(Annotations.get(resolvedModelId, modality, annotationId));
     if (!prevValue) return false;
 

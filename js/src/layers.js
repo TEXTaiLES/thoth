@@ -47,11 +47,17 @@ Layers.normalizeLayer = (layerId, data = {}) => {
         visible                       : data.visible !== false
     };
 
+    const selectionColor = data.selection_color ||
+        data.highlightColor ||
+        base.annotation.selection_color ||
+        THOTH.Utils.getHighlightColor(layerId);
+
     return {
         ...base,
         metadata      : data.metadata || {},
         selection     : data.selection || base.annotation.selection || {},
-        highlightColor: data.highlightColor || data.selection_color || THOTH.Utils.getHighlightColor(layerId),
+        selection_color: selectionColor,
+        highlightColor: selectionColor,
         trash         : data.trash === true
     };
 };

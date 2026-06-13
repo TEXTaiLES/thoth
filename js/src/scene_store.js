@@ -21,6 +21,7 @@ const RUNTIME_FIELDS = new Set([
     "three_node",
     "mesh",
     "material",
+    "highlightColor",
     "path",
     "path_cache",
     "mesh_cache",
@@ -167,7 +168,7 @@ SceneStore._normalizeSensors = (data) => {
 };
 
 SceneStore._normalizeModel = (modelId, data = {}) => {
-    return {
+    const model = {
         id: data.id || modelId,
         artefact: SceneStore._normalizeArtefact(data.artefact),
         metadata: SceneStore._normalizeMetadata(data.metadata),
@@ -177,6 +178,10 @@ SceneStore._normalizeModel = (modelId, data = {}) => {
         semantic_annotations: SceneStore._normalizeAnnotationCollection(data.semantic_annotations),
         sensors: SceneStore._normalizeSensors(data.sensors)
     };
+
+    if (data.trash === true) model.trash = true;
+
+    return model;
 };
 
 SceneStore._getExportValue = (value) => {
@@ -195,6 +200,37 @@ SceneStore._getExportValue = (value) => {
 
         output[key] = SceneStore._getExportValue(value[key]);
     }
+
+    return output;
+};
+
+SceneStore._getExportAnnotationCollection = (modelId, collectionName, collection = {}) => {
+    if (typeof THOTH !== "undefined" && THOTH.Annotations) {
+        return THOTH.Annotations.getExportData(modelId, collectionName);
+    }
+
+    return SceneStore._getExportValue(collection);
+};
+
+SceneStore._getExportModel = (model) => {
+    const output = SceneStore._getExportValue(model);
+    const modelId = model.id;
+
+    output.selections = SceneStore._getExportAnnotationCollection(
+        modelId,
+        "selections",
+        model.selections
+    );
+    output.measurements = SceneStore._getExportAnnotationCollection(
+        modelId,
+        "measurements",
+        model.measurements
+    );
+    output.semantic_annotations = SceneStore._getExportAnnotationCollection(
+        modelId,
+        "semantic_annotations",
+        model.semantic_annotations
+    );
 
     return output;
 };
@@ -225,7 +261,7 @@ SceneStore.getExportData = () => {
         const model = SceneStore.scene.models[modelId];
         if (model.trash === true) continue;
 
-        models[modelId] = SceneStore._getExportValue(model);
+        models[modelId] = SceneStore._getExportModel(model);
     }
 
     return { models };
@@ -297,7 +333,7 @@ SceneStore.getModelCollection = (modelId, collectionName) => {
 
 SceneStore.setModelCollectionItem = (modelId, collectionName, itemId, value) => {
     const collection = SceneStore.getModelCollection(modelId, collectionName);
-    if (!collection || !itemId) return;
+    if (!collection || itemId === undefined || itemId === null) return;
 
     if (Array.isArray(collection)) {
         const nextItem = SceneStore._clone(value);
@@ -316,7 +352,7 @@ SceneStore.setModelCollectionItem = (modelId, collectionName, itemId, value) => 
 
 SceneStore.deleteModelCollectionItem = (modelId, collectionName, itemId) => {
     const collection = SceneStore.getModelCollection(modelId, collectionName);
-    if (!collection || !itemId) return;
+    if (!collection || itemId === undefined || itemId === null) return;
 
     if (Array.isArray(collection)) {
         const item = collection.find(value => value?.id === itemId);

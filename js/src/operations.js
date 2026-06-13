@@ -37,12 +37,26 @@ Ops._getLocalUserId = () => {
 Ops._getTargetKey = (operation) => {
     const target = operation?.target || {};
 
+    if (target.collection || target.item_id !== undefined) {
+        return [
+            "collection",
+            target.model_id ?? "",
+            target.collection ?? "",
+            target.item_id ?? ""
+        ].join(":");
+    }
+
+    if (operation?.type === "model.create" || operation?.type === "model.delete") {
+        return [
+            "model",
+            target.model_id ?? ""
+        ].join(":");
+    }
+
     return [
-        operation?.type,
-        target.model_id || "",
-        target.collection || "",
-        target.item_id || "",
-        target.field || ""
+        "model",
+        target.model_id ?? "",
+        target.field || operation?.type || ""
     ].join(":");
 };
 

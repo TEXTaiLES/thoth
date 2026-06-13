@@ -607,6 +607,7 @@ Events.setupLayerEvents = () => {
             metadata      : {},
             selection     : {},
             visible       : true,
+            selection_color: THOTH.Utils.getHighlightColor(layerId),
             highlightColor: THOTH.Utils.getHighlightColor(layerId),
             trash         : false
         };

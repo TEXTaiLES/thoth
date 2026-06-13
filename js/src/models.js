@@ -337,7 +337,7 @@ Models.showModelMeshes = (modelName) => {
     
     if (meshes === undefined) return;
     
-    for (const [, mesh] in meshes) {
+    for (const [, mesh] of meshes) {
         mesh.visible = true;
     }
     model.visible = true;
@@ -351,7 +351,7 @@ Models.hideModelMeshes = (modelName) => {
     
     if (meshes === undefined) return;
     
-    for (const [, mesh] in meshes) {
+    for (const [, mesh] of meshes) {
         mesh.visible = false;
     }
     model.visible = false;
