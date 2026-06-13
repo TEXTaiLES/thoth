@@ -10,6 +10,44 @@
 import {TransformControls} from "./transform_controls.js";
 let Events = {};
 
+Events.authRequiredEvents = new Map([
+    [ "addModel", "import models" ],
+    [ "deleteModel", "delete models" ],
+    [ "modelTransformPos", "edit transforms" ],
+    [ "modelTransformRot", "edit transforms" ],
+    [ "createLayer", "create selections" ],
+    [ "deleteLayer", "delete selections" ],
+    [ "editLayerMetadata", "edit metadata" ],
+    [ "renameLayer", "edit selections" ],
+    [ "editSceneMetadata", "edit metadata" ],
+    [ "selectMeasure", "create measurements" ],
+    [ "addMeasurementPoint", "create measurements" ],
+    [ "createMeasurement", "create measurements" ],
+    [ "deleteMeasurement", "delete measurements" ],
+    [ "renameMeasurement", "edit measurements" ],
+    [ "editMeasurement", "edit measurements" ],
+    [ "selectSemanticAnnotation", "create semantic annotations" ],
+    [ "addSemanticAnnotationPoint", "create semantic annotations" ],
+    [ "createSemanticAnnotation", "create semantic annotations" ],
+    [ "updateSemanticAnnotation", "edit semantic annotations" ],
+    [ "deleteSemanticAnnotation", "delete semantic annotations" ],
+    [ "toggleSemanticAnnotationVisibility", "edit semantic annotations" ],
+    [ "selectBrush", "edit selections" ],
+    [ "selectEraser", "edit selections" ],
+    [ "selectLasso", "edit selections" ],
+    [ "useBrush", "edit selections" ],
+    [ "endBrush", "edit selections" ],
+    [ "startBrush", "edit selections" ],
+    [ "useEraser", "edit selections" ],
+    [ "endEraser", "edit selections" ],
+    [ "startEraser", "edit selections" ],
+    [ "startLasso", "edit selections" ],
+    [ "updateLasso", "edit selections" ],
+    [ "endLassoAdd", "edit selections" ],
+    [ "endLassoDel", "edit selections" ],
+    [ "endAllToolOps", "edit selections" ]
+]);
+
 
 Events.clone = (value) => {
     if (value === undefined) return undefined;
@@ -94,7 +132,7 @@ Events.applyLocal = (type, target, value, prevValue) => {
 Events.setup = () => {
     // Ease of access
     THOTH.on   = ATON.on;
-    THOTH.fire = ATON.fire;
+    THOTH.fire = Events.fireWithAuth;
     
     THOTH.onPhoton   = ATON.Photon.on;
     THOTH.firePhoton = ATON.Photon.fire;
@@ -108,6 +146,13 @@ Events.setup = () => {
 
     Events.setupCollaborativeEvents();
     let transformStart = null;
+};
+
+Events.fireWithAuth = (eventName, data, immediate) => {
+    const actionName = Events.authRequiredEvents.get(eventName);
+    if (actionName && !THOTH.requireAuth(actionName)) return false;
+
+    return ATON.fire(eventName, data, immediate);
 };
 
 
@@ -299,10 +344,10 @@ Events.setupActiveEL = () => {
 
         // History
         if (k === "KeyZ") {
-            if (THOTH._bCtrlDown) THOTH.History.undo();
+            if (THOTH._bCtrlDown) THOTH.requireAuth("undo changes", () => THOTH.History.undo());
         }
         if (k === "KeyY") {
-            if (THOTH._bCtrlDown) THOTH.History.redo();
+            if (THOTH._bCtrlDown) THOTH.requireAuth("redo changes", () => THOTH.History.redo());
         }
 
         // Shift

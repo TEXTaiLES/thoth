@@ -287,9 +287,13 @@ UI.createUserButton = () => {
         tooltip : "User"
     });
 
-    ATON.checkAuth((u)=>{
-        UI._elUserBTN.classList.add("aton-btn-highlight");
-    });
+    ATON.checkAuth(
+        (u)=>{
+            THOTH.setAuthState(u);
+            UI._elUserBTN.classList.add("aton-btn-highlight");
+        },
+        () => THOTH.setAuthState(null)
+    );
     UI._elUserBTN.classList.add("thoth-dark-btn");
 
     return UI._elUserBTN;
@@ -301,7 +305,7 @@ UI.createExportButton = () => {
         text   : "Export changes",
         variant: "success",
         tooltip: "Export changes",
-        onpress: () => THOTH.UI.modalExport()
+        onpress: () => THOTH.requireAuth("export changes", () => THOTH.UI.modalExport())
     })
 };
 
@@ -725,12 +729,16 @@ UI.createModelEditor = (modelName) => {
         ATON.UI.createButton({
             text   : "Move",
             size   : "medium",
-          onpress: () =>THOTH.transform.setMode("translate")
+            onpress: () => THOTH.requireAuth("edit transforms", () => {
+                if (THOTH.transform) THOTH.transform.setMode("translate");
+            })
         }),
         ATON.UI.createButton({
             text   : "Rotate",
             size: "medium",
-             onpress: () =>THOTH.transform.setMode("rotate")
+            onpress: () => THOTH.requireAuth("edit transforms", () => {
+                if (THOTH.transform) THOTH.transform.setMode("rotate");
+            })
         }),/*
         ATON.UI.createButton({
             text   : "Scale",
@@ -935,6 +943,7 @@ UI.modalUser = (msg) => {
     ATON.checkAuth(
         // Logged
         (u)=>{
+            THOTH.setAuthState(u);
             let elBody = ATON.UI.createContainer({ classes: "d-grid gap-2" });
             elBody.append(
                 ATON.UI.createButton({
@@ -942,6 +951,8 @@ UI.modalUser = (msg) => {
                     icon   : "exit",
                     classes: "aton-btn-highlight",
                     onpress: ()=>{
+                        THOTH.FE.showToast("Logging out. The page will reload.");
+                        THOTH.setAuthState(null);
                         ATON.REQ.logout(() => location.reload(true));
                         ATON.UI.hideModal();
                         if (UI._elUserBTN) UI._elUserBTN.classList.remove("aton-btn-highlight");
@@ -978,6 +989,8 @@ UI.modalUser = (msg) => {
 };
 
 UI.modalExport = () => {
+    if (!THOTH.requireAuth("export changes")) return;
+
     // Body
     const elInfo = ATON.UI.createContainer();
     elInfo.textContent = "OVERWRITE CURRENT SCENE DATA?" + 
@@ -1169,7 +1182,7 @@ UI.modalVPImage = (viewpoint) => {
 
 UI.modalAddModel = () => {
     // Get models
-    ATON.checkAuth(
+    THOTH.requireAuth("import models",
         (u) => {
             ATON.REQ.get(
                 // THOTH.config.maseDomain+"items/"+u.username+"/models",
@@ -1208,11 +1221,8 @@ UI.modalAddModel = () => {
                 }, 
                 error => THOTH.FE.showToast("Error loading models:" + error),
             );
-        },
-        () => {
-            THOTH.FE.showToast("Cannot add model: unauthorized");
         }
-    )
+    );
 };
 
 UI.createSensorDashboard = (sensorId) => {

@@ -70,12 +70,43 @@ FE.setupSemAnnotationElements = () => {
 
 FE.setupToolboxElements = () => {
     // Tools
-    FE.userToolbar.append(THOTH.UI.createExportButton())
-    if (THOTH.config.toolbox) {
+    if (!FE.exportButton) {
+        FE.exportButton = THOTH.UI.createExportButton();
+        FE.userToolbar.append(FE.exportButton);
+    }
+
+    if (THOTH.config.toolbox && !FE.toolMap) {
         FE.toolMap        = FE.initToolMap();
         FE.toolOptMap     = FE.initToolOptMap();
         FE.toolOptToolbar = FE.setupToolOptToolbar();
         FE.mainToolbar    = FE.setupMainToolbar(FE.toolMap);
+    }
+
+    FE.syncAuthControls();
+};
+
+FE.syncAuthControls = () => {
+    const isAuthenticated = THOTH.isAuthenticated?.() === true;
+    const controls = [
+        FE.exportButton,
+        FE.toolMap?.get("measure"),
+        FE.toolMap?.get("semantic"),
+        FE.toolMap?.get("brush"),
+        FE.toolMap?.get("eraser"),
+        FE.toolMap?.get("lasso"),
+        FE.toolMap?.get("undo"),
+        FE.toolMap?.get("redo")
+    ];
+
+    for (const el of controls) {
+        if (!el) continue;
+
+        if (isAuthenticated) {
+            el.classList.remove("opacity-50");
+        }
+        else {
+            el.classList.add("opacity-50");
+        }
     }
 };
 
@@ -155,14 +186,14 @@ FE.initToolMap = () => {
     const elUndo = ATON.UI.createButton({
         icon   : THOTH.PATH_RES_ICONS + "undo.png",
         tooltip: "Undo (Ctrl + Z)",
-        onpress: () => THOTH.History.undo()
+        onpress: () => THOTH.requireAuth("undo changes", () => THOTH.History.undo())
     });
     toolMap.set("undo", elUndo);
     // Redo
     const elRedo = ATON.UI.createButton({
         icon   : THOTH.PATH_RES_ICONS + "redo.png",
         tooltip: "Redo (Ctrl + Y)",
-        onpress: () => THOTH.History.redo()
+        onpress: () => THOTH.requireAuth("redo changes", () => THOTH.History.redo())
     });
     toolMap.set("redo", elRedo);
     // Home
@@ -491,7 +522,7 @@ FE.setupModelsPanel = (elModelList) => {
             icon   : "add",
             text   : "Add model",
             variant: "info",
-            onpress: () => THOTH.UI.modalAddModel(),
+            onpress: () => THOTH.requireAuth("import models", () => THOTH.UI.modalAddModel()),
         }),
         ATON.UI.createTreeGroup({
             items: [{

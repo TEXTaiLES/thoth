@@ -23,19 +23,45 @@ MD.parseSceneMetadata = (data) => {
 
 MD.buildSchemaMap = (schemaListUrl) => {
     const schemaMap = new Map();
-    ATON.REQ.get(
-        schemaListUrl,
-        schemaList => {
-            for (const schemaUrl of schemaList) {
-                const schemaName = schemaUrl.split('/').filter(Boolean).pop();
-                ATON.REQ.get(
-                    schemaUrl,
-                    schema => schemaMap.set(schemaName, schema)
-                )
-            }
-        }
-    )
+    MD._loadSchemaList(schemaListUrl, schemaMap);
+
     return schemaMap;
+};
+
+MD._loadSchemaList = async (schemaListUrl, schemaMap) => {
+    const response = await THOTH.API.get("metadata_schema_list");
+    if (response.ok) {
+        MD._loadSchemas(response.data, schemaMap);
+        return;
+    }
+
+    if (schemaListUrl) {
+        ATON.REQ.get(
+            schemaListUrl,
+            schemaList => MD._loadSchemas(schemaList, schemaMap),
+            error => THOTH.FE?.showToast?.("Error loading schemas: " + error)
+        );
+    }
+};
+
+MD._loadSchemas = (schemaList, schemaMap) => {
+    if (!Array.isArray(schemaList)) return;
+
+    for (const schemaEntry of schemaList) {
+        const schemaUrl = typeof schemaEntry === "string"
+            ? schemaEntry
+            : schemaEntry.url;
+        if (!schemaUrl) continue;
+
+        const schemaName = schemaEntry.name ||
+            schemaEntry.id ||
+            schemaUrl.split('/').filter(Boolean).pop();
+
+        ATON.REQ.get(
+            schemaUrl,
+            schema => schemaMap.set(schemaName, schema)
+        );
+    }
 };
 
 MD._normalizeType = (type) => {

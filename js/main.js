@@ -27,6 +27,8 @@ import {TransformControls} from "./src/transform_controls.js";
 import LinkedObjects       from "./src/linked_objects.js";
 import SceneStore          from "./src/scene_store.js";
 import Ops                 from "./src/operations.js";
+import API                 from "./src/api_client.js";
+import Auth                from "./src/auth.js";
 
 
 // Realize 
@@ -53,6 +55,8 @@ THOTH.LO      = LinkedObjects;
 THOTH.Sensor  = Sensor;
 THOTH.SceneStore = SceneStore;
 THOTH.Ops     = Ops;
+THOTH.API     = API;
+THOTH.Auth    = Auth;
 
 
 THOTH.BASE_URL        = "../thoth";
@@ -63,6 +67,18 @@ THOTH.PATH_RES_SCHEMA = `${THOTH.BASE_URL}/js/res/schema/`;
 THOTH.sid = THOTH.params.get('s');
 // THOTH.oid = THOTH.params.get('id');
 
+THOTH.requireAuth = (actionName, onAllowed) => {
+    return THOTH.Auth.requireAuth(actionName, onAllowed);
+};
+
+THOTH.isAuthenticated = () => {
+    return THOTH.Auth.isAuthenticated();
+};
+
+THOTH.setAuthState = (user) => {
+    THOTH.Auth.setAuthState(user);
+};
+
 
 
 // Init 
@@ -71,6 +87,7 @@ THOTH.setup = () => {
     // Realize base ATON and add base UI events
     ATON.realize();
     ATON.UI.addBasicEvents();
+    THOTH.Auth.setup();
     THOTH.SceneStore.setup();
     
     // Canonical scene parser
@@ -114,6 +131,7 @@ THOTH.setup = () => {
         "../../a/thoth/config.json",
         data => {
             THOTH.config = data;
+            THOTH.API.setup(data);
             ATON.fire("ConfigLoaded");
         },
         err => ATON.UI.showModal("Error loading schema" + err)
@@ -143,6 +161,7 @@ THOTH.setup = () => {
             THOTH.LO.setup();
             // Init front end 
             THOTH.FE.setup();
+            THOTH.FE.setupToolboxElements();
 
             if (THOTH.sid) {
                 ATON.SceneHub.load(
@@ -151,7 +170,7 @@ THOTH.setup = () => {
                     () => {
                         THOTH.initData = ATON.SceneHub.currData;
                         ATON.REQ.get("user", (u) => {
-                            if (u === false) THOTH.UI.modalUser();
+                            if (u === false) THOTH.setAuthState(null);
                             else THOTH.onLogin(u);
                         });
 
@@ -360,6 +379,8 @@ THOTH.updateTextureMap = (path, mesh) => {
 // Export
 
 THOTH.exportChanges = () => {
+    if (!THOTH.requireAuth("export changes")) return;
+
     console.log("Exporting changes...");
 
     let A = THOTH.getExportData();
@@ -406,10 +427,23 @@ THOTH.exportChanges = () => {
 };
 
 THOTH.exportToHestia = async () => {
+    if (!THOTH.requireAuth("export changes")) return {
+        ok   : false,
+        error: "Authentication required"
+    };
+
     console.log("Exporting to Hestia");
 
-    const endpoint = THOTH.config.endpoint;
-    const token    = THOTH.config.token;
+    const endpoint = THOTH.config.hestiaEndpoint || THOTH.config.endpoint;
+    const token    = THOTH.config.hestiaToken || THOTH.config.token;
+
+    if (!endpoint) {
+        THOTH.FE.showToast("Missing endpoint: scene_export");
+        return {
+            ok   : false,
+            error: "Missing endpoint: scene_export"
+        };
+    }
 
     // FORM DATA
     const formData = new FormData();
@@ -457,7 +491,13 @@ THOTH.getExportData = () => {
 // User 
 
 THOTH.onLogin = (u) => {
-    THOTH.user = u;
+    THOTH.setAuthState(u);
+
+    if (THOTH._mutationEventsReady) {
+        THOTH.FE.setupToolboxElements();
+        if (THOTH.collaborative) ATON.Photon.connect();
+        return;
+    }
 
     // Allow events
     THOTH.Events.setupPhotonEvents();
@@ -469,6 +509,7 @@ THOTH.onLogin = (u) => {
     
     // Update FE
     THOTH.FE.setupToolboxElements();
+    THOTH._mutationEventsReady = true;
     
     // Join collaborative
     if (THOTH.collaborative) ATON.Photon.connect();
