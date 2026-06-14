@@ -251,6 +251,20 @@ MSR.normalizeMeasurement = (measurementId, data = {}) => {
     };
 };
 
+MSR.getMeasurementKey = (measurementId) => {
+    if (MSR.msrMap.has(measurementId)) return measurementId;
+
+    for (const key of MSR.msrMap.keys()) {
+        if (String(key) === String(measurementId)) return key;
+    }
+
+    return measurementId;
+};
+
+MSR.getMeasurement = (measurementId) => {
+    return MSR.msrMap.get(MSR.getMeasurementKey(measurementId));
+};
+
 MSR.getPointModel = (point) => {
     if (!point?.meshId) return null;
     return THOTH.Models?.modelMap?.get(point.meshId) ?? null;
@@ -351,41 +365,26 @@ MSR.addMeasurementPoint = () => {
     }
 };
 
-MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
-    if (measurementId === undefined) return;
-    if (point1 === undefined || point2 === undefined) return;
-
-    const measurement = MSR.msrMap.get(measurementId);
-
-    // Resolve id conflict
-    if (measurement !== undefined) {
-        if (measurement.trash === true) MSR.resurrectMeasurement(measurementId);
-        else alert(`Measurement id conflict ${measurementId}`);
-
+MSR.createMeasurementData = (measurementId, point1, point2, options = {}) => {
+    const distanceType = options.distanceType || options.annotation?.distance_type;
+    if (!distanceType) {
+        console.warn("Missing distanceType", options);
         return;
     }
 
-        const distanceType = options.distanceType || options.annotation?.distance_type;
-    if (!distanceType) {
-    console.warn("Missing distanceType", options);
-    return;
-}
-  //  const distanceType = options.distanceType || MSR.distanceType;
     let measurementData = null;
 
     if (distanceType === "euclidean") {
-        const description = "description";
-        const name = "";
         const distance = MSR.getEuclideanDistance(point1, point2);
 
         measurementData = MSR.normalizeMeasurement(measurementId, {
-            description : description,
+            description : options.description || "",
             distanceType: distanceType,
             distance    : distance,
             points      : [point1, point2],
             model_id    : options.model_id,
             trash       : false,
-            name        : `Measurement ${measurementId}`,
+            name        : options.name || `Measurement ${measurementId}`,
             visible     : true
         });
     }   
@@ -393,18 +392,18 @@ MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
     // REMOTE / PRECOMPUTED
     if (options.path!==undefined) 
         {   //deserialize just in case
-            options.path = options.path.map(
-            p => new THREE.Vector3(p.x, p.y, p.z));
+            const path = options.path.map(
+                p => new THREE.Vector3(p.x, p.y, p.z));
 
         measurementData = MSR.normalizeMeasurement(measurementId, {
-            description  : "description",
+            description  : options.description || "",
             distanceType : options.distanceType,
             distance     : options.distance,
             points       : [point1, point2],
             model_id     : options.model_id,
-            path         : options.path,
+            path         : path,
             trash        : false,
-            name         : `Measurement ${measurementId}`,
+            name         : options.name || `Measurement ${measurementId}`,
             visible      : true
         });
     }
@@ -439,63 +438,86 @@ MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
         const distance = MSR.computePathLength(vertices, path);
         const worldPoints = MSR.pathToPoints(mesh, path);
         measurementData = MSR.normalizeMeasurement(measurementId, {
-            description  : "description",
+            description  : options.description || "",
             distanceType : distanceType,
             distance     : distance,
             points       : [point1, point2],
             model_id     : options.model_id,
             path         : worldPoints,
             trash        : false,
-            name         : `Measurement ${measurementId}`,
+            name         : options.name || `Measurement ${measurementId}`,
             visible      : true
         });
     }
-          } 
-          if (!measurementData) {
-            console.warn("Measurement creation failed", measurementId);
-            return;
-            }
-            // Append to Map
-            MSR.msrMap.set(measurementId, measurementData);
+    }
 
-            // Update SUI
-            MSR.addMeasurementSem(measurementId);
+    if (!measurementData) {
+        console.warn("Measurement creation failed", measurementId);
+    }
 
-            // Update FE
-            THOTH.FE.addMsr(measurementId);
+    return measurementData;
+};
 
-            // store last measurement for recompute
-            MSR.lastMeasurementId = measurementId;
-            MSR.lastMeasurementPoints = [point1, point2];   
+MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
+    if (measurementId === undefined) return;
+    if (point1 === undefined || point2 === undefined) return;
+
+    const measurement = MSR.getMeasurement(measurementId);
+
+    // Resolve id conflict
+    if (measurement !== undefined) {
+        if (measurement.trash === true) MSR.resurrectMeasurement(measurementId);
+        else alert(`Measurement id conflict ${measurementId}`);
+
+        return;
+    }
+
+    const measurementData = MSR.createMeasurementData(measurementId, point1, point2, options);
+    if (!measurementData) return;
+
+    // Append to Map
+    MSR.msrMap.set(measurementId, measurementData);
+
+    // Update SUI
+    MSR.addMeasurementSem(measurementId);
+
+    // Update FE
+    THOTH.FE.addMsr(measurementId);
+
+    // store last measurement for recompute
+    MSR.lastMeasurementId = measurementId;
+    MSR.lastMeasurementPoints = [point1, point2];
 };
 MSR.deleteMeasurement = (measurementId) => {
     if (measurementId === undefined) return;
-    
-    const measurement = MSR.msrMap.get(measurementId);
+
+    const measurementKey = MSR.getMeasurementKey(measurementId);
+    const measurement = MSR.msrMap.get(measurementKey);
     if (!measurement) return;
     measurement.trash = true;
-    MSR.hideMeasurement(measurementId);
+    MSR.hideMeasurement(measurementKey);
 
     // Update FE
-    THOTH.FE.deleteMsr(measurementId);
+    THOTH.FE.deleteMsr(measurementKey);
 };
 
 MSR.updateMeasurement = (measurementId, data) => {
     if (measurementId === undefined || !data) return;
 
-    const measurement = MSR.msrMap.get(measurementId);
+    const measurementKey = MSR.getMeasurementKey(measurementId);
+    const measurement = MSR.msrMap.get(measurementKey);
     if (!measurement) return;
 
-    const nextMeasurement = MSR.normalizeMeasurement(measurementId, {
+    const nextMeasurement = MSR.normalizeMeasurement(measurementKey, {
         ...measurement,
         ...data
     });
 
-    MSR.msrMap.set(measurementId, nextMeasurement);
-    MSR.renameMeasurement(measurementId, nextMeasurement.name);
+    MSR.msrMap.set(measurementKey, nextMeasurement);
+    MSR.renameMeasurement(measurementKey, nextMeasurement.name);
     MSR.refreshMeasurementVisibility();
     THOTH.FE.toggleControllerVisibility(
-        THOTH.FE.msrMap.get(measurementId),
+        THOTH.FE.msrMap.get(measurementKey),
         nextMeasurement.visible !== false
     );
 };
@@ -503,26 +525,28 @@ MSR.updateMeasurement = (measurementId, data) => {
 MSR.resurrectMeasurement = (measurementId) => {
     if (measurementId === undefined) return;
 
-    const measurement = MSR.msrMap.get(measurementId);
+    const measurementKey = MSR.getMeasurementKey(measurementId);
+    const measurement = MSR.msrMap.get(measurementKey);
     if (!measurement.trash) return;
 
     measurement.trash = false;
     //MSR.removeMeasurementSem(measurementId);
    // MSR.addMeasurement(measurementId);
-    MSR.showMeasurement(measurementId);
+    MSR.showMeasurement(measurementKey);
     measurement.visible=true;
     
     // Update FE
-    THOTH.FE.addMsr(measurementId);
+    THOTH.FE.addMsr(measurementKey);
 };
 
 MSR.updateMeasurementLabel = (measurementId, distance) => {
-    const node = MSR.msrSemMap.get(measurementId);
+    const measurementKey = MSR.getMeasurementKey(measurementId);
+    const node = MSR.msrSemMap.get(measurementKey);
     if (!node) return;
 
     const label = node.children.find(child => child instanceof Label);
     if (!label) {
-        console.warn("Label not found for measurement", measurementId);
+        console.warn("Label not found for measurement", measurementKey);
         return;
     }
 
@@ -588,7 +612,7 @@ MSR.addMeasurementPointSem = (point) => {
 MSR.createLabelSem = (measurementId) => {
     if (measurementId === undefined) return;
 
-    const measurement = MSR.msrMap.get(measurementId);
+    const measurement = MSR.getMeasurement(measurementId);
 
     if (measurement === undefined) return;
 
@@ -612,7 +636,8 @@ MSR.createLabelSem = (measurementId) => {
 MSR.addMeasurementSem = (measurementId) => {
     if (measurementId === undefined) return;
 
-    const measurement = MSR.msrMap.get(measurementId);
+    const measurementKey = MSR.getMeasurementKey(measurementId);
+    const measurement = MSR.msrMap.get(measurementKey);
 
     if (!measurement) {
         console.warn("Measurement not found in msrMap:", measurementId);
@@ -636,10 +661,10 @@ MSR.addMeasurementSem = (measurementId) => {
     }
     
     // Label
-    const label = MSR.createLabelSem(measurementId);
+    const label = MSR.createLabelSem(measurementKey);
 
     // Add to node
-    const node = new ATON.Node(`measurement${measurementId}`, ATON.NTYPES.UI);
+    const node = new ATON.Node(`measurement${measurementKey}`, ATON.NTYPES.UI);
     node.add(semPoint1);
     node.add(semPoint2);
     node.add(label);
@@ -661,7 +686,7 @@ MSR.addMeasurementSem = (measurementId) => {
     });
 
     // Add to map
-    MSR.msrSemMap.set(measurementId, node);
+    MSR.msrSemMap.set(measurementKey, node);
 
     // Add to SUI
     node.attachTo(MSR.nodes);
@@ -869,8 +894,9 @@ MSR.getNearestVertexIndex = (mesh, worldPoint) => {
 MSR.hideMeasurement = (measurementId) => {
     if (measurementId === undefined) return;
 
-    const node = MSR.msrSemMap.get(measurementId);
-    const measurement = MSR.msrMap.get(measurementId);
+    const measurementKey = MSR.getMeasurementKey(measurementId);
+    const node = MSR.msrSemMap.get(measurementKey);
+    const measurement = MSR.msrMap.get(measurementKey);
 
     if (!node || !measurement) return;
 
@@ -881,8 +907,9 @@ MSR.hideMeasurement = (measurementId) => {
 MSR.showMeasurement = (measurementId) => {
     if (measurementId === undefined) return;
 
-    const node = MSR.msrSemMap.get(measurementId);
-    const measurement = MSR.msrMap.get(measurementId);
+    const measurementKey = MSR.getMeasurementKey(measurementId);
+    const node = MSR.msrSemMap.get(measurementKey);
+    const measurement = MSR.msrMap.get(measurementKey);
 
     if (!node || !measurement) return;
 
@@ -893,7 +920,8 @@ MSR.showMeasurement = (measurementId) => {
 MSR.toggleVisibility = (measurementId) => {
     if (measurementId === undefined) return;
 
-    const measurement = MSR.msrMap.get(measurementId);
+    const measurementKey = MSR.getMeasurementKey(measurementId);
+    const measurement = MSR.msrMap.get(measurementKey);
     if (!measurement) return;
 
     if (THOTH.Annotations) {
@@ -906,8 +934,8 @@ MSR.toggleVisibility = (measurementId) => {
         if (applied) return;
     }
 
-    if (measurement.visible !== false) MSR.hideMeasurement(measurementId);
-    else MSR.showMeasurement(measurementId);
+    if (measurement.visible !== false) MSR.hideMeasurement(measurementKey);
+    else MSR.showMeasurement(measurementKey);
 };
 
 MSR.highlightMeasurement = (measurementId) => {
@@ -926,9 +954,10 @@ MSR.highlightMeasurement = (measurementId) => {
         }
     }
     // Set new active
-    MSR.currentMeasurementLine = measurementId;
+    const measurementKey = MSR.getMeasurementKey(measurementId);
+    MSR.currentMeasurementLine = measurementKey;
 
-    const node = MSR.msrSemMap.get(measurementId);
+    const node = MSR.msrSemMap.get(measurementKey);
     if (!node) return;
 
     node.traverse(child => {
@@ -943,13 +972,14 @@ MSR.highlightMeasurement = (measurementId) => {
 
 MSR.renameMeasurement = (measurementId, newName) => {
     if (measurementId === undefined) return;
-    
-    const measurement = MSR.msrMap.get(measurementId);
+
+    const measurementKey = MSR.getMeasurementKey(measurementId);
+    const measurement = MSR.msrMap.get(measurementKey);
     if (!measurement) return;
 
     measurement.name = newName;
 
-    const controller = THOTH.FE.msrMap.get(measurementId);
+    const controller = THOTH.FE.msrMap.get(measurementKey);
 
     if (controller?.nameBtn) {
         controller.nameBtn.textContent = newName;

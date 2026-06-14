@@ -139,7 +139,7 @@ Ops._applyMeasurementRuntime = (action, modelId, itemId, value, operation) => {
         });
         THOTH.MSR.addMeasurement(itemId, measurement.points[0], measurement.points[1], measurement);
 
-        const storedMeasurement = THOTH.MSR.msrMap.get(itemId);
+        const storedMeasurement = THOTH.MSR.getMeasurement(itemId);
         if (storedMeasurement) {
             operation.value = THOTH.MSR.toCanonicalMeasurement(itemId, storedMeasurement);
         }

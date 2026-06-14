@@ -124,12 +124,12 @@ Events.applySelectionEdit = (selectionId, selection, mode) => {
 };
 
 Events.getMeasurementData = (measurementId) => {
-    return Events.clone(THOTH.MSR.msrMap.get(measurementId));
+    return Events.clone(THOTH.MSR.getMeasurement(measurementId));
 };
 
 Events.getSemanticAnnotationData = (annotationId) => {
     return THOTH.SemAnnotations.cloneAnnotation(
-        THOTH.SemAnnotations.semMap.get(annotationId)
+        THOTH.SemAnnotations.getAnnotation(annotationId)
     );
 };
 
@@ -435,7 +435,18 @@ Events.setupMeasurementEvents = () => {
         THOTH.MSR.addMeasurementPoint();
     });
     // Create measurement
-    THOTH.on("createMeasurement", () => {
+    THOTH.on("createMeasurement", (data) => {
+        if (data?.data) {
+            const measurementData = data.data;
+            const modelId = Events.getPointModelId(measurementData.points?.[0] || measurementData.point1);
+            Events.applyLocal("measurement.create", {
+                model_id  : modelId,
+                collection: "measurements",
+                item_id   : data.id
+            }, measurementData);
+            return;
+        }
+
         const msrId = THOTH.Utils.getFirstUnusedKey(THOTH.MSR.msrMap);
         const point1 = THOTH.MSR.points[0];
         const point2 = THOTH.MSR.points[1];
@@ -447,17 +458,14 @@ Events.setupMeasurementEvents = () => {
             return;
         }
 
-        Events.applyLocal("measurement.create", {
-            model_id  : modelId1,
-            collection: "measurements",
-            item_id   : msrId
-        }, {
-            id          : msrId,
+        const measurementData = THOTH.MSR.createMeasurementData(msrId, point1, point2, {
             model_id    : modelId1,
-            point1      : point1,
-            point2      : point2,
-            points      : [point1, point2],
             distanceType: THOTH.MSR.distanceType
+        });
+        if (!measurementData) return;
+
+        THOTH.UI.modalMsrDetails(msrId, measurementData, {
+            isNew: true
         });
     });
 
@@ -569,7 +577,7 @@ Events.setupSemanticAnnotationEvents = () => {
     });
 
     THOTH.on("updateSemanticAnnotation", (l) => {
-        const prevData = l.prevData || THOTH.SemAnnotations.cloneAnnotation(THOTH.SemAnnotations.semMap.get(l.id));
+        const prevData = l.prevData || Events.getSemanticAnnotationData(l.id);
         if (!prevData) return;
 
         Events.applyLocal("semantic_annotation.update", {
@@ -580,7 +588,7 @@ Events.setupSemanticAnnotationEvents = () => {
     });
 
     THOTH.on("deleteSemanticAnnotation", (annotationId) => {
-        const annotation = THOTH.SemAnnotations.cloneAnnotation(THOTH.SemAnnotations.semMap.get(annotationId));
+        const annotation = Events.getSemanticAnnotationData(annotationId);
         if (!annotation) return;
 
         Events.applyLocal("semantic_annotation.delete", {
@@ -591,7 +599,7 @@ Events.setupSemanticAnnotationEvents = () => {
     });
 
     THOTH.on("toggleSemanticAnnotationVisibility", (annotationId) => {
-        const prevData = THOTH.SemAnnotations.cloneAnnotation(THOTH.SemAnnotations.semMap.get(annotationId));
+        const prevData = Events.getSemanticAnnotationData(annotationId);
         if (!prevData) return;
 
         const data = {

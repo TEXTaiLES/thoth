@@ -717,15 +717,16 @@ UI.createMsrController = (msrId) => {
     const elLeft  = ATON.UI.createContainer();
     const elRight = ATON.UI.createContainer();
     
-    const msr = THOTH.MSR.msrMap.get(msrId);
+    const measurementKey = THOTH.MSR.getMeasurementKey(msrId);
+    const msr = THOTH.MSR.getMeasurement(measurementKey);
 
     const nameBtn = ATON.UI.createButton({
-    text   : msr.name || `Measurement ${msrId}`,
+    text   : msr.name || `Measurement ${measurementKey}`,
     size   : "small",
     tooltip: "Select measurement",
     onpress: () => {
-        THOTH.FE.handleElementHighlight(msrId, THOTH.FE.msrMap);
-        THOTH.MSR.highlightMeasurement(msrId);
+        THOTH.FE.handleElementHighlight(measurementKey, THOTH.FE.msrMap);
+        THOTH.MSR.highlightMeasurement(measurementKey);
     },
 });
 
@@ -735,7 +736,7 @@ UI.createMsrController = (msrId) => {
         ATON.UI.createButton({
             icon   : "visibility",
             size   : "small",
-            onpress: () => THOTH.fire("toggleMeasurementVisibility", msrId),
+            onpress: () => THOTH.fire("toggleMeasurementVisibility", measurementKey),
         }),
          nameBtn,
     );
@@ -747,7 +748,7 @@ UI.createMsrController = (msrId) => {
             size   : "small",
             tooltip: "View measurement",
             // onpress: () => THOTH.FE.showToast("TBI")
-            onpress: () => UI.modalMsrDetails(msrId)
+            onpress: () => UI.modalMsrDetails(measurementKey)
         }), 
         // Delete
         ATON.UI.createButton({
@@ -755,10 +756,10 @@ UI.createMsrController = (msrId) => {
             size   : "small",
             tooltip: "Delete measurement",
             onpress: () => {
-                const msr = THOTH.MSR.msrMap.get(msrId);
+                const msr = THOTH.MSR.getMeasurement(measurementKey);
                 //THOTH.fire("deleteMeasurement", (msrId))
                 THOTH.fire("deleteMeasurement", {
-                    id: msrId,
+                    id: measurementKey,
                     point1: msr.points[0],
                     point2: msr.points[1]
              });
@@ -781,20 +782,21 @@ UI.createSemAnnotationController = (annotationId) => {
     const elLeft  = ATON.UI.createContainer();
     const elRight = ATON.UI.createContainer();
 
-    const annotation = THOTH.SemAnnotations.semMap.get(annotationId);
+    const annotationKey = THOTH.SemAnnotations.getAnnotationKey(annotationId);
+    const annotation = THOTH.SemAnnotations.getAnnotation(annotationKey);
 
     const nameBtn = ATON.UI.createButton({
-        text   : annotation.name || `Semantic ${annotationId}`,
+        text   : annotation.name || `Semantic ${annotationKey}`,
         size   : "small",
         tooltip: "Edit semantic annotation",
-        onpress: () => UI.modalSemAnnotationDetails(annotationId)
+        onpress: () => UI.modalSemAnnotationDetails(annotationKey)
     });
 
     elLeft.append(
         ATON.UI.createButton({
             icon   : "visibility",
             size   : "small",
-            onpress: () => THOTH.fire("toggleSemanticAnnotationVisibility", annotationId),
+            onpress: () => THOTH.fire("toggleSemanticAnnotationVisibility", annotationKey),
         }),
         nameBtn,
     );
@@ -804,13 +806,13 @@ UI.createSemAnnotationController = (annotationId) => {
             icon   : "list",
             size   : "small",
             tooltip: "View semantic annotation",
-            onpress: () => UI.modalSemAnnotationDetails(annotationId)
+            onpress: () => UI.modalSemAnnotationDetails(annotationKey)
         }),
         ATON.UI.createButton({
             icon   : ATON.PATH_RES + "icons/trash.png",
             size   : "small",
             tooltip: "Delete semantic annotation",
-            onpress: () => THOTH.fire("deleteSemanticAnnotation", annotationId)
+            onpress: () => THOTH.fire("deleteSemanticAnnotation", annotationKey)
         }),
     );
 
@@ -1413,45 +1415,60 @@ UI.createSensorDashboard = (sensorId) => {
     return elContainer;
 };
 
-UI.modalMsrDetails = (msrId) => {
-    const msr = THOTH.MSR.msrMap.get(msrId);
-    if (msr === undefined || msr.trash) return;
-    const dataTemp = THOTH.Annotations?.normalize(msr) || structuredClone(msr);
-    const prevData = structuredClone(msr);
+UI.modalMsrDetails = (msrId, draftData, options = {}) => {
+    const msr = THOTH.MSR.getMeasurement(msrId);
+    if (!msr && !draftData) return;
+    if (msr?.trash) return;
+
+    const source = draftData || msr;
+    const dataTemp = THOTH.Annotations?.normalize(source) || structuredClone(source);
+    if (source.points) dataTemp.points = source.points;
+    if (source.point1) dataTemp.point1 = source.point1;
+    if (source.point2) dataTemp.point2 = source.point2;
+    if (source.model_id) dataTemp.model_id = source.model_id;
+    if (source.distance !== undefined) dataTemp.distance = source.distance;
+    if (source.distanceType) dataTemp.distanceType = source.distanceType;
+    if (source.path) dataTemp.path = source.path;
+
+    const prevData = msr ? structuredClone(msr) : null;
 
     // Distance details
     const elDistance = ATON.UI.createContainer();
     elDistance.append(
         ATON.UI.createButton({
-            text: msr.distanceType,
-            tooltip: "This measurement is calculated with " + msr.distanceType + " distance.",
+            text: source.distanceType,
+            tooltip: "This measurement is calculated with " + source.distanceType + " distance.",
             onpress: () => {} // nothing :)
         }),
         ATON.UI.createButton({
-            text: msr.distance.toFixed(4),
-            tooltip: "Distance measured: " + msr.distance,
+            text: Number(source.distance || 0).toFixed(4),
+            tooltip: "Distance measured: " + source.distance,
             onpress: () => {} // nothing :)
         }),
     )
-    const elMsrDetails = UI.createSplitRow({
-        colLeft: 6,
-        itemsLeft: elDistance, 
-        itemsRight: ATON.UI.createButton({
+    const elMeasurementActions = ATON.UI.createContainer();
+    if (!options.isNew) {
+        elMeasurementActions.append(ATON.UI.createButton({
             text   : "Delete Measurement",
             tooltip: "Delete Measurement",
             icon   : ATON.PATH_RES + "icons/trash.png",
             onpress: () => {
-               // THOTH.fire("deleteMeasurement", (msrId));
-               const msr = THOTH.MSR.msrMap.get(msrId);
-               THOTH.fire("deleteMeasurement", {
-                    id: msrId,
-                    point1: msr.points[0],
-                    point2: msr.points[1]
-             });
+                const currentMsr = THOTH.MSR.getMeasurement(msrId);
+                THOTH.fire("deleteMeasurement", {
+                    id    : msrId,
+                    point1: currentMsr?.points?.[0],
+                    point2: currentMsr?.points?.[1]
+                });
 
                 ATON.UI.hideModal();
             }
-        }),
+        }));
+    }
+
+    const elMsrDetails = UI.createSplitRow({
+        colLeft: 6,
+        itemsLeft: elDistance, 
+        itemsRight: elMeasurementActions,
     })
     const elBody = ATON.UI.createTreeGroup({
         items: [
@@ -1478,18 +1495,26 @@ UI.modalMsrDetails = (msrId) => {
             const sharedData = UI.collectAnnotationSharedFields(dataTemp);
             if (!sharedData) return;
 
-            THOTH.fire("editMeasurement", {
-                id      : msrId,
-                data    : sharedData,
-                prevData: prevData
-            });
+            if (options.isNew) {
+                THOTH.fire("createMeasurement", {
+                    id  : msrId,
+                    data: sharedData
+                });
+            }
+            else {
+                THOTH.fire("editMeasurement", {
+                    id      : msrId,
+                    data    : sharedData,
+                    prevData: prevData
+                });
+            }
             ATON.UI.hideModal();
         },
-        successText: "Save changes"
+        successText: options.isNew ? "Create measurement" : "Save changes"
     }); 
 
     ATON.UI.showModal({
-        header: `Edit measurement with id: ${msrId}`,
+        header: `${options.isNew ? "Create" : "Edit"} measurement with id: ${msrId}`,
         body  : elBody,
         footer: elFooter,
         wide  : true
@@ -1650,7 +1675,7 @@ UI.createAnnotationSharedItems = (dataTemp, options = {}) => {
 };
 
 UI.modalSemAnnotationDetails = (annotationId, draftData, options = {}) => {
-    const annotation = THOTH.SemAnnotations.semMap.get(annotationId);
+    const annotation = THOTH.SemAnnotations.getAnnotation(annotationId);
     if (!annotation && !draftData) return;
     if (annotation?.trash) return;
 
@@ -2005,7 +2030,10 @@ UI.modalSelectionDetails = (selectionId) => {
         UI.createColorPicker({
             color: selection.selection_color,
             onchange: (c) => {
+                if (!annotationTemp.annotation) annotationTemp.annotation = {};
                 annotationTemp.annotation.selection_color = c;
+                annotationTemp.selection_color = c;
+                annotationTemp.highlightColor = c;
                 THOTH.updateVisibility();
             }
         }),
@@ -2049,6 +2077,13 @@ UI.modalSelectionDetails = (selectionId) => {
         onsuccess: () => {
             const sharedData = UI.collectAnnotationSharedFields(annotationTemp);
             if (!sharedData) return;
+
+            if (annotationTemp.selection_color) {
+                if (!sharedData.annotation) sharedData.annotation = {};
+                sharedData.annotation.selection_color = annotationTemp.selection_color;
+                sharedData.selection_color = annotationTemp.selection_color;
+                sharedData.highlightColor = annotationTemp.selection_color;
+            }
 
             THOTH.fire("editSelectionMetadata", {
                 id            : selectionId,

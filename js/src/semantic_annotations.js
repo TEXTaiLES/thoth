@@ -236,6 +236,20 @@ SemAnnotations.refreshAnnotationVisibility = () => {
     }
 };
 
+SemAnnotations.getAnnotationKey = (annotationId) => {
+    if (SemAnnotations.semMap.has(annotationId)) return annotationId;
+
+    for (const key of SemAnnotations.semMap.keys()) {
+        if (String(key) === String(annotationId)) return key;
+    }
+
+    return annotationId;
+};
+
+SemAnnotations.getAnnotation = (annotationId) => {
+    return SemAnnotations.semMap.get(SemAnnotations.getAnnotationKey(annotationId));
+};
+
 
 // Geometries
 
@@ -277,7 +291,7 @@ SemAnnotations.createPointSem = (point) => {
 };
 
 SemAnnotations.createLabelSem = (annotationId) => {
-    const annotation = SemAnnotations.semMap.get(annotationId);
+    const annotation = SemAnnotations.getAnnotation(annotationId);
     if (!annotation) return;
 
     const point = annotation.point;
@@ -304,22 +318,23 @@ SemAnnotations.clearTempAnnotationSem = () => {
 SemAnnotations.addAnnotationSem = (annotationId) => {
     if (annotationId === undefined) return;
 
-    const annotation = SemAnnotations.semMap.get(annotationId);
+    const annotationKey = SemAnnotations.getAnnotationKey(annotationId);
+    const annotation = SemAnnotations.semMap.get(annotationKey);
     if (!annotation) return;
 
-    const oldNode = SemAnnotations.semNodeMap.get(annotationId);
+    const oldNode = SemAnnotations.semNodeMap.get(annotationKey);
     if (oldNode?.parent) oldNode.parent.remove(oldNode);
 
     const pointSem = SemAnnotations.createPointSem(annotation.point);
-    const label    = SemAnnotations.createLabelSem(annotationId);
-    const node     = new ATON.Node(`semanticAnnotation${annotationId}`, ATON.NTYPES.UI);
+    const label    = SemAnnotations.createLabelSem(annotationKey);
+    const node     = new ATON.Node(`semanticAnnotation${annotationKey}`, ATON.NTYPES.UI);
 
     node.add(pointSem);
     node.add(label);
     node.setPickable(true);
-    node.setOnSelect(() => THOTH.UI.modalSemAnnotationDetails(annotationId));
+    node.setOnSelect(() => THOTH.UI.modalSemAnnotationDetails(annotationKey));
 
-    SemAnnotations.semNodeMap.set(annotationId, node);
+    SemAnnotations.semNodeMap.set(annotationKey, node);
     node.attachTo(SemAnnotations.nodes);
 
     SemAnnotations.refreshAnnotationVisibility();
@@ -352,7 +367,7 @@ SemAnnotations.createAnnotationData = (annotationId, point, data = {}) => {
 SemAnnotations.addAnnotation = (annotationId, annotationData) => {
     if (annotationId === undefined || !annotationData) return;
 
-    const existingAnnotation = SemAnnotations.semMap.get(annotationId);
+    const existingAnnotation = SemAnnotations.getAnnotation(annotationId);
     if (existingAnnotation !== undefined) {
         if (existingAnnotation.trash === true) SemAnnotations.resurrectAnnotation(annotationId, annotationData);
         else alert(`Semantic annotation id conflict ${annotationId}`);
@@ -369,7 +384,8 @@ SemAnnotations.addAnnotation = (annotationId, annotationData) => {
 SemAnnotations.updateAnnotation = (annotationId, data) => {
     if (annotationId === undefined || !data) return;
 
-    const annotation = SemAnnotations.semMap.get(annotationId);
+    const annotationKey = SemAnnotations.getAnnotationKey(annotationId);
+    const annotation = SemAnnotations.semMap.get(annotationKey);
     if (!annotation) return;
 
     const normalized = SemAnnotations.normalizeAnnotation({
@@ -380,9 +396,9 @@ SemAnnotations.updateAnnotation = (annotationId, data) => {
     Object.assign(annotation, normalized);
     if (data.point) annotation.point = SemAnnotations.normalizePoint(data.point);
 
-    SemAnnotations.updateAnnotationSem(annotationId);
+    SemAnnotations.updateAnnotationSem(annotationKey);
 
-    const controller = THOTH.FE.semMap.get(annotationId);
+    const controller = THOTH.FE.semMap.get(annotationKey);
     if (controller?.nameBtn) {
         controller.nameBtn.textContent = annotation.name;
     }
@@ -393,34 +409,37 @@ SemAnnotations.updateAnnotation = (annotationId, data) => {
 SemAnnotations.deleteAnnotation = (annotationId) => {
     if (annotationId === undefined) return;
 
-    const annotation = SemAnnotations.semMap.get(annotationId);
+    const annotationKey = SemAnnotations.getAnnotationKey(annotationId);
+    const annotation = SemAnnotations.semMap.get(annotationKey);
     if (!annotation) return;
 
     annotation.trash = true;
-    SemAnnotations.hideAnnotation(annotationId);
-    THOTH.FE.deleteSemAnnotation(annotationId);
+    SemAnnotations.hideAnnotation(annotationKey);
+    THOTH.FE.deleteSemAnnotation(annotationKey);
 };
 
 SemAnnotations.resurrectAnnotation = (annotationId, annotationData) => {
     if (annotationId === undefined) return;
 
-    const annotation = SemAnnotations.semMap.get(annotationId);
+    const annotationKey = SemAnnotations.getAnnotationKey(annotationId);
+    const annotation = SemAnnotations.semMap.get(annotationKey);
     if (!annotation) return;
 
     Object.assign(annotation, SemAnnotations.normalizeAnnotation(annotationData));
     annotation.trash = false;
     annotation.visible = annotation.visible !== false;
 
-    SemAnnotations.updateAnnotationSem(annotationId);
-    THOTH.FE.addSemAnnotation(annotationId);
+    SemAnnotations.updateAnnotationSem(annotationKey);
+    THOTH.FE.addSemAnnotation(annotationKey);
 };
 
 
 // Visibility
 
 SemAnnotations.hideAnnotation = (annotationId) => {
-    const annotation = SemAnnotations.semMap.get(annotationId);
-    const node = SemAnnotations.semNodeMap.get(annotationId);
+    const annotationKey = SemAnnotations.getAnnotationKey(annotationId);
+    const annotation = SemAnnotations.semMap.get(annotationKey);
+    const node = SemAnnotations.semNodeMap.get(annotationKey);
     if (!annotation || !node) return;
 
     annotation.visible = false;
@@ -428,8 +447,9 @@ SemAnnotations.hideAnnotation = (annotationId) => {
 };
 
 SemAnnotations.showAnnotation = (annotationId) => {
-    const annotation = SemAnnotations.semMap.get(annotationId);
-    const node = SemAnnotations.semNodeMap.get(annotationId);
+    const annotationKey = SemAnnotations.getAnnotationKey(annotationId);
+    const annotation = SemAnnotations.semMap.get(annotationKey);
+    const node = SemAnnotations.semNodeMap.get(annotationKey);
     if (!annotation || !node) return;
 
     annotation.visible = true;
@@ -437,15 +457,16 @@ SemAnnotations.showAnnotation = (annotationId) => {
 };
 
 SemAnnotations.toggleVisibility = (annotationId) => {
-    const annotation = SemAnnotations.semMap.get(annotationId);
-    const node = SemAnnotations.semNodeMap.get(annotationId);
+    const annotationKey = SemAnnotations.getAnnotationKey(annotationId);
+    const annotation = SemAnnotations.semMap.get(annotationKey);
+    const node = SemAnnotations.semNodeMap.get(annotationKey);
     if (!annotation || !node) return;
 
-    if (annotation.visible !== false) SemAnnotations.hideAnnotation(annotationId);
-    else SemAnnotations.showAnnotation(annotationId);
+    if (annotation.visible !== false) SemAnnotations.hideAnnotation(annotationKey);
+    else SemAnnotations.showAnnotation(annotationKey);
 
     THOTH.FE.toggleControllerVisibility(
-        THOTH.FE.semMap.get(annotationId),
+        THOTH.FE.semMap.get(annotationKey),
         annotation.visible
     );
 };

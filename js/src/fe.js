@@ -673,8 +673,9 @@ FE.selectAnnotationRow = (key, collectionName, itemId, modelId) => {
         THOTH.Selections.setActiveSelection(modelId, itemId);
     }
     else if (collectionName === "measurements") {
-        THOTH.FE.handleElementHighlight(itemId, THOTH.FE.msrMap);
-        THOTH.MSR.highlightMeasurement(itemId);
+        const measurementKey = THOTH.MSR.getMeasurementKey(itemId);
+        THOTH.FE.handleElementHighlight(measurementKey, THOTH.FE.msrMap);
+        THOTH.MSR.highlightMeasurement(measurementKey);
     }
 
     FE.refreshSceneTree();
@@ -977,25 +978,29 @@ FE.deleteModel = (modelName) => {
 // Measurements
 
 FE.addMsr = (msrId) => {
+    const measurementKey = THOTH.MSR.getMeasurementKey(msrId);
+    const measurement = THOTH.MSR.getMeasurement(measurementKey);
+    if (!measurement) return;
+
     // Resurrect measurement if it already exists
-    if (FE.msrMap.has(msrId)) {
-        FE.msrMap.get(msrId).style.display = "flex";
+    if (FE.msrMap.has(measurementKey)) {
+        FE.msrMap.get(measurementKey).style.display = "flex";
         FE.refreshSceneTree();
         return;
     }
 
     // Create new name button
     const newMsrNameBtn = ATON.UI.createButton({
-        text   : THOTH.MSR.msrMap.get(msrId).name,
+        text   : measurement.name,
         onpress: () => {
 
         } // highilight {}
     });
-    FE.msrNameMap.set(msrId, newMsrNameBtn);
+    FE.msrNameMap.set(measurementKey, newMsrNameBtn);
 
     // Create new controller
-    const newMsrController = THOTH.UI.createMsrController(msrId);
-    FE.msrMap.set(msrId, newMsrController);
+    const newMsrController = THOTH.UI.createMsrController(measurementKey);
+    FE.msrMap.set(measurementKey, newMsrController);
 
     // Add to list
     FE.msrList.append(newMsrController);
@@ -1003,7 +1008,8 @@ FE.addMsr = (msrId) => {
 };
 
 FE.deleteMsr = (msrId) => {
-    const controller = FE.msrMap.get(msrId);
+    const measurementKey = THOTH.MSR.getMeasurementKey(msrId);
+    const controller = FE.msrMap.get(measurementKey);
     if (controller) controller.style.display = 'none';
     FE.refreshSceneTree();
     // Add logic ? 
@@ -1013,28 +1019,32 @@ FE.deleteMsr = (msrId) => {
 // Semantic annotations
 
 FE.addSemAnnotation = (annotationId) => {
-    if (FE.semMap.has(annotationId)) {
-        FE.semMap.get(annotationId).style.display = "flex";
+    const annotationKey = THOTH.SemAnnotations.getAnnotationKey(annotationId);
+    const annotation = THOTH.SemAnnotations.getAnnotation(annotationKey);
+    if (!annotation) return;
+
+    if (FE.semMap.has(annotationKey)) {
+        FE.semMap.get(annotationKey).style.display = "flex";
         FE.refreshSceneTree();
         return;
     }
 
-    const annotation = THOTH.SemAnnotations.semMap.get(annotationId);
     const newSemNameBtn = ATON.UI.createButton({
         text   : annotation.name,
-        onpress: () => THOTH.UI.modalSemAnnotationDetails(annotationId),
+        onpress: () => THOTH.UI.modalSemAnnotationDetails(annotationKey),
     });
-    FE.semNameMap.set(annotationId, newSemNameBtn);
+    FE.semNameMap.set(annotationKey, newSemNameBtn);
 
-    const newSemController = THOTH.UI.createSemAnnotationController(annotationId);
-    FE.semMap.set(annotationId, newSemController);
+    const newSemController = THOTH.UI.createSemAnnotationController(annotationKey);
+    FE.semMap.set(annotationKey, newSemController);
 
     FE.semList.append(newSemController);
     FE.refreshSceneTree();
 };
 
 FE.deleteSemAnnotation = (annotationId) => {
-    const controller = FE.semMap.get(annotationId);
+    const annotationKey = THOTH.SemAnnotations.getAnnotationKey(annotationId);
+    const controller = FE.semMap.get(annotationKey);
     if (controller) controller.style.display = "none";
     FE.refreshSceneTree();
 };
