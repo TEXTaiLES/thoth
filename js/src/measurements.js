@@ -527,6 +527,9 @@ MSR.deleteMeasurement = (measurementId) => {
     const measurementKey = MSR.getMeasurementKey(measurementId);
     const measurement = MSR.msrMap.get(measurementKey);
     if (!measurement) return;
+    if (THOTH.Annotations?.isActive?.("measurements", measurementKey, measurement.model_id)) {
+        THOTH.Annotations.clearActive();
+    }
     measurement.trash = true;
     MSR.hideMeasurement(measurementKey);
 
@@ -710,8 +713,7 @@ MSR.addMeasurementSem = (measurementId) => {
         //label.setOpacity(0.0);
     });
     node.setOnSelect(() => {
-        THOTH.FE?.handleElementHighlight?.(measurementKey, THOTH.FE?.msrMap);
-        MSR.highlightMeasurement(measurementKey);
+        THOTH.Annotations?.select?.("measurements", measurementKey);
         THOTH.UI.modalMsrDetails(measurementKey);
     });
     node.setOnLeave(() => {
@@ -973,9 +975,9 @@ MSR.toggleVisibility = (measurementId) => {
     else MSR.showMeasurement(measurementKey);
 };
 
-MSR.clearHighlight = (clearUI = true) => {
-    if (MSR.currentMeasurementLine !== null) {
-        const prevNode = MSR.msrSemMap.get(MSR.currentMeasurementLine);
+MSR.clearMeasurementHighlight = (clearUI = true) => {
+    if (MSR.currentMeasurementLine != null) {
+        const prevNode = MSR.msrSemMap?.get(MSR.currentMeasurementLine);
         if (prevNode) {
             prevNode.traverse(child => {
                 if (child.userData?.type === "euclidean-measurement-line") {
@@ -998,12 +1000,20 @@ MSR.clearHighlight = (clearUI = true) => {
     }
 };
 
-MSR.highlightMeasurement = (measurementId) => {
-    THOTH.Selections?.clearActiveSelection?.();
-    THOTH.SemAnnotations?.clearHighlight?.();
-    MSR.clearHighlight(false);
+MSR.clearHighlight = (clearUI = true) => {
+    if (THOTH.Annotations?.getActive?.()?.modality === "measurements") {
+        THOTH.Annotations.clearActive({
+            refreshSceneTree: clearUI
+        });
+        return;
+    }
 
-    // Set new active
+    MSR.clearMeasurementHighlight(clearUI);
+};
+
+MSR.applyMeasurementHighlight = (measurementId) => {
+    MSR.clearMeasurementHighlight(false);
+
     const measurementKey = MSR.getMeasurementKey(measurementId);
     MSR.currentMeasurementLine = measurementKey;
 
@@ -1021,6 +1031,15 @@ MSR.highlightMeasurement = (measurementId) => {
             child.material.color.set(MSR.selectedLineColor);
         }
     });
+};
+
+MSR.highlightMeasurement = (measurementId) => {
+    if (THOTH.Annotations?.select) {
+        return THOTH.Annotations.select("measurements", measurementId);
+    }
+
+    MSR.applyMeasurementHighlight(measurementId);
+    return true;
 };
 
 MSR.renameMeasurement = (measurementId, newName) => {

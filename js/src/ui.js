@@ -705,7 +705,12 @@ UI.createSelectionController = (selectionId, modelId) => {
             icon   : "list",
             size   : "small",
             tooltip: "Edit selection",
-            onpress: () => UI.modalSelectionDetails(selectionId),
+            onpress: () => {
+                THOTH.Annotations?.select?.("selections", selectionId, {
+                    modelId: modelId
+                });
+                UI.modalSelectionDetails(selectionId);
+            },
         }),
         elCP,
         // Delete
@@ -739,8 +744,7 @@ UI.createMsrController = (msrId) => {
     size   : "small",
     tooltip: "Select measurement",
     onpress: () => {
-        THOTH.FE.handleElementHighlight(measurementKey, THOTH.FE.msrMap);
-        THOTH.MSR.highlightMeasurement(measurementKey);
+        THOTH.Annotations?.select?.("measurements", measurementKey);
     },
 });
 
@@ -762,7 +766,10 @@ UI.createMsrController = (msrId) => {
             size   : "small",
             tooltip: "View measurement",
             // onpress: () => THOTH.FE.showToast("TBI")
-            onpress: () => UI.modalMsrDetails(measurementKey)
+            onpress: () => {
+                THOTH.Annotations?.select?.("measurements", measurementKey);
+                UI.modalMsrDetails(measurementKey);
+            }
         }), 
         // Delete
         ATON.UI.createButton({
@@ -804,8 +811,7 @@ UI.createSemAnnotationController = (annotationId) => {
         size   : "small",
         tooltip: "Select semantic annotation",
         onpress: () => {
-            THOTH.FE.handleElementHighlight(annotationKey, THOTH.FE.semMap);
-            THOTH.SemAnnotations.highlightAnnotation(annotationKey);
+            THOTH.Annotations?.select?.("semantic_annotations", annotationKey);
         }
     });
 
@@ -824,8 +830,7 @@ UI.createSemAnnotationController = (annotationId) => {
             size   : "small",
             tooltip: "View semantic annotation",
             onpress: () => {
-                THOTH.FE.handleElementHighlight(annotationKey, THOTH.FE.semMap);
-                THOTH.SemAnnotations.highlightAnnotation(annotationKey);
+                THOTH.Annotations?.select?.("semantic_annotations", annotationKey);
                 UI.modalSemAnnotationDetails(annotationKey);
             }
         }),

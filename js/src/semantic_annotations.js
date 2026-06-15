@@ -364,7 +364,10 @@ SemAnnotations.addAnnotationSem = (annotationId) => {
     node.add(pointSem);
     node.add(label);
     node.setPickable(true);
-    node.setOnSelect(() => THOTH.UI.modalSemAnnotationDetails(annotationKey));
+    node.setOnSelect(() => {
+        THOTH.Annotations?.select?.("semantic_annotations", annotationKey);
+        THOTH.UI.modalSemAnnotationDetails(annotationKey);
+    });
 
     SemAnnotations.semNodeMap.set(annotationKey, node);
     node.attachTo(SemAnnotations.nodes);
@@ -446,6 +449,10 @@ SemAnnotations.deleteAnnotation = (annotationId) => {
     const annotation = SemAnnotations.semMap.get(annotationKey);
     if (!annotation) return;
 
+    if (THOTH.Annotations?.isActive?.("semantic_annotations", annotationKey, annotation.model_id)) {
+        THOTH.Annotations.clearActive();
+    }
+
     annotation.trash = true;
     SemAnnotations.hideAnnotation(annotationKey);
     THOTH.FE.deleteSemAnnotation(annotationKey);
@@ -504,9 +511,9 @@ SemAnnotations.toggleVisibility = (annotationId) => {
     );
 };
 
-SemAnnotations.clearHighlight = (clearUI = true) => {
-    if (SemAnnotations.currentAnnotation !== null) {
-        const prevNode = SemAnnotations.semNodeMap.get(SemAnnotations.currentAnnotation);
+SemAnnotations.clearAnnotationHighlight = (clearUI = true) => {
+    if (SemAnnotations.currentAnnotation != null) {
+        const prevNode = SemAnnotations.semNodeMap?.get(SemAnnotations.currentAnnotation);
         if (prevNode) {
             prevNode.traverse(child => {
                 if (child.userData?.thothMarker === "semantic-point") {
@@ -523,10 +530,19 @@ SemAnnotations.clearHighlight = (clearUI = true) => {
     }
 };
 
-SemAnnotations.highlightAnnotation = (annotationId) => {
-    THOTH.Selections?.clearActiveSelection?.();
-    THOTH.MSR?.clearHighlight?.();
-    SemAnnotations.clearHighlight(false);
+SemAnnotations.clearHighlight = (clearUI = true) => {
+    if (THOTH.Annotations?.getActive?.()?.modality === "semantic_annotations") {
+        THOTH.Annotations.clearActive({
+            refreshSceneTree: clearUI
+        });
+        return;
+    }
+
+    SemAnnotations.clearAnnotationHighlight(clearUI);
+};
+
+SemAnnotations.applyAnnotationHighlight = (annotationId) => {
+    SemAnnotations.clearAnnotationHighlight(false);
 
     const annotationKey = SemAnnotations.getAnnotationKey(annotationId);
     SemAnnotations.currentAnnotation = annotationKey;
@@ -539,6 +555,15 @@ SemAnnotations.highlightAnnotation = (annotationId) => {
             child.material.color.set(SemAnnotations.selectedPointColor);
         }
     });
+};
+
+SemAnnotations.highlightAnnotation = (annotationId) => {
+    if (THOTH.Annotations?.select) {
+        return THOTH.Annotations.select("semantic_annotations", annotationId);
+    }
+
+    SemAnnotations.applyAnnotationHighlight(annotationId);
+    return true;
 };
 
 

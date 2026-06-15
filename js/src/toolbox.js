@@ -232,7 +232,7 @@ Toolbox.delFacesFromSelection = (newFaces, selection) => {
 Toolbox.brushActive = () => {
     const modelName = THOTH.hoveredModel;
     const meshName  = THOTH.hoveredMesh;
-    const activeSelection = THOTH.Selections?.getActiveSelection();
+    const activeSelection = THOTH.Annotations?.getActiveSelection?.();
     if (!activeSelection || activeSelection.model_id !== modelName) return;
     
     const newFaces       = Toolbox.selectMultipleFaces(THOTH.hoveredModel, THOTH.hoveredMesh);
@@ -252,7 +252,7 @@ Toolbox.brushActive = () => {
 Toolbox.eraserActive = () => {
     const modelName = THOTH.hoveredModel;
     const meshName  = THOTH.hoveredMesh;
-    const activeSelection = THOTH.Selections?.getActiveSelection();
+    const activeSelection = THOTH.Annotations?.getActiveSelection?.();
     if (!activeSelection || activeSelection.model_id !== modelName) return;
     
     const newFaces       = Toolbox.selectMultipleFaces(THOTH.hoveredModel, THOTH.hoveredMesh);
@@ -270,7 +270,7 @@ Toolbox.eraserActive = () => {
 };
 
 Toolbox.endBrush = () => {
-    const activeSelection = THOTH.Selections?.getActiveSelection();
+    const activeSelection = THOTH.Annotations?.getActiveSelection?.();
     if (!activeSelection) return {};
 
     // Get only faces that don't already belong to the selection
@@ -295,7 +295,7 @@ Toolbox.endBrush = () => {
 };
 
 Toolbox.endEraser = () => {
-    const activeSelection = THOTH.Selections?.getActiveSelection();
+    const activeSelection = THOTH.Annotations?.getActiveSelection?.();
     if (!activeSelection) return {};
 
     // Get only faces that already belong to the selection
@@ -363,7 +363,7 @@ Toolbox.updateLasso = () => {
 };
 
 Toolbox.endLassoAdd = () => {
-    const activeSelection = THOTH.Selections?.getActiveSelection();
+    const activeSelection = THOTH.Annotations?.getActiveSelection?.();
     if (!activeSelection) return {};
 
     const tempSelection = {}
@@ -394,7 +394,7 @@ Toolbox.endLassoAdd = () => {
 };
 
 Toolbox.endLassoDel = () => {
-    const activeSelection = THOTH.Selections?.getActiveSelection();
+    const activeSelection = THOTH.Annotations?.getActiveSelection?.();
     if (!activeSelection) return {};
 
     const tempSelection = {}

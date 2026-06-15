@@ -77,6 +77,7 @@ const SHARED_FIELDS = new Set([
 
 Annotations.setup = () => {
     Annotations.modalities = MODALITIES;
+    Annotations.activeAnnotation = null;
 };
 
 
@@ -186,6 +187,187 @@ Annotations._applyCollectionOperation = (type, target, value, prevValue) => {
 
     const operation = THOTH.Ops.makeOperation(type, target, value, prevValue);
     return THOTH.Ops.applyLocal(operation);
+};
+
+Annotations._getSelectionTarget = (selectionId, modelId) => {
+    const selection = modelId !== undefined
+        ? THOTH.Selections?.getSelection(modelId, selectionId)
+        : THOTH.Selections?.getSelectionById(selectionId);
+    if (!selection || selection.trash === true) return null;
+
+    return {
+        modality: "selections",
+        id      : selection.id,
+        model_id: selection.model_id,
+        item    : selection
+    };
+};
+
+Annotations._getMeasurementTarget = (measurementId, modelId) => {
+    const measurementKey = THOTH.MSR?.getMeasurementKey?.(measurementId) ?? measurementId;
+    const measurement = THOTH.MSR?.getMeasurement?.(measurementKey);
+    if (!measurement || measurement.trash === true) return null;
+
+    return {
+        modality: "measurements",
+        id      : measurementKey,
+        model_id: measurement.model_id || modelId || Annotations.getModelId("measurements", measurementKey),
+        item    : measurement
+    };
+};
+
+Annotations._getSemanticTarget = (annotationId, modelId) => {
+    const annotationKey = THOTH.SemAnnotations?.getAnnotationKey?.(annotationId) ?? annotationId;
+    const annotation = THOTH.SemAnnotations?.getAnnotation?.(annotationKey);
+    if (!annotation || annotation.trash === true) return null;
+
+    return {
+        modality: "semantic_annotations",
+        id      : annotationKey,
+        model_id: annotation.model_id || modelId || Annotations.getModelId("semantic_annotations", annotationKey),
+        item    : annotation
+    };
+};
+
+Annotations._resolveTarget = (modality, annotationId, modelId) => {
+    if (modality === "selections") {
+        return Annotations._getSelectionTarget(annotationId, modelId);
+    }
+    if (modality === "measurements") {
+        return Annotations._getMeasurementTarget(annotationId, modelId);
+    }
+    if (modality === "semantic_annotations") {
+        return Annotations._getSemanticTarget(annotationId, modelId);
+    }
+
+    return null;
+};
+
+Annotations._getControllerKey = (target) => {
+    if (!target) return undefined;
+    if (target.modality === "selections") {
+        return THOTH.Selections?._makeKey?.(target.model_id, target.id);
+    }
+
+    return target.id;
+};
+
+Annotations._getControllerMap = (modality) => {
+    if (modality === "selections") return THOTH.FE?.selectionControllerMap;
+    if (modality === "measurements") return THOTH.FE?.msrMap;
+    if (modality === "semantic_annotations") return THOTH.FE?.semMap;
+
+    return undefined;
+};
+
+Annotations._setSceneTreeActive = (target) => {
+    if (!THOTH.FE) return;
+    if (!target?.model_id) {
+        THOTH.FE.sceneTreeActiveKey = null;
+        return;
+    }
+
+    THOTH.FE.sceneTreeActiveKey = `model:${target.model_id}:${target.modality}:${target.id}`;
+    THOTH.FE.sceneTreeExpanded?.add(`model:${target.model_id}`);
+    THOTH.FE.sceneTreeExpanded?.add(`model:${target.model_id}:${target.modality}`);
+};
+
+Annotations._clearRuntimeState = () => {
+    if (THOTH.Selections) THOTH.Selections.activeSelection = undefined;
+    THOTH.MSR?.clearMeasurementHighlight?.(false);
+    THOTH.SemAnnotations?.clearAnnotationHighlight?.(false);
+
+    THOTH.FE?.handleElementHighlight?.(null, THOTH.FE?.selectionControllerMap);
+    THOTH.FE?.handleElementHighlight?.(null, THOTH.FE?.msrMap);
+    THOTH.FE?.handleElementHighlight?.(null, THOTH.FE?.semMap);
+};
+
+Annotations._applyRuntimeState = (target) => {
+    if (target.modality === "selections") {
+        THOTH.Selections.activeSelection = target.item;
+    }
+    else if (target.modality === "measurements") {
+        THOTH.MSR?.applyMeasurementHighlight?.(target.id);
+    }
+    else if (target.modality === "semantic_annotations") {
+        THOTH.SemAnnotations?.applyAnnotationHighlight?.(target.id);
+    }
+
+    THOTH.FE?.handleElementHighlight?.(
+        Annotations._getControllerKey(target),
+        Annotations._getControllerMap(target.modality)
+    );
+};
+
+
+// Active annotation
+
+Annotations.clearActive = (options = {}) => {
+    Annotations.activeAnnotation = null;
+    Annotations._clearRuntimeState();
+
+    if (THOTH.FE && options.clearSceneTree !== false) {
+        THOTH.FE.sceneTreeActiveKey = null;
+    }
+
+    if (options.refreshSceneTree !== false) {
+        THOTH.FE?.refreshSceneTree?.();
+    }
+};
+
+Annotations.select = (modality, annotationId, options = {}) => {
+    const modelId = options.modelId ?? options.model_id;
+    const target = Annotations._resolveTarget(modality, annotationId, modelId);
+    if (!target) return false;
+
+    Annotations.clearActive({
+        clearSceneTree   : false,
+        refreshSceneTree : false
+    });
+
+    Annotations.activeAnnotation = {
+        modality: target.modality,
+        id      : target.id,
+        model_id: target.model_id
+    };
+
+    Annotations._applyRuntimeState(target);
+    Annotations._setSceneTreeActive(target);
+
+    if (options.refreshSceneTree !== false) {
+        THOTH.FE?.refreshSceneTree?.();
+    }
+
+    return true;
+};
+
+Annotations.getActive = () => {
+    if (!Annotations.activeAnnotation) return null;
+
+    return { ...Annotations.activeAnnotation };
+};
+
+Annotations.isActive = (modality, annotationId, modelId) => {
+    const active = Annotations.activeAnnotation;
+    if (!active || active.modality !== modality) return false;
+
+    const target = Annotations._resolveTarget(modality, annotationId, modelId);
+    if (!target) {
+        return String(active.id) === String(annotationId) &&
+            (modelId === undefined || String(active.model_id) === String(modelId));
+    }
+
+    return String(active.id) === String(target.id) &&
+        String(active.model_id) === String(target.model_id);
+};
+
+Annotations.getActiveSelection = () => {
+    if (Annotations.activeAnnotation?.modality !== "selections") return undefined;
+
+    return THOTH.Selections?.getSelection?.(
+        Annotations.activeAnnotation.model_id,
+        Annotations.activeAnnotation.id
+    ) || THOTH.Selections?.activeSelection;
 };
 
 

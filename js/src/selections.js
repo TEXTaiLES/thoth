@@ -141,10 +141,11 @@ Selections.deleteSelection = (modelId, selectionId) => {
     const selection = Selections.getSelection(modelId, selectionId);
     if (!selection) return;
 
-    selection.trash = true;
-    if (Selections.activeSelection === selection) {
-        Selections.setActiveSelection(null, null);
+    if (THOTH.Annotations?.isActive?.("selections", selectionId, modelId)) {
+        THOTH.Annotations.clearActive();
     }
+
+    selection.trash = true;
 
     if (THOTH.FE?.deleteSelection) THOTH.FE.deleteSelection(selectionId, modelId);
     Selections.refreshHighlights(modelId);
@@ -181,6 +182,13 @@ Selections.createSelection = (modelId, data = {}) => {
 };
 
 Selections.clearActiveSelection = (clearUI = true) => {
+    if (THOTH.Annotations?.getActive?.()?.modality === "selections") {
+        THOTH.Annotations.clearActive({
+            refreshSceneTree: clearUI
+        });
+        return;
+    }
+
     Selections.activeSelection = undefined;
 
     if (clearUI) {
@@ -190,29 +198,22 @@ Selections.clearActiveSelection = (clearUI = true) => {
 
 Selections.setActiveSelection = (modelId, selectionId) => {
     if (modelId === null || selectionId === null) {
-        Selections.clearActiveSelection();
+        THOTH.Annotations?.clearActive?.();
         return;
+    }
+
+    if (THOTH.Annotations?.select) {
+        return THOTH.Annotations.select("selections", selectionId, {
+            modelId: modelId
+        });
     }
 
     const selection = Selections.getSelection(modelId, selectionId) ||
         Selections.getSelectionById(selectionId);
-    if (!selection || selection.trash) return;
-
-    THOTH.MSR?.clearHighlight?.();
-    THOTH.SemAnnotations?.clearHighlight?.();
-    Selections.clearActiveSelection(false);
+    if (!selection || selection.trash) return false;
 
     Selections.activeSelection = selection;
-    if (THOTH.FE) {
-        THOTH.FE.sceneTreeActiveKey = `model:${selection.model_id}:selections:${selection.id}`;
-        THOTH.FE.sceneTreeExpanded?.add(`model:${selection.model_id}`);
-        THOTH.FE.sceneTreeExpanded?.add(`model:${selection.model_id}:selections`);
-    }
-    THOTH.FE?.handleElementHighlight(
-        Selections._makeKey(selection.model_id, selection.id),
-        THOTH.FE.selectionControllerMap
-    );
-    THOTH.FE?.refreshSceneTree?.();
+    return true;
 };
 
 Selections.getSelection = (modelId, selectionId) => {
@@ -230,7 +231,7 @@ Selections.getSelectionById = (selectionId) => {
 };
 
 Selections.getActiveSelection = () => {
-    return Selections.activeSelection;
+    return THOTH.Annotations?.getActiveSelection?.() || Selections.activeSelection;
 };
 
 Selections.addFaces = (modelId, selectionId, meshId, faces) => {

@@ -118,7 +118,9 @@ FE.initSelectionNameMap = () => {
     for (const [selectionKey, selection] of THOTH.Selections.selectionMap) {
         const selectionNameBtn = ATON.UI.createButton({
             text   : selection.name,
-            onpress: () => THOTH.Selections.setActiveSelection(selection.model_id, selection.id),
+            onpress: () => THOTH.Annotations?.select?.("selections", selection.id, {
+                modelId: selection.model_id
+            }),
         });
         selectionNameMap.set(selectionKey, selectionNameBtn);
     }
@@ -674,30 +676,19 @@ FE.deleteAnnotationItem = (collectionName, itemId, item) => {
 };
 
 FE.selectAnnotationRow = (key, collectionName, itemId, modelId) => {
-    FE.sceneTreeActiveKey = key;
-
-    if (collectionName === "selections") {
-        THOTH.Selections.setActiveSelection(modelId, itemId);
-    }
-    else if (collectionName === "measurements") {
-        const measurementKey = THOTH.MSR.getMeasurementKey(itemId);
-        THOTH.FE.handleElementHighlight(measurementKey, THOTH.FE.msrMap);
-        THOTH.MSR.highlightMeasurement(measurementKey);
-    }
-    else if (collectionName === "semantic_annotations") {
-        const annotationKey = THOTH.SemAnnotations.getAnnotationKey(itemId);
-        THOTH.FE.handleElementHighlight(annotationKey, THOTH.FE.semMap);
-        THOTH.SemAnnotations.highlightAnnotation(annotationKey);
-    }
+    THOTH.Annotations?.select?.(collectionName, itemId, {
+        modelId: modelId
+    });
 
     FE.refreshSceneTree();
 };
 
 FE.openAnnotationPanel = (key, collectionName, itemId, modelId) => {
-    FE.sceneTreeActiveKey = key;
+    THOTH.Annotations?.select?.(collectionName, itemId, {
+        modelId: modelId
+    });
 
     if (collectionName === "selections") {
-        THOTH.Selections.setActiveSelection(modelId, itemId);
         THOTH.UI.modalSelectionDetails(itemId);
     }
     else if (collectionName === "measurements") {
@@ -705,8 +696,6 @@ FE.openAnnotationPanel = (key, collectionName, itemId, modelId) => {
     }
     else if (collectionName === "semantic_annotations") {
         const annotationKey = THOTH.SemAnnotations.getAnnotationKey(itemId);
-        THOTH.FE.handleElementHighlight(annotationKey, THOTH.FE.semMap);
-        THOTH.SemAnnotations.highlightAnnotation(annotationKey);
         THOTH.UI.modalSemAnnotationDetails(annotationKey);
     }
 
@@ -868,8 +857,9 @@ FE.addNewSelection = (selectionId, modelId) => {
         const nameButton = FE.selectionNameMap.get(selectionKey);
         if (nameButton) nameButton.textContent = selection.name;
         if (THOTH.Selections.getActiveSelection() === selection) {
-            FE.sceneTreeActiveKey = `model:${selection.model_id}:selections:${selection.id}`;
-            THOTH.Selections.setActiveSelection(selection.model_id, selection.id);
+            THOTH.Annotations?.select?.("selections", selection.id, {
+                modelId: selection.model_id
+            });
         }
         FE.refreshSceneTree();
         return;
@@ -878,7 +868,9 @@ FE.addNewSelection = (selectionId, modelId) => {
     // Create new name button
     const newSelectionNameBtn = ATON.UI.createButton({
         text   : selection.name,
-        onpress: () => THOTH.Selections.setActiveSelection(selection.model_id, selectionId)
+        onpress: () => THOTH.Annotations?.select?.("selections", selectionId, {
+            modelId: selection.model_id
+        })
     });
     FE.selectionNameMap.set(selectionKey, newSelectionNameBtn);
     
@@ -889,8 +881,9 @@ FE.addNewSelection = (selectionId, modelId) => {
     // Add to list
     FE.selectionList.append(newSelectionController);
     if (THOTH.Selections.getActiveSelection() === selection) {
-        FE.sceneTreeActiveKey = `model:${selection.model_id}:selections:${selection.id}`;
-        THOTH.Selections.setActiveSelection(selection.model_id, selection.id);
+        THOTH.Annotations?.select?.("selections", selection.id, {
+            modelId: selection.model_id
+        });
     }
     FE.refreshSceneTree();
 };
@@ -948,9 +941,7 @@ FE.addMsr = (msrId) => {
     // Create new name button
     const newMsrNameBtn = ATON.UI.createButton({
         text   : measurement.name,
-        onpress: () => {
-
-        } // highilight {}
+        onpress: () => THOTH.Annotations?.select?.("measurements", measurementKey)
     });
     FE.msrNameMap.set(measurementKey, newMsrNameBtn);
 
@@ -992,7 +983,10 @@ FE.addSemAnnotation = (annotationId) => {
 
     const newSemNameBtn = ATON.UI.createButton({
         text   : annotation.name,
-        onpress: () => THOTH.UI.modalSemAnnotationDetails(annotationKey),
+        onpress: () => {
+            THOTH.Annotations?.select?.("semantic_annotations", annotationKey);
+            THOTH.UI.modalSemAnnotationDetails(annotationKey);
+        },
     });
     FE.semNameMap.set(annotationKey, newSemNameBtn);
 

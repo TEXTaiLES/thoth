@@ -109,7 +109,9 @@ Ops._applySelectionRuntime = (action, modelId, itemId, value, operation) => {
             trash: false
         });
         if (operation?.source !== "remote") {
-            THOTH.Selections?.setActiveSelection(resolvedModelId, itemId);
+            THOTH.Annotations?.select?.("selections", itemId, {
+                modelId: resolvedModelId
+            });
         }
         return;
     }
@@ -147,12 +149,9 @@ Ops._applyMeasurementRuntime = (action, modelId, itemId, value, operation) => {
             operation.value = THOTH.MSR.toCanonicalMeasurement(itemId, storedMeasurement);
         }
         if (operation?.source !== "remote") {
-            THOTH.FE?.handleElementHighlight?.(itemId, THOTH.FE?.msrMap);
-            THOTH.MSR.highlightMeasurement(itemId);
-            if (modelId !== undefined) {
-                THOTH.FE.sceneTreeActiveKey = `model:${modelId}:measurements:${itemId}`;
-                THOTH.FE?.refreshSceneTree?.();
-            }
+            THOTH.Annotations?.select?.("measurements", itemId, {
+                modelId: modelId
+            });
         }
         return;
     }
@@ -174,12 +173,9 @@ Ops._applySemanticAnnotationRuntime = (action, modelId, itemId, value, operation
             model_id: modelId
         });
         if (operation?.source !== "remote") {
-            THOTH.FE?.handleElementHighlight?.(itemId, THOTH.FE?.semMap);
-            THOTH.SemAnnotations.highlightAnnotation(itemId);
-            if (modelId !== undefined) {
-                THOTH.FE.sceneTreeActiveKey = `model:${modelId}:semantic_annotations:${itemId}`;
-                THOTH.FE?.refreshSceneTree?.();
-            }
+            THOTH.Annotations?.select?.("semantic_annotations", itemId, {
+                modelId: modelId
+            });
         }
         return;
     }

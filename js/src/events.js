@@ -646,7 +646,9 @@ Events.setupSelectionEvents = () => {
             collection: "selections",
             item_id   : selectionId
         }, selectionData);
-        THOTH.Selections.setActiveSelection(modelId, selectionId);
+        THOTH.Annotations?.select?.("selections", selectionId, {
+            modelId: modelId
+        });
     });
     THOTH.on("deleteSelection", (selectionId) => {
         const prevData = Events.getSelectionData(selectionId);
@@ -703,8 +705,11 @@ Events.setupSelectionEvents = () => {
         // Selections
         if (k.startsWith("Digit")) {
             const id = Number(k.replace("Digit", ""));
-            if (THOTH._bShiftDown) THOTH.UI.modalSelectionDetails(id);
-            else THOTH.Selections.setActiveSelection(undefined, id);
+            if (THOTH._bShiftDown) {
+                THOTH.Annotations?.select?.("selections", id);
+                THOTH.UI.modalSelectionDetails(id);
+            }
+            else THOTH.Annotations?.select?.("selections", id);
         }
         if (k === "KeyN") {
             if (THOTH._bShiftDown) THOTH.fire("createSelection");
@@ -903,7 +908,7 @@ Events.setupToolboxEvents = () => {
         if (THOTH.Toolbox.tempSelection === null) return;
         
         // Get only faces that don't already belong to selection
-        const activeSelection = THOTH.Selections.getActiveSelection();
+        const activeSelection = THOTH.Annotations?.getActiveSelection?.();
         const selectionId = activeSelection.id;
         const selection = THOTH.Toolbox.endBrush();
         
@@ -938,7 +943,7 @@ Events.setupToolboxEvents = () => {
         if (THOTH.Toolbox.tempSelection === null) return;
         
         // Get only faces that already belong to selection
-        const activeSelection = THOTH.Selections.getActiveSelection();
+        const activeSelection = THOTH.Annotations?.getActiveSelection?.();
         const selectionId = activeSelection.id;
         const selection = THOTH.Toolbox.endEraser();
         
@@ -952,7 +957,7 @@ Events.setupToolboxEvents = () => {
     THOTH.on("endLassoAdd", (l) => {
         if (!THOTH.Toolbox.enabled || THOTH.Toolbox.paused) return;
 
-        const activeSelection = THOTH.Selections.getActiveSelection();
+        const activeSelection = THOTH.Annotations?.getActiveSelection?.();
         const selectionId = activeSelection.id;
         const selection = THOTH.Toolbox.endLassoAdd();
 
@@ -965,7 +970,7 @@ Events.setupToolboxEvents = () => {
     THOTH.on("endLassoDel", (l) => {
         if (!THOTH.Toolbox.enabled || THOTH.Toolbox.paused) return;
 
-        const activeSelection = THOTH.Selections.getActiveSelection();
+        const activeSelection = THOTH.Annotations?.getActiveSelection?.();
         const selectionId = activeSelection.id;
         const selection = THOTH.Toolbox.endLassoDel();
 
@@ -1005,8 +1010,7 @@ Events.setupCollaborativeEvents = () => {
 // Utils
 
 Events.activeSelectionExists = () => {
-    if (THOTH.Selections?.getActiveSelection() === undefined) return false;
-    else return true;
+    return THOTH.Annotations?.getActive?.()?.modality === "selections";
 };
 
 
