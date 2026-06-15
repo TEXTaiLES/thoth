@@ -515,7 +515,7 @@ FE.appendModelSceneRows = (elParent, modelId, model) => {
         },
         {
             key    : "metadata",
-            label  : "Metadata",
+            label  : `Metadata (${FE.getMetadataSchemaLabel(model.metadata)})`,
             icon   : "list",
             count  : FE.countObjectFields(model.metadata?.attributes),
             openModal: (sectionKey) => FE.openMetadataModal(modelId, sectionKey)
@@ -707,6 +707,13 @@ FE.openMetadataModal = (modelId, key) => {
     THOTH.Transforms?.detachGizmo();
     THOTH.requireAuth("edit metadata", () => THOTH.UI.modalModelMetadata(modelId));
     FE.refreshSceneTree();
+};
+
+FE.getMetadataSchemaLabel = (metadata = {}) => {
+    const schemaName = THOTH.MD?.getSchemaName?.(metadata);
+    if (!schemaName) return "-";
+
+    return THOTH.MD?.resolveSchemaName?.(schemaName) || schemaName;
 };
 
 FE.countCollectionItems = (collection = {}) => {

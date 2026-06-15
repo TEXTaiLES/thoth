@@ -1878,8 +1878,8 @@ UI.createMetadataEditor = (schema, data_temp) => {
 };
 
 UI.getSchemaLabel = (schemaName) => {
-    const schema = THOTH.MD.schemaMap.get(schemaName);
-    const version = schema?.version;
+    const details = THOTH.MD.getSchemaDetails(schemaName);
+    const version = details.version;
 
     if (version === undefined || version === null || version === "") return schemaName;
 
@@ -1888,11 +1888,11 @@ UI.getSchemaLabel = (schemaName) => {
 
 UI.createSchemaSelector = (schemaName, onapply) => {
     const schemaNames = Array.from(THOTH.MD.schemaMap.keys());
-    let selectedSchemaName = schemaName || THOTH.MD.getDefaultSchemaName();
+    let selectedSchemaName = THOTH.MD.resolveSchemaName(schemaName || THOTH.MD.getDefaultSchemaName());
 
     const elBody = ATON.UI.createContainer({classes: "d-grid gap-2"});
     const elControls = ATON.UI.createContainer({classes: "d-flex align-items-center gap-2"});
-    const elInfo = ATON.UI.createContainer({classes: "small text-body-secondary"});
+    const elInfo = ATON.UI.createContainer({classes: "d-grid gap-1 small text-body-secondary"});
 
     const elSelect = ATON.UI.elem(`<select class="form-select aton-input" aria-label="Metadata schema"></select>`);
     ATON.UI.registerElementAsComponent(elSelect, "input");
@@ -1906,17 +1906,28 @@ UI.createSchemaSelector = (schemaName, onapply) => {
     }
 
     const updateInfo = () => {
-        const schema = THOTH.MD.schemaMap.get(selectedSchemaName);
-        const infoParts = [];
+        const details = THOTH.MD.getSchemaDetails(selectedSchemaName);
+        elInfo.replaceChildren();
 
-        if (schema?.version !== undefined && schema.version !== null && schema.version !== "") {
-            infoParts.push(`Version: ${schema.version}`);
+        const rows = [
+            [ "Name", details.name || "-" ],
+            [ "Version", details.version || "-" ],
+            [ "Description", details.description || "-" ]
+        ];
+
+        for (const [label, value] of rows) {
+            elInfo.append(UI.createSplitRow({
+                colLeft   : 4,
+                itemsLeft : ATON.UI.createButton({
+                    text: label,
+                    size: "small"
+                }),
+                itemsRight: ATON.UI.createButton({
+                    text: value,
+                    size: "small"
+                })
+            }));
         }
-
-        if (schema?.description) infoParts.push(schema.description);
-
-        elInfo.textContent = infoParts.join(" - ");
-        elInfo.style.display = infoParts.length > 0 ? "block" : "none";
     };
 
     elSelect.onfocus = () => { ATON.UI._bInput = true; };
@@ -1933,7 +1944,7 @@ UI.createSchemaSelector = (schemaName, onapply) => {
             // icon   : "check",
             variant: "info",
             onpress: () => {
-                if (onapply) onapply(selectedSchemaName);
+                if (onapply) onapply(THOTH.MD.resolveSchemaName(selectedSchemaName));
             }
         })
     );
@@ -2034,15 +2045,33 @@ UI.modalModelMetadata = (modelId, data_temp) => {
     const model = THOTH.SceneStore.getModel(modelId);
     if (!model || model.trash) return;
 
-    if (data_temp === undefined) data_temp = THOTH.MD.toCanonicalMetadata(model.metadata || {});
+    if (!THOTH.MD.schemasReady) {
+        ATON.UI.showModal({
+            header: `Edit metadata for ${modelId}`,
+            body  : ATON.UI.createButton({
+                text: "Loading metadata schemas..."
+            }),
+            wide  : true
+        });
 
-    if (!THOTH.MD.getSchemaName(data_temp)) {
-        data_temp = THOTH.MD.createMetadataRecord(THOTH.MD.getDefaultSchemaName(), {});
+        THOTH.MD.ensureSchemasLoaded().then(() => UI.modalModelMetadata(modelId, data_temp));
+        return;
     }
 
-    const schemaName = THOTH.MD.getSchemaName(data_temp);
+    if (data_temp === undefined) {
+        const existingSchemaName = THOTH.MD.getSchemaName(model.metadata || {});
+        data_temp = existingSchemaName
+            ? THOTH.MD.toCanonicalMetadata(model.metadata || {})
+            : THOTH.MD.createPropertiesFromSchema(THOTH.MD.getDefaultSchemaName());
+    }
+
+    if (!THOTH.MD.getSchemaName(data_temp)) {
+        data_temp = THOTH.MD.createPropertiesFromSchema(THOTH.MD.getDefaultSchemaName());
+    }
+
+    const schemaName = THOTH.MD.resolveSchemaName(THOTH.MD.getSchemaName(data_temp));
     const prev_data  = structuredClone(model.metadata) || {};
-    const schema     = THOTH.MD.schemaMap.get(schemaName);
+    const schema     = THOTH.MD.getSchema(schemaName);
     const attributes = THOTH.MD.getAttributes(data_temp);
 
     const elBody = ATON.UI.createTreeGroup({
@@ -2052,7 +2081,7 @@ UI.modalModelMetadata = (modelId, data_temp) => {
                 open   : true,
                 content: UI.createSchemaSelector(schemaName, (v) => {
                     if (v !== schemaName) {
-                        data_temp = THOTH.MD.createPropertiesfromSchema(v);
+                        data_temp = THOTH.MD.createPropertiesFromSchema(v);
                         UI.modalModelMetadata(modelId, data_temp);
                     }
                 })

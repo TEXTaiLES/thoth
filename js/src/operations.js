@@ -214,6 +214,7 @@ Ops._applyModel = (operation) => {
             break;
         case "model.update_metadata":
             THOTH.SceneStore.setModelField(modelId, "metadata", value);
+            THOTH.FE?.refreshSceneTree?.();
             break;
         case "model.update_transform":
             THOTH.Transforms.applyModelTransform(modelId, value);

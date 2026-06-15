@@ -110,9 +110,21 @@ SceneStore._normalizeArtefact = (data = {}) => {
     };
 };
 
-SceneStore._normalizeMetadata = (data = {}) => {
+SceneStore._normalizeMetadata = (data) => {
+    if (data === undefined || data === null) {
+        return {
+            schema: {
+                name       : "",
+                version    : "",
+                description: "",
+                url        : ""
+            },
+            attributes: {}
+        };
+    }
+
     const metadata = SceneStore._isObject(data) ? data : {};
-    const schemaName = metadata.schemaName || metadata.schema?.name || "puc_schema";
+    const schemaName = metadata.schemaName || metadata.schema?.name || "";
 
     if (metadata.schema || metadata.attributes) {
         return {
@@ -128,10 +140,13 @@ SceneStore._normalizeMetadata = (data = {}) => {
 
     const attributes = SceneStore._clone(metadata);
     delete attributes.schemaName;
+    const legacySchemaName = schemaName || (
+        Object.keys(attributes).length > 0 ? "puc_schema" : ""
+    );
 
     return {
         schema: {
-            name       : schemaName,
+            name       : legacySchemaName,
             version    : "",
             description: "",
             url        : ""

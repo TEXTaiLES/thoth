@@ -11,63 +11,236 @@ let MD = {};
 
 
 MD.setup = () => {
-    MD.schemaMap = MD.buildSchemaMap(THOTH.config.schemaListUrl);
+    MD.schemaMap = new Map();
+    MD.schemaAliasMap = new Map();
+    MD.schemasReady = false;
+    MD.schemasLoaded = MD._loadSchemaList(THOTH.config.schemaListUrl, MD.schemaMap)
+        .then(schemaMap => {
+            MD.schemasReady = true;
+            return schemaMap;
+        });
 };
 
 // Utils
 
 MD.buildSchemaMap = (schemaListUrl) => {
     const schemaMap = new Map();
-    MD._loadSchemaList(schemaListUrl, schemaMap);
+    MD.schemaMap = schemaMap;
+    MD.schemaAliasMap = new Map();
+    MD.schemasReady = false;
+    MD.schemasLoaded = MD._loadSchemaList(schemaListUrl, schemaMap)
+        .then(loadedSchemaMap => {
+            MD.schemasReady = true;
+            return loadedSchemaMap;
+        });
 
     return schemaMap;
 };
 
-MD._loadSchemaList = async (schemaListUrl, schemaMap) => {
-    const response = await THOTH.API.get("metadata_schema_list");
-    if (response.ok) {
-        MD._loadSchemas(response.data, schemaMap);
-        return;
+MD.ensureSchemasLoaded = () => {
+    if (!MD.schemasLoaded) {
+        MD.schemaMap = MD.schemaMap || new Map();
+        MD.schemaAliasMap = MD.schemaAliasMap || new Map();
+        MD.schemasReady = false;
+        MD.schemasLoaded = MD._loadSchemaList(THOTH.config.schemaListUrl, MD.schemaMap)
+            .then(schemaMap => {
+                MD.schemasReady = true;
+                return schemaMap;
+            });
     }
 
-    if (schemaListUrl) {
-        ATON.REQ.get(
-            schemaListUrl,
-            schemaList => MD._loadSchemas(schemaList, schemaMap),
-            () => MD._loadLocalSchemaList(schemaMap)
-        );
-        return;
-    }
-
-    MD._loadLocalSchemaList(schemaMap);
+    return MD.schemasLoaded;
 };
 
-MD._loadSchemas = (schemaList, schemaMap) => {
-    if (!Array.isArray(schemaList)) return;
-
-    for (const schemaEntry of schemaList) {
-        const schemaUrl = typeof schemaEntry === "string"
-            ? schemaEntry
-            : schemaEntry.url;
-        if (!schemaUrl) continue;
-
-        const schemaName = schemaEntry.name ||
-            schemaEntry.id ||
-            schemaUrl.split('/').filter(Boolean).pop();
-
+MD._requestJSON = (url) => {
+    return new Promise(resolve => {
         ATON.REQ.get(
-            schemaUrl,
-            schema => schemaMap.set(schemaName, schema)
+            url,
+            data => resolve({
+                ok  : true,
+                data: data
+            }),
+            error => resolve({
+                ok   : false,
+                error: error || `Failed to load JSON: ${url}`
+            })
         );
+    });
+};
+
+MD._unique = (values) => {
+    return Array.from(new Set(values.filter(Boolean)));
+};
+
+MD._getSchemaFileCandidates = (fileName, preferredUrl) => {
+    return MD._unique([
+        preferredUrl,
+        THOTH.PATH_RES_SCHEMA + fileName,
+        `js/res/schema/${fileName}`,
+        `./js/res/schema/${fileName}`,
+        `../thoth/js/res/schema/${fileName}`,
+        `../../a/thoth/js/res/schema/${fileName}`
+    ]);
+};
+
+MD._requestFirstJSON = async (urls) => {
+    let lastResponse = {
+        ok   : false,
+        error: "No schema URLs available"
+    };
+
+    for (const url of MD._unique(urls)) {
+        const response = await MD._requestJSON(url);
+        if (response.ok) {
+            return {
+                ...response,
+                url: url
+            };
+        }
+
+        lastResponse = {
+            ...response,
+            url: url
+        };
     }
+
+    return lastResponse;
+};
+
+MD._resolveUrl = (url, baseUrl) => {
+    if (!url) return "";
+
+    if (!/^https?:\/\//i.test(url) && url.includes("res/schema/")) {
+        const fileName = String(url).split("/").filter(Boolean).pop();
+        return THOTH.PATH_RES_SCHEMA + fileName;
+    }
+
+    try {
+        const base = new URL(baseUrl || window.location.href, window.location.href);
+        return new URL(url, base).toString();
+    }
+    catch {
+        return url;
+    }
+};
+
+MD._getBaseName = (value = "") => {
+    const cleanValue = String(value).split("?")[0].split("#")[0];
+    const fileName = cleanValue.split("/").filter(Boolean).pop() || cleanValue;
+
+    return fileName.replace(/\.json$/i, "");
+};
+
+MD._getSchemaEntryUrl = (schemaEntry) => {
+    if (typeof schemaEntry === "string") return schemaEntry;
+
+    return schemaEntry?.url || schemaEntry?.href || schemaEntry?.path || "";
+};
+
+MD._getSchemaEntryName = (schemaEntry, schemaUrl) => {
+    if (typeof schemaEntry !== "string") {
+        const entryName = schemaEntry?.name || schemaEntry?.id || schemaEntry?.schemaName;
+        if (entryName) return MD._getBaseName(entryName);
+    }
+
+    return MD._getBaseName(schemaUrl);
+};
+
+MD._addSchemaAlias = (alias, canonicalName) => {
+    if (!alias || !canonicalName) return;
+
+    MD.schemaAliasMap.set(alias, canonicalName);
+    MD.schemaAliasMap.set(MD._getBaseName(alias), canonicalName);
+    MD.schemaAliasMap.set(`${MD._getBaseName(alias)}.json`, canonicalName);
+};
+
+MD._registerSchema = (schemaMap, schemaName, schema, schemaUrl) => {
+    if (!schemaName || !schema) return false;
+
+    const canonicalName = MD._getBaseName(schemaName);
+    const schemaData = {
+        ...schema,
+        url: schema.url || schema.$id || schemaUrl || ""
+    };
+
+    schemaMap.set(canonicalName, schemaData);
+    MD._addSchemaAlias(canonicalName, canonicalName);
+    MD._addSchemaAlias(`${canonicalName}.json`, canonicalName);
+    MD._addSchemaAlias(schemaName, canonicalName);
+    MD._addSchemaAlias(schemaUrl, canonicalName);
+    MD._addSchemaAlias(schemaData.name, canonicalName);
+    MD._addSchemaAlias(schemaData.schemaName, canonicalName);
+    MD._addSchemaAlias(schemaData.schemaId, canonicalName);
+    MD._addSchemaAlias(schemaData.$id, canonicalName);
+
+    return true;
+};
+
+MD._loadSchemaList = async (schemaListUrl, schemaMap) => {
+    const localSchemaListUrl = THOTH.PATH_RES_SCHEMA + "list_of_schemas.json";
+    const localResponse = await MD._requestFirstJSON(
+        MD._getSchemaFileCandidates("list_of_schemas.json", schemaListUrl || localSchemaListUrl)
+    );
+    if (localResponse.ok) {
+        const loadedCount = await MD._loadSchemas(localResponse.data, schemaMap, localResponse.url);
+        if (loadedCount > 0) return schemaMap;
+    }
+
+    if (schemaListUrl && schemaListUrl !== localSchemaListUrl && schemaListUrl !== localResponse.url) {
+        const configuredResponse = await MD._requestJSON(schemaListUrl);
+        if (configuredResponse.ok) {
+            const loadedCount = await MD._loadSchemas(configuredResponse.data, schemaMap, schemaListUrl);
+            if (loadedCount > 0) return schemaMap;
+        }
+    }
+
+    const apiResponse = await THOTH.API.get("metadata_schema_list");
+    if (apiResponse.ok) {
+        const loadedCount = await MD._loadSchemas(apiResponse.data, schemaMap, schemaListUrl);
+        if (loadedCount > 0) return schemaMap;
+    }
+
+    await MD._loadDefaultSchema(schemaMap);
+    return schemaMap;
+};
+
+MD._loadSchemas = async (schemaList, schemaMap, schemaListUrl) => {
+    if (!Array.isArray(schemaList)) return 0;
+
+    const loaders = schemaList.map(async schemaEntry => {
+        const rawSchemaUrl = MD._getSchemaEntryUrl(schemaEntry);
+        const schemaUrl = MD._resolveUrl(rawSchemaUrl, schemaListUrl);
+        if (!schemaUrl) return false;
+
+        const schemaName = MD._getSchemaEntryName(schemaEntry, rawSchemaUrl);
+        const fileName = String(rawSchemaUrl || schemaUrl).split("/").filter(Boolean).pop();
+        const response = await MD._requestFirstJSON(
+            MD._getSchemaFileCandidates(fileName, schemaUrl)
+        );
+        if (!response.ok) return false;
+
+        return MD._registerSchema(schemaMap, schemaName, response.data, response.url || schemaUrl);
+    });
+
+    const results = await Promise.all(loaders);
+    return results.filter(Boolean).length;
+};
+
+MD._loadDefaultSchema = async (schemaMap) => {
+    const schemaUrl = THOTH.PATH_RES_SCHEMA + "puc_schema.json";
+    const response = await MD._requestFirstJSON(
+        MD._getSchemaFileCandidates("puc_schema.json", schemaUrl)
+    );
+    if (!response.ok) {
+        THOTH.FE?.showToast?.("Error loading default schema: " + response.error);
+        return false;
+    }
+
+    return MD._registerSchema(schemaMap, "puc_schema", response.data, response.url || schemaUrl);
 };
 
 MD._loadLocalSchemaList = (schemaMap) => {
-    ATON.REQ.get(
-        THOTH.PATH_RES_SCHEMA + "list_of_schemas.json",
-        schemaList => MD._loadSchemas(schemaList, schemaMap),
-        error => THOTH.FE?.showToast?.("Error loading schemas: " + error)
-    );
+    return MD._loadSchemaList(null, schemaMap);
 };
 
 MD._normalizeType = (type) => {
@@ -146,27 +319,79 @@ MD._buildPropertiesFromGroups = (groups) => {
     return A;
 };
 
-MD.createPropertiesfromSchema = (schemaName) => {
-    const data = MD.schemaMap.get(schemaName);
+MD.resolveSchemaName = (schemaName) => {
+    const configuredSchemaName = schemaName || THOTH.config.defaultSchemaName || "puc_schema";
 
-    if (!data) return MD.createMetadataRecord(schemaName, {});
+    if (!MD.schemaMap) return MD._getBaseName(configuredSchemaName);
+
+    if (MD.schemaMap.has(configuredSchemaName)) return configuredSchemaName;
+
+    const baseName = MD._getBaseName(configuredSchemaName);
+    if (MD.schemaMap.has(baseName)) return baseName;
+
+    const aliasName = MD.schemaAliasMap?.get(configuredSchemaName) ||
+        MD.schemaAliasMap?.get(baseName) ||
+        MD.schemaAliasMap?.get(`${baseName}.json`);
+    if (aliasName) return aliasName;
+
+    const schemaNames = Array.from(MD.schemaMap.keys());
+    const matchingName = schemaNames.find(name => name === baseName || name.startsWith(baseName));
+    if (matchingName) return matchingName;
+
+    return baseName;
+};
+
+MD.getSchema = (schemaName) => {
+    const resolvedName = MD.resolveSchemaName(schemaName);
+
+    return MD.schemaMap?.get(resolvedName);
+};
+
+MD.getSchemaDetails = (schemaName) => {
+    const resolvedName = MD.resolveSchemaName(schemaName);
+    const schema = MD.getSchema(resolvedName) || {};
+
+    return {
+        name       : resolvedName || "",
+        version    : schema.version || "",
+        description: schema.description || "",
+        url        : schema.url || schema.$id || ""
+    };
+};
+
+MD.createPropertiesFromSchema = (schemaName) => {
+    const resolvedName = MD.resolveSchemaName(schemaName);
+    const data = MD.getSchema(resolvedName);
+
+    if (!data) return MD.createMetadataRecord(resolvedName, {});
     
     const attributes = Array.isArray(data.groups)
         ? MD._buildPropertiesFromGroups(data.groups)
         : MD._buildPropertiesFromObjectSchema(data);
 
-    return MD.createMetadataRecord(schemaName, attributes);
+    return MD.createMetadataRecord(resolvedName, attributes);
+};
+
+MD.createPropertiesfromSchema = (schemaName) => {
+    return MD.createPropertiesFromSchema(schemaName);
 };
 
 MD.createMetadataRecord = (schemaName, attributes = {}) => {
-    const schema = MD.schemaMap?.get(schemaName) || {};
+    const details = schemaName
+        ? MD.getSchemaDetails(schemaName)
+        : {
+            name       : "",
+            version    : "",
+            description: "",
+            url        : ""
+        };
 
     return {
         schema: {
-            name       : schemaName || "",
-            version    : schema.version || "",
-            description: schema.description || "",
-            url        : schema.url || schema.$id || ""
+            name       : details.name,
+            version    : details.version,
+            description: details.description,
+            url        : details.url
         },
         attributes: structuredClone(attributes)
     };
@@ -174,14 +399,22 @@ MD.createMetadataRecord = (schemaName, attributes = {}) => {
 
 MD.toCanonicalMetadata = (data = {}) => {
     if (data.schema || data.attributes) {
-        const schemaName = data.schema?.name || data.schemaName || MD.getDefaultSchemaName();
-
-        return {
-            schema: {
-                name       : schemaName,
+        const schemaName = data.schema?.name || data.schemaName || "";
+        const details = schemaName
+            ? MD.getSchemaDetails(schemaName)
+            : {
+                name       : "",
                 version    : data.schema?.version || "",
                 description: data.schema?.description || "",
                 url        : data.schema?.url || ""
+            };
+
+        return {
+            schema: {
+                name       : details.name,
+                version    : details.version || data.schema?.version || "",
+                description: details.description || data.schema?.description || "",
+                url        : details.url || data.schema?.url || ""
             },
             attributes: structuredClone(data.attributes || {})
         };
@@ -195,7 +428,7 @@ MD.toCanonicalMetadata = (data = {}) => {
 };
 
 MD.getSchemaName = (metadata = {}) => {
-    return metadata.schema?.name || metadata.schemaName || MD.getDefaultSchemaName();
+    return metadata.schema?.name || metadata.schemaName || "";
 };
 
 MD.getAttributes = (metadata = {}) => {
@@ -205,18 +438,7 @@ MD.getAttributes = (metadata = {}) => {
 MD.getDefaultSchemaName = () => {
     const configuredSchemaName = THOTH.config.defaultSchemaName || "puc_schema";
 
-    if (!MD.schemaMap) return configuredSchemaName;
-
-    if (MD.schemaMap.has(configuredSchemaName)) return configuredSchemaName;
-    if (MD.schemaMap.has(`${configuredSchemaName}.json`)) return `${configuredSchemaName}.json`;
-
-    const schemaNames = Array.from(MD.schemaMap.keys());
-    const defaultSchemaName = schemaNames.find(name => name.startsWith(configuredSchemaName));
-    if (defaultSchemaName) return defaultSchemaName;
-
-    if (schemaNames.length > 0) return schemaNames[0];
-
-    return configuredSchemaName;
+    return MD.resolveSchemaName(configuredSchemaName);
 };
 
 MD._isSupportedType = (type) => {
