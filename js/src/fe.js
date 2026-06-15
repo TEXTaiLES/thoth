@@ -419,6 +419,14 @@ FE.refreshSceneTree = () => {
             icon      : "scene",
             expandable: true,
             open      : isOpen,
+            actions   : [
+                ATON.UI.createButton({
+                    icon   : ATON.PATH_RES + "icons/focus.png",
+                    size   : "small",
+                    tooltip: "Focus model",
+                    onpress: () => THOTH.Models.focusModel(modelId)
+                })
+            ],
             onexpand  : () => FE.toggleSceneTreeNode(modelKey),
             onselect  : () => FE.toggleSceneTreeNode(modelKey)
         }));

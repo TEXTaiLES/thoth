@@ -593,6 +593,9 @@ UI.createPlaceholderPanel = (title, message) => {
 
 UI.createModelController = (modelName) => {
     const elLeft  = ATON.UI.createContainer();
+    const elRight = ATON.UI.createContainer({
+        classes: "d-flex justify-content-end align-items-center gap-1"
+    });
 
     elLeft.append(
         // Visibility
@@ -608,19 +611,30 @@ UI.createModelController = (modelName) => {
             onpress: () => {}
         }),     
     );
+
+    elRight.append(
+        ATON.UI.createButton({
+            icon   : "focus",
+            size   : "small",
+            tooltip: "Focus model",
+            onpress: () => THOTH.Models.focusModel(modelName)
+        }),
+        ATON.UI.createButton({
+            icon   : ATON.PATH_RES + "icons/trash.png",
+            size   : "small",
+            tooltip: "Delete model",
+            onpress: () => {
+                THOTH.Models.deactivateTransformControls();
+                THOTH.fire("deleteModel", modelName);
+            }
+        })
+    );
+
     const elController = UI.createSplitRow({
         // classes   : "row g-0 align-items-center w-100 rounded-2 border px-2 py-1 mb-1",
         colLeft   : 7,
         itemsLeft : elLeft,
-        itemsRight: ATON.UI.createButton({
-            icon   : ATON.PATH_RES + "icons/trash.png",
-            onpress: () => 
-                {
-                    THOTH.Models.deactivateTransformControls();
-                    THOTH.fire("deleteModel", modelName);}
-
-            
-        }),
+        itemsRight: elRight,
     });
     
     return elController;
@@ -1322,20 +1336,38 @@ UI.modalMsrDetails = (msrId, draftData, options = {}) => {
 
     const prevData = msr ? structuredClone(msr) : null;
 
-    // Distance details
-    const elDistance = ATON.UI.createContainer();
-    elDistance.append(
-        ATON.UI.createButton({
-            text: source.distanceType,
-            tooltip: "This measurement is calculated with " + source.distanceType + " distance.",
-            onpress: () => {} // nothing :)
+    const distanceType = source.distanceType ||
+        source.distance_type ||
+        source.annotation?.distance_type ||
+        source.annotation?.distanceType ||
+        "euclidean";
+    const distance = Number(source.distance ?? source.annotation?.distance ?? 0);
+    const elDistanceInfo = ATON.UI.createContainer();
+    elDistanceInfo.append(
+        UI.createSplitRow({
+            colLeft   : 6,
+            itemsLeft : ATON.UI.createButton({
+                text: "Distance type",
+                size: "small"
+            }),
+            itemsRight: ATON.UI.createButton({
+                text: distanceType,
+                size: "small"
+            })
         }),
-        ATON.UI.createButton({
-            text: Number(source.distance || 0).toFixed(4),
-            tooltip: "Distance measured: " + source.distance,
-            onpress: () => {} // nothing :)
-        }),
-    )
+        UI.createSplitRow({
+            colLeft   : 6,
+            itemsLeft : ATON.UI.createButton({
+                text: "Distance",
+                size: "small"
+            }),
+            itemsRight: ATON.UI.createButton({
+                text: distance.toFixed(4),
+                size: "small"
+            })
+        })
+    );
+
     const elMeasurementActions = ATON.UI.createContainer();
     if (!options.isNew) {
         elMeasurementActions.append(ATON.UI.createButton({
@@ -1355,27 +1387,26 @@ UI.modalMsrDetails = (msrId, draftData, options = {}) => {
         }));
     }
 
-    const elMsrDetails = UI.createSplitRow({
-        colLeft: 6,
-        itemsLeft: elDistance, 
-        itemsRight: elMeasurementActions,
-    })
+    if (elMeasurementActions.children.length > 0) {
+        elDistanceInfo.append(UI.createSplitRow({
+            colLeft   : 6,
+            itemsLeft : ATON.UI.createButton({
+                text: "Actions",
+                size: "small"
+            }),
+            itemsRight: elMeasurementActions
+        }));
+    }
+
     const elBody = ATON.UI.createTreeGroup({
         items: [
             ...UI.createAnnotationSharedItems(dataTemp, {
                 visibility: true
             }),
-            // Point details
             {
-                title  : "Details",
+                title  : "Distance",
                 open   : true,
-                content: elMsrDetails
-            },
-            // Description
-            {
-                title: "Description",
-                open: false,
-                content: ATON.UI.createContainer()
+                content: elDistanceInfo
             }
         ]
     });

@@ -16,14 +16,34 @@ Models.setup = () => {
     Models.modelMap = new Map();
     Models.tempNode = null;
     Models.gizNode;
+    Models._pendingInitialFocusModelId = null;
+    Models._hasFocusedInitialScene = false;
+
+    ATON.on("SceneJSONLoaded", () => {
+        Models._pendingInitialFocusModelId = null;
+        Models._hasFocusedInitialScene = false;
+    });
+
+    ATON.on("AllNodeRequestsCompleted", () => {
+        if (Models._hasFocusedInitialScene) return;
+        if (!Models._pendingInitialFocusModelId) return;
+
+        Models.focusModel(Models._pendingInitialFocusModelId, 0.5);
+        Models._hasFocusedInitialScene = true;
+        Models._pendingInitialFocusModelId = null;
+    });
 };
 
 Models.parseModels = (models) => {
     if (models === undefined) return;
 
-    for (const modelId in models) {
+    const modelIds = Object.keys(models).filter(modelId => models[modelId]?.trash !== true);
+    if (!Models._hasFocusedInitialScene && modelIds.length > 0) {
+        Models._pendingInitialFocusModelId = modelIds[0];
+    }
+
+    for (const modelId of modelIds) {
         const modelData = models[modelId];
-        if (modelData.trash === true) continue;
 
         THOTH.Artefacts?.parseModelArtefact(modelId, modelData.artefact);
         THOTH.Transforms?.parseModelTransform(modelId, modelData.transforms);
@@ -52,7 +72,7 @@ Models.parseModels = (models) => {
     }
 };
 
-Models.onLoad = (model) => {
+Models.onLoad = (model, options = {}) => {
     model.traverse(N => {
         if (N.isMesh) {
             Models.initMeshColors(N);
@@ -64,6 +84,10 @@ Models.onLoad = (model) => {
     THOTH.updateSceneScale(model);
     THOTH.FE.addModel(model.name);
     THOTH.updateVisibility();
+
+    if (options.focus === true) {
+        Models.focusModel(model.name, options.duration);
+    }
 };
 
 
@@ -106,6 +130,17 @@ Models.getModelMeshes = (modelName) => {
         }
     })
     return meshes;
+};
+
+Models.focusModel = (modelName, duration = 0.5) => {
+    if (!modelName) return false;
+
+    const model = Models.modelMap.get(modelName) || ATON.getSceneNode(modelName);
+    if (!model || !ATON.Nav?.requestPOVbyNode) return false;
+
+    ATON.Nav.requestPOVbyNode(model, duration);
+    ATON.focusOn3DView?.();
+    return true;
 };
 
 Models._vectorFromTransformValue = (value, defaultValue) => {
@@ -169,7 +204,7 @@ Models.refreshModelPicking = (model) => {
 
 // Model Management
 
-Models.addModelFromURL = (modelURL, modelId) => {
+Models.addModelFromURL = (modelURL, modelId, options = {}) => {
     if (!modelURL) return;
 
     // modelURL can act as modelName
@@ -189,7 +224,10 @@ Models.addModelFromURL = (modelURL, modelId) => {
 
     N.load(modelURL, () => {
         N.attachToRoot();
-        Models.onLoad(N);
+        Models.onLoad(N, {
+            focus   : options.focus === true,
+            duration: options.duration
+        });
     });
 
     Models.modelMap.set(modelName, N);

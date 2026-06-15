@@ -710,6 +710,9 @@ MSR.addMeasurementSem = (measurementId) => {
         //label.setOpacity(0.0);
     });
     node.setOnSelect(() => {
+        THOTH.FE?.handleElementHighlight?.(measurementKey, THOTH.FE?.msrMap);
+        MSR.highlightMeasurement(measurementKey);
+        THOTH.UI.modalMsrDetails(measurementKey);
     });
     node.setOnLeave(() => {
         //label.setScale(0.0);

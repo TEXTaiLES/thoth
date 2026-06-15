@@ -167,7 +167,7 @@ Ops._applyMeasurementRuntime = (action, modelId, itemId, value, operation) => {
     }
 };
 
-Ops._applySemanticAnnotationRuntime = (action, modelId, itemId, value) => {
+Ops._applySemanticAnnotationRuntime = (action, modelId, itemId, value, operation) => {
     if (action === "create") {
         THOTH.SemAnnotations.addAnnotation(itemId, {
             ...value,
@@ -204,7 +204,9 @@ Ops._applyModel = (operation) => {
             THOTH.Artefacts?.parseModelArtefact(modelId, value.artefact || {});
             THOTH.Transforms?.parseModelTransform(modelId, value.transforms || {});
             const modelURL = THOTH.Artefacts?.getModelURL(modelId) || modelId;
-            THOTH.Models.addModelFromURL(modelURL, modelId);
+            THOTH.Models.addModelFromURL(modelURL, modelId, {
+                focus: operation.source !== "remote"
+            });
             break;
         }
         case "model.delete":
@@ -247,7 +249,7 @@ Ops._applyCollection = (operation) => {
         Ops._applyMeasurementRuntime(info.action, modelId, itemId, value, operation);
     }
     else if (info.prefix === "semantic_annotation") {
-        Ops._applySemanticAnnotationRuntime(info.action, modelId, itemId, value);
+        Ops._applySemanticAnnotationRuntime(info.action, modelId, itemId, value, operation);
     }
 
     if (info.action !== "delete" && info.prefix === "measurement" && THOTH.MSR) {
