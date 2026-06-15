@@ -100,7 +100,7 @@ Ops._replaceMapValue = (map, itemId, value) => {
     map.set(itemId, Ops._clone(value));
 };
 
-Ops._applySelectionRuntime = (action, modelId, itemId, value) => {
+Ops._applySelectionRuntime = (action, modelId, itemId, value, operation) => {
     const resolvedModelId = modelId || value?.model_id || THOTH.Annotations?.getModelId("selections", itemId);
 
     if (action === "create") {
@@ -108,6 +108,9 @@ Ops._applySelectionRuntime = (action, modelId, itemId, value) => {
             ...Ops._clone(value),
             trash: false
         });
+        if (operation?.source !== "remote") {
+            THOTH.Selections?.setActiveSelection(resolvedModelId, itemId);
+        }
         return;
     }
 
@@ -143,6 +146,14 @@ Ops._applyMeasurementRuntime = (action, modelId, itemId, value, operation) => {
         if (storedMeasurement) {
             operation.value = THOTH.MSR.toCanonicalMeasurement(itemId, storedMeasurement);
         }
+        if (operation?.source !== "remote") {
+            THOTH.FE?.handleElementHighlight?.(itemId, THOTH.FE?.msrMap);
+            THOTH.MSR.highlightMeasurement(itemId);
+            if (modelId !== undefined) {
+                THOTH.FE.sceneTreeActiveKey = `model:${modelId}:measurements:${itemId}`;
+                THOTH.FE?.refreshSceneTree?.();
+            }
+        }
         return;
     }
 
@@ -162,6 +173,14 @@ Ops._applySemanticAnnotationRuntime = (action, modelId, itemId, value) => {
             ...value,
             model_id: modelId
         });
+        if (operation?.source !== "remote") {
+            THOTH.FE?.handleElementHighlight?.(itemId, THOTH.FE?.semMap);
+            THOTH.SemAnnotations.highlightAnnotation(itemId);
+            if (modelId !== undefined) {
+                THOTH.FE.sceneTreeActiveKey = `model:${modelId}:semantic_annotations:${itemId}`;
+                THOTH.FE?.refreshSceneTree?.();
+            }
+        }
         return;
     }
 
@@ -222,7 +241,7 @@ Ops._applyCollection = (operation) => {
     }
 
     if (info.prefix === "selection") {
-        Ops._applySelectionRuntime(info.action, modelId, itemId, value);
+        Ops._applySelectionRuntime(info.action, modelId, itemId, value, operation);
     }
     else if (info.prefix === "measurement") {
         Ops._applyMeasurementRuntime(info.action, modelId, itemId, value, operation);

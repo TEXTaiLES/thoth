@@ -788,6 +788,7 @@ Events.setupModelEvents = () => {
         }, value, prevValue);
     });
 };
+
 Events.setupToolboxEvents = () => {
     // Resize
     window.addEventListener('resize', () => {

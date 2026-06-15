@@ -44,6 +44,7 @@ MSR.setup = () => {
     MSR.currentMeasurementLine =null;
     MSR.defaultEuclideanLineColor  = 0xffffff; //white
     MSR.defaultGeodesicLineColor  = 0xffffff; // white
+    MSR.defaultPointColor = 0xffffff;
     MSR.selectedLineColor = 0xff0000;//red
     //MSR.selectedLineColor = 0xffff00; // highlight color (yellow)
     //0xff0000 red
@@ -56,6 +57,7 @@ MSR.setup = () => {
 
     ATON.on("AllNodeRequestsCompleted", () => {
         MSR.isSceneLoading = false;
+        MSR.refreshMarkerScales();
         MSR.refreshMeasurementVisibility();
     });
 };
@@ -108,6 +110,37 @@ MSR.refreshLabelScales = () => {
     for (const node of MSR.msrSemMap.values()) {
         const label = node.children.find(child => child instanceof Label);
         if (label) MSR.applyLabelScale(label);
+    }
+};
+
+MSR.getPointMarkerScale = (point) => {
+    const model = MSR.getPointModel(point) ?? MSR.getPointMesh(point);
+    let modelScale = model ? THOTH.Utils.getModelScale(model) : THOTH.sceneScale;
+
+    if (!Number.isFinite(modelScale) || modelScale <= 0) {
+        modelScale = Number.isFinite(THOTH.sceneScale) && THOTH.sceneScale > 0
+            ? THOTH.sceneScale
+            : 1;
+    }
+
+    return modelScale * 0.01;
+};
+
+MSR.applyPointMarkerScale = (marker, point) => {
+    if (!marker || !point) return;
+
+    const scale = MSR.getPointMarkerScale(point);
+    marker.scale.set(scale, scale, scale);
+};
+
+MSR.refreshMarkerScales = () => {
+    for (const [measurementId, node] of MSR.msrSemMap.entries()) {
+        const measurement = MSR.msrMap.get(measurementId);
+        if (!node || !measurement?.points) continue;
+
+        const markers = node.children.filter(child => child.isMesh);
+        MSR.applyPointMarkerScale(markers[0], measurement.points[0]);
+        MSR.applyPointMarkerScale(markers[1], measurement.points[1]);
     }
 };
 
@@ -557,16 +590,14 @@ MSR.updateMeasurementLabel = (measurementId, distance) => {
 // SUI
 
 MSR.createPointSem = (point) => {
-    const model = MSR.getPointModel(point) ?? MSR.getPointMesh(point);
-    const modelScale = model ? THOTH.Utils.getModelScale(model) : 1;
-    // s = modelscale * percentage_factor
-    const s = modelScale * 0.01;
-
-    const pointSem = new THREE.Mesh(ATON.Utils.geomUnitCube, ATON.MatHub.getMaterial("measurement"));
+    const material = ATON.MatHub.getMaterial("measurement").clone();
+    const pointSem = new THREE.Mesh(ATON.Utils.geomUnitCube, material);
 
     pointSem.renderOrder = ATON.RO_SUI;
     pointSem.position.copy(point.coords);
-    pointSem.scale.set(s, s, s);
+    pointSem.userData.thothMarker = "measurement-point";
+    pointSem.userData.defaultColor = material.color?.clone() || new THREE.Color(MSR.defaultPointColor);
+    MSR.applyPointMarkerScale(pointSem, point);
 
     return pointSem;
 };
@@ -690,6 +721,7 @@ MSR.addMeasurementSem = (measurementId) => {
 
     // Add to SUI
     node.attachTo(MSR.nodes);
+    MSR.refreshMarkerScales();
     MSR.refreshMeasurementVisibility();
     return node; //added this
 };
@@ -938,8 +970,7 @@ MSR.toggleVisibility = (measurementId) => {
     else MSR.showMeasurement(measurementKey);
 };
 
-MSR.highlightMeasurement = (measurementId) => {
-    // Reset previous
+MSR.clearHighlight = (clearUI = true) => {
     if (MSR.currentMeasurementLine !== null) {
         const prevNode = MSR.msrSemMap.get(MSR.currentMeasurementLine);
         if (prevNode) {
@@ -950,9 +981,25 @@ MSR.highlightMeasurement = (measurementId) => {
                 if (child.userData?.type === "geodesic-measurement-line") {
                     child.material.color.set(MSR.defaultGeodesicLineColor);
                 }
+                if (child.userData?.thothMarker === "measurement-point") {
+                    if (child.userData.defaultColor) child.material.color.copy(child.userData.defaultColor);
+                    else child.material.color.set(MSR.defaultPointColor);
+                }
             });
         }
     }
+
+    MSR.currentMeasurementLine = null;
+    if (clearUI) {
+        THOTH.FE?.handleElementHighlight(null, THOTH.FE?.msrMap);
+    }
+};
+
+MSR.highlightMeasurement = (measurementId) => {
+    THOTH.Selections?.clearActiveSelection?.();
+    THOTH.SemAnnotations?.clearHighlight?.();
+    MSR.clearHighlight(false);
+
     // Set new active
     const measurementKey = MSR.getMeasurementKey(measurementId);
     MSR.currentMeasurementLine = measurementKey;
@@ -965,6 +1012,9 @@ MSR.highlightMeasurement = (measurementId) => {
             child.material.color.set(MSR.selectedLineColor);
         }
         if (child.userData?.type === "geodesic-measurement-line") {
+            child.material.color.set(MSR.selectedLineColor);
+        }
+        if (child.userData?.thothMarker === "measurement-point") {
             child.material.color.set(MSR.selectedLineColor);
         }
     });

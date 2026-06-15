@@ -25,6 +25,9 @@ SemAnnotations.setup = () => {
     SemAnnotations.labelScaleFactor = 0.05;
     SemAnnotations.lastSceneScale   = null;
     SemAnnotations.isSceneLoading   = true;
+    SemAnnotations.defaultPointColor = 0xffffff;
+    SemAnnotations.selectedPointColor = 0xff0000;
+    SemAnnotations.currentAnnotation = null;
 
     ATON.on("SceneJSONLoaded", () => {
         SemAnnotations.isSceneLoading = true;
@@ -33,6 +36,7 @@ SemAnnotations.setup = () => {
 
     ATON.on("AllNodeRequestsCompleted", () => {
         SemAnnotations.isSceneLoading = false;
+        SemAnnotations.refreshMarkerScales();
         SemAnnotations.refreshAnnotationVisibility();
     });
 };
@@ -225,6 +229,36 @@ SemAnnotations.refreshLabelScales = () => {
     }
 };
 
+SemAnnotations.getPointMarkerScale = (point) => {
+    const model = SemAnnotations.getPointModel(point) ?? SemAnnotations.getPointMesh(point);
+    let modelScale = model ? THOTH.Utils.getModelScale(model) : THOTH.sceneScale;
+
+    if (!Number.isFinite(modelScale) || modelScale <= 0) {
+        modelScale = Number.isFinite(THOTH.sceneScale) && THOTH.sceneScale > 0
+            ? THOTH.sceneScale
+            : 1;
+    }
+
+    return modelScale * 0.01;
+};
+
+SemAnnotations.applyPointMarkerScale = (marker, point) => {
+    if (!marker || !point) return;
+
+    const scale = SemAnnotations.getPointMarkerScale(point);
+    marker.scale.set(scale, scale, scale);
+};
+
+SemAnnotations.refreshMarkerScales = () => {
+    for (const [annotationId, node] of SemAnnotations.semNodeMap.entries()) {
+        const annotation = SemAnnotations.semMap.get(annotationId);
+        if (!node || !annotation?.point) continue;
+
+        const marker = node.children.find(child => child.isMesh);
+        SemAnnotations.applyPointMarkerScale(marker, annotation.point);
+    }
+};
+
 SemAnnotations.refreshAnnotationVisibility = () => {
     for (const [id, annotation] of SemAnnotations.semMap.entries()) {
         const node = SemAnnotations.semNodeMap.get(id);
@@ -275,17 +309,15 @@ SemAnnotations.createPointFromHit = () => {
 };
 
 SemAnnotations.createPointSem = (point) => {
-    const model = SemAnnotations.getPointModel(point) ?? SemAnnotations.getPointMesh(point);
-    const modelScale = model ? THOTH.Utils.getModelScale(model) : 1;
-    const s = modelScale * 0.01;
-
     const geometry = new THREE.SphereGeometry(1, 16, 12);
-    const material = ATON.MatHub.getMaterial("measurement");
+    const material = ATON.MatHub.getMaterial("measurement").clone();
     const pointSem = new THREE.Mesh(geometry, material);
 
     pointSem.renderOrder = ATON.RO_SUI;
     pointSem.position.copy(point.coords);
-    pointSem.scale.set(s, s, s);
+    pointSem.userData.thothMarker = "semantic-point";
+    pointSem.userData.defaultColor = material.color?.clone() || new THREE.Color(SemAnnotations.defaultPointColor);
+    SemAnnotations.applyPointMarkerScale(pointSem, point);
 
     return pointSem;
 };
@@ -337,6 +369,7 @@ SemAnnotations.addAnnotationSem = (annotationId) => {
     SemAnnotations.semNodeMap.set(annotationKey, node);
     node.attachTo(SemAnnotations.nodes);
 
+    SemAnnotations.refreshMarkerScales();
     SemAnnotations.refreshAnnotationVisibility();
     return node;
 };
@@ -469,6 +502,43 @@ SemAnnotations.toggleVisibility = (annotationId) => {
         THOTH.FE.semMap.get(annotationKey),
         annotation.visible
     );
+};
+
+SemAnnotations.clearHighlight = (clearUI = true) => {
+    if (SemAnnotations.currentAnnotation !== null) {
+        const prevNode = SemAnnotations.semNodeMap.get(SemAnnotations.currentAnnotation);
+        if (prevNode) {
+            prevNode.traverse(child => {
+                if (child.userData?.thothMarker === "semantic-point") {
+                    if (child.userData.defaultColor) child.material.color.copy(child.userData.defaultColor);
+                    else child.material.color.set(SemAnnotations.defaultPointColor);
+                }
+            });
+        }
+    }
+
+    SemAnnotations.currentAnnotation = null;
+    if (clearUI) {
+        THOTH.FE?.handleElementHighlight(null, THOTH.FE?.semMap);
+    }
+};
+
+SemAnnotations.highlightAnnotation = (annotationId) => {
+    THOTH.Selections?.clearActiveSelection?.();
+    THOTH.MSR?.clearHighlight?.();
+    SemAnnotations.clearHighlight(false);
+
+    const annotationKey = SemAnnotations.getAnnotationKey(annotationId);
+    SemAnnotations.currentAnnotation = annotationKey;
+
+    const node = SemAnnotations.semNodeMap.get(annotationKey);
+    if (!node) return;
+
+    node.traverse(child => {
+        if (child.userData?.thothMarker === "semantic-point") {
+            child.material.color.set(SemAnnotations.selectedPointColor);
+        }
+    });
 };
 
 

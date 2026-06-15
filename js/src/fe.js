@@ -20,7 +20,6 @@ FE.setup = () => {
     FE.userToolbar   = FE.setupUserToolbar();
     FE.rightToolbar  = FE.setupRightToolbar();
     FE.settingsPanel = FE.setupSettingsPanel();
-    FE.sensorPanel   = FE.setupSensorPanel();
 
     FE.setupSelectionElements();
     FE.setupModelElements();
@@ -677,6 +676,11 @@ FE.selectAnnotationRow = (key, collectionName, itemId, modelId) => {
         THOTH.FE.handleElementHighlight(measurementKey, THOTH.FE.msrMap);
         THOTH.MSR.highlightMeasurement(measurementKey);
     }
+    else if (collectionName === "semantic_annotations") {
+        const annotationKey = THOTH.SemAnnotations.getAnnotationKey(itemId);
+        THOTH.FE.handleElementHighlight(annotationKey, THOTH.FE.semMap);
+        THOTH.SemAnnotations.highlightAnnotation(annotationKey);
+    }
 
     FE.refreshSceneTree();
 };
@@ -692,7 +696,10 @@ FE.openAnnotationPanel = (key, collectionName, itemId, modelId) => {
         THOTH.UI.modalMsrDetails(itemId);
     }
     else if (collectionName === "semantic_annotations") {
-        THOTH.UI.modalSemAnnotationDetails(itemId);
+        const annotationKey = THOTH.SemAnnotations.getAnnotationKey(itemId);
+        THOTH.FE.handleElementHighlight(annotationKey, THOTH.FE.semMap);
+        THOTH.SemAnnotations.highlightAnnotation(annotationKey);
+        THOTH.UI.modalSemAnnotationDetails(annotationKey);
     }
 
     FE.refreshSceneTree();
@@ -748,7 +755,6 @@ FE.setupHistoryToolbar = (historyList) => {
 FE.setupSettingsPanel = () => {
     const elOptionsBody = ATON.UI.createContainer();
     const elMode        = ATON.UI.createContainer();
-    const elVP          = ATON.UI.createContainer();
 
     // Mode
     elMode.append(
@@ -764,22 +770,6 @@ FE.setupSettingsPanel = () => {
         })
     );
 
-    // Viewpoints
-    elVP.append(
-        THOTH.UI.createBool({
-            text    : "Show viewpoints",
-            value   : true,
-            onchange: (input) => THOTH.SVP.toggleVPNodes(input)
-        }),
-        ATON.UI.createSlider({
-            label  : "Node scale",
-            range  : [0.1, 2.0],
-            step   : 0.1,
-            value  : 1.0,
-            oninput: (input) => THOTH.SVP.resizeVPNodes(input)
-        }),
-    );
-
     // Options Tree
     const elOptions = ATON.UI.createTreeGroup({
         items: [
@@ -788,50 +778,12 @@ FE.setupSettingsPanel = () => {
                 open   : false,
                 content: elMode
             },
-            {
-                title  : "Viewpoints",
-                open   : false,
-                content: elVP
-            }
         ]
     });
     
     elOptionsBody.append(elOptions);
     
     return elOptionsBody;
-};
-
-FE.setupModelsPanel = (elModelList) => {
-    const elBody       = ATON.UI.createContainer();
-    const elTopOptions = ATON.UI.createContainer({classes: "row g-0 align-items-center w-100 rounded-2 px-2 py-1 mb-1"});
-    const [ elParentObject, elChildObjects ] = THOTH.LO.setupLinkedObjectsLists();
-
-    // Top buttons
-    elTopOptions.append(
-        ATON.UI.createButton({
-            icon   : "add",
-            text   : "Add model",
-            variant: "info",
-            onpress: () => THOTH.requireAuth("import models", () => THOTH.UI.modalAddModel()),
-        }),
-        ATON.UI.createTreeGroup({
-            items: [{
-                title: "Parent Object",
-                open: true,
-                content: elParentObject,
-            }]
-        }),
-        ATON.UI.createTreeGroup({
-            items: [{
-                title: "Child Objects",
-                open: true,
-                content: elChildObjects,
-            }]
-        })
-    );
-    elBody.append(elTopOptions, elModelList);
-    
-    return elBody;
 };
 
 FE.setupSelectionsPanel = (elSelectionList) => {
@@ -861,15 +813,6 @@ FE.setupSelectionsPanel = (elSelectionList) => {
     );
 
     elBody.append(elTopOptions, elSceneController, elSelectionList, elSelectionStructure);
-
-    return elBody;
-};
-
-FE.setupSensorPanel = () => {
-    const elBody = ATON.UI.createContainer();
-    
-    const sensorDashboard = THOTH.UI.createSensorDashboard("PREPEI_NA_STELNO_KATHE_15_LEPTA");
-    elBody.append(sensorDashboard);
 
     return elBody;
 };
@@ -982,6 +925,11 @@ FE.addMsr = (msrId) => {
     const measurement = THOTH.MSR.getMeasurement(measurementKey);
     if (!measurement) return;
 
+    if (measurement.model_id) {
+        FE.sceneTreeExpanded.add(`model:${measurement.model_id}`);
+        FE.sceneTreeExpanded.add(`model:${measurement.model_id}:measurements`);
+    }
+
     // Resurrect measurement if it already exists
     if (FE.msrMap.has(measurementKey)) {
         FE.msrMap.get(measurementKey).style.display = "flex";
@@ -1023,6 +971,11 @@ FE.addSemAnnotation = (annotationId) => {
     const annotation = THOTH.SemAnnotations.getAnnotation(annotationKey);
     if (!annotation) return;
 
+    if (annotation.model_id) {
+        FE.sceneTreeExpanded.add(`model:${annotation.model_id}`);
+        FE.sceneTreeExpanded.add(`model:${annotation.model_id}:semantic_annotations`);
+    }
+
     if (FE.semMap.has(annotationKey)) {
         FE.semMap.get(annotationKey).style.display = "flex";
         FE.refreshSceneTree();
@@ -1053,6 +1006,8 @@ FE.deleteSemAnnotation = (annotationId) => {
 // Misc
 
 FE.handleElementHighlight = (elname, elMap) => {
+    if (!elMap) return;
+
     for (const [buttonName, elButton] of elMap) {
         if (buttonName === elname) {
             elButton.classList.add('bg-body-tertiary', 'active')

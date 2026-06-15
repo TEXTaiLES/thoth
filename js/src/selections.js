@@ -180,10 +180,17 @@ Selections.createSelection = (modelId, data = {}) => {
     );
 };
 
+Selections.clearActiveSelection = (clearUI = true) => {
+    Selections.activeSelection = undefined;
+
+    if (clearUI) {
+        THOTH.FE?.handleElementHighlight(null, THOTH.FE.selectionControllerMap);
+    }
+};
+
 Selections.setActiveSelection = (modelId, selectionId) => {
     if (modelId === null || selectionId === null) {
-        Selections.activeSelection = undefined;
-        THOTH.FE?.handleElementHighlight(null, THOTH.FE.selectionControllerMap);
+        Selections.clearActiveSelection();
         return;
     }
 
@@ -191,11 +198,21 @@ Selections.setActiveSelection = (modelId, selectionId) => {
         Selections.getSelectionById(selectionId);
     if (!selection || selection.trash) return;
 
+    THOTH.MSR?.clearHighlight?.();
+    THOTH.SemAnnotations?.clearHighlight?.();
+    Selections.clearActiveSelection(false);
+
     Selections.activeSelection = selection;
+    if (THOTH.FE) {
+        THOTH.FE.sceneTreeActiveKey = `model:${selection.model_id}:selections:${selection.id}`;
+        THOTH.FE.sceneTreeExpanded?.add(`model:${selection.model_id}`);
+        THOTH.FE.sceneTreeExpanded?.add(`model:${selection.model_id}:selections`);
+    }
     THOTH.FE?.handleElementHighlight(
         Selections._makeKey(selection.model_id, selection.id),
         THOTH.FE.selectionControllerMap
     );
+    THOTH.FE?.refreshSceneTree?.();
 };
 
 Selections.getSelection = (modelId, selectionId) => {

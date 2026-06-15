@@ -18,59 +18,6 @@ Models.setup = () => {
     Models.gizNode;
 };
 
-Models.parseSceneGraph = (sg) => {
-    if (sg === undefined) return;
-
-    const nodes = sg.nodes;
-    const edges = sg.edges;
-
-    // nodes
-    for (const nid in nodes) {
-        
-        const N = nodes[nid];
-        const G = ATON.getOrCreateSceneNode(nid).removeChildren();
-        ATON.SceneHub._applyJSONTransformToNode(N.transform, G);
-        
-        let urls = N.urls;
-        if (urls) {
-            if (Array.isArray(urls)) {
-                urls.forEach(u => {
-                    G.load(u, () => Models.onLoad(G));
-                });
-            }
-            else {
-                G.load(urls, () => Models.onLoad(G));
-            }
-        }
-        
-        if (N.toYup) G.setYup();
-
-        THOTH.Artefacts?.parseModelArtefact(nid, {
-            gltf_file: Models._getNodeURL(N)
-        });
-        THOTH.Transforms?.parseModelTransform(nid, N.transform);
-    }
-    // edges
-    for (const parid in edges) {
-        const children = edges[parid];
-        
-        const P = ATON.getSceneNode(parid);
-        
-        if (P !== undefined) {
-            for (const c in children){
-                const  childid = children[c];
-                const  C = ATON.getSceneNode(childid);
-                if (C !== undefined) C.attachTo(P);
-            } 
-        }
-    }
-    // after connection
-    for (const nid in nodes) {
-        const N = ATON.getSceneNode(nid);
-        Models.modelMap.set(nid, N);
-    }
-};
-
 Models.parseModels = (models) => {
     if (models === undefined) return;
 
@@ -159,55 +106,6 @@ Models.getModelMeshes = (modelName) => {
         }
     })
     return meshes;
-};
-
-Models.getModelTransforms = (modelName) => {
-    if (!modelName) return;
-    const model = Models.modelMap.get(modelName);
-
-    return {
-        position: [
-            Number(model.position.x),
-            Number(model.position.y), 
-            Number(model.position.z)
-        ],
-        scale: [1, 1, 1],
-        rotation: [
-            Number(model.rotation.x),
-            Number(model.rotation.y), 
-            Number(model.rotation.z)
-        ]
-    };
-};
-
-Models.getCanonicalModelTransforms = (modelName) => {
-    const model = Models.modelMap.get(modelName);
-    return THOTH.Transforms?.fromNode(model);
-};
-
-Models._getNodeURL = (nodeData) => {
-    const urls = nodeData?.urls;
-
-    if (Array.isArray(urls)) return urls[0];
-    if (typeof urls === "string") return urls;
-
-    return undefined;
-};
-
-Models._getArtefactURL = (artefact = {}) => {
-    return artefact.gltf_file || artefact.url || artefact.path || artefact.src;
-};
-
-Models._canonicalTransformsFromSceneGraph = (transform = {}) => {
-    const position = transform.translation || transform.position || [0, 0, 0];
-    const rotation = transform.rotation || [0, 0, 0];
-    const scale    = transform.scale || [1, 1, 1];
-
-    return {
-        translation: Models._vectorFromTransformValue(position, { x: 0, y: 0, z: 0 }),
-        rotation: Models._vectorFromTransformValue(rotation, { x: 0, y: 0, z: 0 }),
-        scale: Models._vectorFromTransformValue(scale, { x: 1, y: 1, z: 1 })
-    };
 };
 
 Models._vectorFromTransformValue = (value, defaultValue) => {
@@ -399,58 +297,8 @@ Models.toggleVisibility = (modelName) => {
 };  
 
 
-// Transforms 
-
-Models.modelTransformPos = (modelName, value) => {
-    if (modelName === undefined) return;
-
-    const transforms = THOTH.Transforms?.getModelTransform(modelName);
-    THOTH.Transforms?.applyModelTransform(modelName, {
-        ...transforms,
-        translation: value
-    });
-};
-
-Models.modelTransformRot = (modelName, value) => {
-    if (modelName === undefined) return;
-
-    const transforms = THOTH.Transforms?.getModelTransform(modelName);
-    THOTH.Transforms?.applyModelTransform(modelName, {
-        ...transforms,
-        rotation: value
-    });
-};
-
 Models.deactivateTransformControls = () => {
     THOTH.Transforms?.detachGizmo();
 };
-
-
-// Export
-
-Models.getExportData = () => {
-    let scenegraph = {};
-    
-    scenegraph.nodes = {};
-    scenegraph.edges = {};
-    scenegraph.edges["."] = [];
-    for (const [modelName, model] of Models.modelMap.entries()) {
-        if (model.parent === null) continue;
-        
-        const urls = [Models.getModelURL(modelName)];
-        const transforms = Models.getModelTransforms(modelName);
-        
-        // Nodes
-        scenegraph.nodes[modelName] = {};
-        scenegraph.nodes[modelName].urls = urls;
-        scenegraph.nodes[modelName].transform = transforms;
-        
-        // Edges
-        scenegraph.edges["."].push(modelName);
-    }
-
-    return scenegraph;
-};
-
 
 export default Models;

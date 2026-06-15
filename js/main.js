@@ -22,9 +22,7 @@ import MD                  from "./src/metadata.js";
 import Collab              from "./src/collab.js";
 import MSR                 from "./src/measurements.js";
 import SemAnnotations      from "./src/semantic_annotations.js";
-import Sensor              from "./src/sensor.js";
 import {TransformControls} from "./src/transform_controls.js";
-import LinkedObjects       from "./src/linked_objects.js";
 import SceneStore          from "./src/scene_store.js";
 import Ops                 from "./src/operations.js";
 import API                 from "./src/api_client.js";
@@ -40,29 +38,27 @@ window.THOTH = THOTH;
 
 
 // Import
-THOTH.UI      = UI;
-THOTH.Utils   = Utils;
-THOTH.Toolbox = Toolbox;
-THOTH.History = History;
-THOTH.Events  = Events;
-THOTH.SVP     = SVP;
-THOTH.Models  = Models;
-THOTH.Selections = Selections;
-THOTH.FE      = FE;
-THOTH.MD      = MD;
-THOTH.Collab  = Collab;
-THOTH.MSR     = MSR;
+THOTH.UI             = UI;
+THOTH.Utils          = Utils;
+THOTH.Toolbox        = Toolbox;
+THOTH.History        = History;
+THOTH.Events         = Events;
+THOTH.SVP            = SVP;
+THOTH.Models         = Models;
+THOTH.Selections     = Selections;
+THOTH.FE             = FE;
+THOTH.MD             = MD;
+THOTH.Collab         = Collab;
+THOTH.MSR            = MSR;
 THOTH.SemAnnotations = SemAnnotations;
-THOTH.TC      = TransformControls;
-THOTH.LO      = LinkedObjects;
-THOTH.Sensor  = Sensor;
-THOTH.SceneStore = SceneStore;
-THOTH.Ops     = Ops;
-THOTH.API     = API;
-THOTH.Auth    = Auth;
-THOTH.Artefacts = Artefacts;
-THOTH.Transforms = Transforms;
-THOTH.Annotations = Annotations;
+THOTH.TC             = TransformControls;
+THOTH.SceneStore     = SceneStore;
+THOTH.Ops            = Ops;
+THOTH.API            = API;
+THOTH.Auth           = Auth;
+THOTH.Artefacts      = Artefacts;
+THOTH.Transforms     = Transforms;
+THOTH.Annotations    = Annotations;
 
 
 THOTH.BASE_URL        = "../thoth";
@@ -106,10 +102,6 @@ THOTH.setup = () => {
     ATON.SceneHub.addSceneParser("collaborative", data => {
         THOTH.Collab.parseCollab(data);
     });
-    // Linked objects parser
-    ATON.SceneHub.addSceneParser("linked_objects", linked_objects => {
-        THOTH.LO.parseLinkedObjects(linked_objects);
-    })
 
     // Load config
     ATON.REQ.get(
@@ -148,8 +140,6 @@ THOTH.setup = () => {
             THOTH.MSR.setup();
             // Init semantic annotations
             THOTH.SemAnnotations.setup();
-            // Init linked objects
-            THOTH.LO.setup();
             // Init front end 
             THOTH.FE.setup();
             THOTH.FE.setupToolboxElements();
@@ -285,7 +275,11 @@ THOTH.updateSceneScale = (model) => {
     console.log("Average object scale: " + THOTH.sceneScale);
     THOTH.Toolbox.setSelectorBaseRadius(0.01 * THOTH.sceneScale);
     THOTH.MSR?.refreshLabelScales();
+    THOTH.MSR?.refreshMarkerScales();
+    THOTH.MSR?.refreshMeasurementVisibility();
     THOTH.SemAnnotations?.refreshLabelScales();
+    THOTH.SemAnnotations?.refreshMarkerScales();
+    THOTH.SemAnnotations?.refreshAnnotationVisibility();
 };
 
 
