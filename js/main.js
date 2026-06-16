@@ -455,6 +455,51 @@ THOTH.getExportData = () => {
     };
 };
 
+THOTH.getModelMetadataExportData = (modelId) => {
+    return THOTH.SceneStore.getModelMetadataExportData(modelId);
+};
+
+THOTH.downloadModelMetadata = (modelId) => {
+    const payload = THOTH.getModelMetadataExportData(modelId);
+    if (!payload) {
+        THOTH.FE.showToast(`No metadata found for ${modelId}`);
+        return false;
+    }
+
+    const exportJson = JSON.stringify(payload, null, 2);
+    const exportBlob = new Blob([exportJson], { type: "application/json" });
+    const exportUrl = URL.createObjectURL(exportBlob);
+    const exportLink = document.createElement("a");
+
+    exportLink.href = exportUrl;
+    exportLink.download = `${modelId || "model"}_metadata.json`;
+    exportLink.click();
+    URL.revokeObjectURL(exportUrl);
+    THOTH.FE.showToast("Model metadata downloaded locally.");
+
+    return true;
+};
+
+THOTH.exportModelMetadata = async (modelId) => {
+    const payload = THOTH.getModelMetadataExportData(modelId);
+    if (!payload) {
+        THOTH.FE.showToast(`No metadata found for ${modelId}`);
+        return {
+            ok   : false,
+            error: "No metadata found"
+        };
+    }
+
+    const response = await THOTH.API.post("metadata", payload);
+    if (!response.ok) {
+        THOTH.FE.showToast(response.error || "Metadata export failed");
+        return response;
+    }
+
+    THOTH.FE.showToast("Metadata exported successfully!");
+    return response;
+};
+
 
 // User 
 

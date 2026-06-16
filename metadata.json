@@ -1,0 +1,9 @@
+{
+    "schema": {
+        "name": "str",
+        "version": "str",
+        "description": "str",
+        "url": "str"
+    },
+    "attributes": "metadata_structure"
+}

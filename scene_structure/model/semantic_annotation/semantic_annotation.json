@@ -1,0 +1,21 @@
+{
+    "name": "str",
+    "description": "str",
+    "related_rgb_images": [
+        "image"
+    ],
+    "related_multispectral_images": [
+        "multispectral_image"
+    ],
+    "related_artefacts": [
+        "artefact"
+    ],
+    "annotation": {
+        "point": {
+            "x": "float",
+            "y": "float",
+            "z": "float"
+        }
+    },
+    "visible": "bool"
+}

@@ -2124,9 +2124,35 @@ UI.modalModelMetadata = (modelId, data_temp) => {
         ]
     });
 
+    const saveMetadataDraft = () => {
+        THOTH.MD.editModelMetadata(modelId, data_temp, prev_data);
+    };
+
     const elFooter = UI.createModalFooter({
+        actions: [
+            ATON.UI.createButton({
+                text   : "Export metadata",
+                icon   : "link",
+                size   : "large",
+                variant: "info",
+                onpress: async () => {
+                    saveMetadataDraft();
+                    await THOTH.exportModelMetadata(modelId);
+                }
+            }),
+            ATON.UI.createButton({
+                text   : "Download metadata",
+                icon   : "download",
+                size   : "large",
+                variant: "secondary",
+                onpress: () => {
+                    saveMetadataDraft();
+                    THOTH.downloadModelMetadata(modelId);
+                }
+            })
+        ],
         onsuccess: () => {
-            THOTH.MD.editModelMetadata(modelId, data_temp, prev_data);
+            saveMetadataDraft();
             ATON.UI.hideModal();
         },
         successText: "Save changes"
@@ -2142,6 +2168,13 @@ UI.modalModelMetadata = (modelId, data_temp) => {
 
 UI.createModalFooter = (options) => {
     const elFooter = ATON.UI.createContainer();
+
+    if (Array.isArray(options.actions)) {
+        for (const action of options.actions) {
+            if (action) elFooter.append(action);
+        }
+    }
+
     elFooter.append(
         // Save
         ATON.UI.createButton({

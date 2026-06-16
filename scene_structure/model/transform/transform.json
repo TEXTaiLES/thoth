@@ -1,0 +1,17 @@
+{
+    "translation": {
+        "x": "float",
+        "y": "float",
+        "z": "float"
+    },
+    "rotation": {
+        "x": "float",
+        "y": "float",
+        "z": "float"
+    },
+    "scale": {
+        "x": "float",
+        "y": "float",
+        "z": "float"
+    }
+}
