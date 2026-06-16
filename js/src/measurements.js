@@ -23,6 +23,7 @@ MSR.setup = () => {
 
     MSR.line  = MSR.createMeasurementLine();
     MSR.nodes = MSR.createMeasurementNodes();
+    MSR.modelNodeMap = new Map();
 
     MSR.tempNode = null;
     MSR.points   = [];
@@ -75,6 +76,12 @@ MSR.parseMeasurements = (measurements, modelId) => {
             measurement.points = measurement.points.map(MSR.normalizePoint);
         }
         MSR.msrMap.set(id, measurement);
+        THOTH.SceneStore?.setModelCollectionItem?.(
+            measurement.model_id,
+            "measurements",
+            id,
+            MSR.toCanonicalMeasurement(id, measurement)
+        );
         THOTH.FE.addMsr(id);
         MSR.addMeasurementSem(id);
     }
@@ -226,18 +233,21 @@ MSR.toCanonicalMeasurement = (measurementId, data = {}) => {
         ...data,
         id        : data.id ?? measurementId,
         annotation: {
-            distance     : distance,
-            distance_type: distanceType,
-            point1       : MSR.toCanonicalPoint(point1),
-            point2       : MSR.toCanonicalPoint(point2)
+            ...(data.annotation || {}),
+            coordinate_space: "model_local",
+            distance        : distance,
+            distance_type   : distanceType,
+            point1          : MSR.toCanonicalPoint(point1),
+            point2          : MSR.toCanonicalPoint(point2)
         }
     }) || {
         id        : data.id ?? measurementId,
         annotation: {
-            distance     : distance,
-            distance_type: distanceType,
-            point1       : MSR.toCanonicalPoint(point1),
-            point2       : MSR.toCanonicalPoint(point2)
+            coordinate_space: "model_local",
+            distance        : distance,
+            distance_type   : distanceType,
+            point1          : MSR.toCanonicalPoint(point1),
+            point2          : MSR.toCanonicalPoint(point2)
         },
         visible: data.visible !== false
     };
@@ -245,9 +255,25 @@ MSR.toCanonicalMeasurement = (measurementId, data = {}) => {
 
 MSR.normalizeMeasurement = (measurementId, data = {}) => {
     const annotation = data.annotation || {};
-    const point1 = data.point1 || MSR.fromCanonicalPoint(annotation.point1, data.model_id);
-    const point2 = data.point2 || MSR.fromCanonicalPoint(annotation.point2, data.model_id);
-    const points = data.points || [point1, point2].filter(Boolean);
+    const coordinateSpace = data.coordinate_space || annotation.coordinate_space;
+    const shouldConvertLegacy = coordinateSpace !== "model_local" &&
+        !data.points &&
+        !data.point1 &&
+        !data.point2 &&
+        (annotation.point1 || annotation.point2);
+    let point1 = data.point1 || MSR.fromCanonicalPoint(annotation.point1, data.model_id);
+    let point2 = data.point2 || MSR.fromCanonicalPoint(annotation.point2, data.model_id);
+    let points = data.points || [point1, point2].filter(Boolean);
+    let path = data.path;
+
+    if (shouldConvertLegacy) {
+        points = points.map(point => MSR.pointWorldToModelLocal(data.model_id, point));
+        point1 = points[0];
+        point2 = points[1];
+        if (Array.isArray(path)) {
+            path = path.map(point => MSR.worldToModelLocal(data.model_id, point));
+        }
+    }
     const distanceType = data.distanceType ||
         data.distance_type ||
         annotation.distance_type ||
@@ -279,7 +305,7 @@ MSR.normalizeMeasurement = (measurementId, data = {}) => {
         distanceType: distanceType,
         distance    : distance,
         points      : points.map(MSR.normalizePoint),
-        path        : data.path,
+        path        : path,
         trash       : data.trash === true
     };
 };
@@ -296,6 +322,66 @@ MSR.getMeasurementKey = (measurementId) => {
 
 MSR.getMeasurement = (measurementId) => {
     return MSR.msrMap.get(MSR.getMeasurementKey(measurementId));
+};
+
+MSR._syncMeasurementPointCoordinates = (measurement) => {
+    if (!measurement?.points?.length) return;
+
+    measurement.points = measurement.points.map(MSR.normalizePoint);
+    measurement.annotation = {
+        ...(measurement.annotation || {}),
+        coordinate_space: "model_local",
+        distance        : Number(measurement.distance ?? measurement.annotation?.distance ?? 0),
+        distance_type   : measurement.distanceType || measurement.annotation?.distance_type || "euclidean",
+        point1          : MSR.toCanonicalPoint(measurement.points[0]),
+        point2          : MSR.toCanonicalPoint(measurement.points[1])
+    };
+};
+
+MSR.getModelNode = (modelId, create = false) => {
+    if (!modelId) return null;
+
+    return THOTH.Models?.modelMap?.get(modelId) ||
+        ATON.getSceneNode?.(modelId) ||
+        (create ? ATON.getOrCreateSceneNode?.(modelId) : null);
+};
+
+MSR._coordsToVector3 = (coords) => {
+    if (coords instanceof THREE.Vector3) return coords.clone();
+
+    return new THREE.Vector3(
+        Number(coords?.x ?? coords?.[0] ?? 0),
+        Number(coords?.y ?? coords?.[1] ?? 0),
+        Number(coords?.z ?? coords?.[2] ?? 0)
+    );
+};
+
+MSR.worldToModelLocal = (modelId, coords) => {
+    const model = MSR.getModelNode(modelId);
+    const point = MSR._coordsToVector3(coords);
+    if (!model) return point;
+
+    model.updateMatrixWorld(true);
+    return model.worldToLocal(point);
+};
+
+MSR.modelLocalToWorld = (modelId, coords) => {
+    const model = MSR.getModelNode(modelId);
+    const point = MSR._coordsToVector3(coords);
+    if (!model) return point;
+
+    model.updateMatrixWorld(true);
+    return model.localToWorld(point);
+};
+
+MSR.pointWorldToModelLocal = (modelId, point) => {
+    if (!point) return point;
+
+    const normalized = MSR.normalizePoint(point);
+    return {
+        ...normalized,
+        coords: MSR.worldToModelLocal(modelId || MSR.getPointModelId(normalized), normalized.coords)
+    };
 };
 
 MSR.getPointModel = (point) => {
@@ -356,11 +442,28 @@ MSR.createMeasurementLine = () => {
 };
 
 MSR.createMeasurementNodes = () => {
-    const nodes = new ATON.Node("test", ATON.NTYPES.UI);
+    return new Map();
+};
 
-    ATON._mainRoot.add(nodes);
+MSR.getModelMeasurementNode = (modelId) => {
+    if (!modelId) return null;
+    if (MSR.modelNodeMap.has(modelId)) {
+        const node = MSR.modelNodeMap.get(modelId);
+        if (node?.parent) return node;
 
-    return nodes;
+        MSR.modelNodeMap.delete(modelId);
+        MSR.nodes.delete(modelId);
+    }
+
+    const model = MSR.getModelNode(modelId, true);
+    if (!model) return null;
+
+    const node = new ATON.Node(`measurements_${modelId}`, ATON.NTYPES.UI);
+    node.attachTo(model);
+    MSR.modelNodeMap.set(modelId, node);
+    MSR.nodes.set(modelId, node);
+
+    return node;
 };
 
 
@@ -371,11 +474,11 @@ MSR.addMeasurementPoint = () => {
     if (!ATON._hitsScene || ATON._hitsScene.length === 0) return undefined;
     const hit    = ATON._hitsScene[0];
     const idx    = hit.faceIndex;
-    const coords = hit.point;
     const mesh   = hit.object;
     // const mesh   = THOTH.hoveredMesh;
 
     const meshId = THOTH.Models?.getParent(mesh) ?? mesh.name;
+    const coords = MSR.worldToModelLocal(meshId, hit.point);
 
     const mPoint = {
         "meshId" : meshId,
@@ -455,8 +558,11 @@ MSR.createMeasurementData = (measurementId, point1, point2, options = {}) => {
             return;
         }
         const { vertices } = MSR.buildMeshGraph(mesh);
-        const startVertex = MSR.getNearestVertexIndex(mesh, point1.coords);
-        const endVertex = MSR.getNearestVertexIndex(mesh, point2.coords);
+        const modelId = options.model_id || MSR.getPointModelId(point1);
+        const startWorldPoint = MSR.modelLocalToWorld(modelId, point1.coords);
+        const endWorldPoint = MSR.modelLocalToWorld(modelId, point2.coords);
+        const startVertex = MSR.getNearestVertexIndex(mesh, startWorldPoint);
+        const endVertex = MSR.getNearestVertexIndex(mesh, endWorldPoint);
 
         if (startVertex === -1 || endVertex === -1) {
             THOTH.FE.showToast("Invalid vertex indices");
@@ -470,13 +576,14 @@ MSR.createMeasurementData = (measurementId, point1, point2, options = {}) => {
         }
         const distance = MSR.computePathLength(vertices, path);
         const worldPoints = MSR.pathToPoints(mesh, path);
+        const localPoints = worldPoints.map(point => MSR.worldToModelLocal(modelId, point));
         measurementData = MSR.normalizeMeasurement(measurementId, {
             description  : options.description || "",
             distanceType : distanceType,
             distance     : distance,
             points       : [point1, point2],
             model_id     : options.model_id,
-            path         : worldPoints,
+            path         : localPoints,
             trash        : false,
             name         : options.name || `Measurement ${measurementId}`,
             visible      : true
@@ -550,6 +657,7 @@ MSR.updateMeasurement = (measurementId, data) => {
     });
 
     MSR.msrMap.set(measurementKey, nextMeasurement);
+    MSR._syncMeasurementPointCoordinates(nextMeasurement);
     MSR.renameMeasurement(measurementKey, nextMeasurement.name);
     MSR.refreshMeasurementVisibility();
     THOTH.FE.toggleControllerVisibility(
@@ -632,13 +740,15 @@ MSR.addMeasurementPointSem = (point) => {
     if (point === undefined) return;
 
     const pointSem = MSR.createPointSem(point);
+    const modelNode = MSR.getModelMeasurementNode(MSR.getPointModelId(point));
+    if (!modelNode) return;
 
     if (MSR.tempNode === null) {
         MSR.tempNode = pointSem;
-        MSR.nodes.add(MSR.tempNode)
+        modelNode.add(MSR.tempNode)
     }
     else {
-        MSR.nodes.remove(MSR.tempNode);
+        if (MSR.tempNode.parent) MSR.tempNode.parent.remove(MSR.tempNode);
         MSR.tempNode = null;
     }
 };
@@ -678,6 +788,11 @@ MSR.addMeasurementSem = (measurementId) => {
         return;
     }
     if (measurement === undefined) return;
+    const modelNode = MSR.getModelMeasurementNode(measurement.model_id || MSR.getPointModelId(measurement.points?.[0]));
+    if (!modelNode) return;
+
+    const oldNode = MSR.msrSemMap.get(measurementKey);
+    if (oldNode?.parent) oldNode.parent.remove(oldNode);
 
     // Nodes
     const point1 = measurement.points[0];
@@ -725,7 +840,7 @@ MSR.addMeasurementSem = (measurementId) => {
     MSR.msrSemMap.set(measurementKey, node);
 
     // Add to SUI
-    node.attachTo(MSR.nodes);
+    node.attachTo(modelNode);
     MSR.refreshMarkerScales();
     MSR.refreshMeasurementVisibility();
     return node; //added this

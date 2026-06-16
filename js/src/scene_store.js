@@ -88,10 +88,6 @@ SceneStore._normalizeTransforms = (data = {}) => {
         rotation: SceneStore._normalizeVector(
             transforms.rotation || transform.rotation,
             { x: 0, y: 0, z: 0 }
-        ),
-        scale: SceneStore._normalizeVector(
-            transforms.scale || transform.scale,
-            { x: 1, y: 1, z: 1 }
         )
     };
 };

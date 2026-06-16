@@ -47,9 +47,6 @@ Models.parseModels = (models) => {
 
         THOTH.Artefacts?.parseModelArtefact(modelId, modelData.artefact);
         THOTH.Transforms?.parseModelTransform(modelId, modelData.transforms);
-        THOTH.Selections?.parseSelections(modelId, modelData.selections);
-        THOTH.MSR?.parseMeasurements(modelData.measurements, modelId);
-        THOTH.SemAnnotations?.parseAnnotations(modelData.semantic_annotations, modelId);
 
         const modelURL = THOTH.Artefacts?.getModelURL(modelId);
         const G = ATON.getOrCreateSceneNode(modelId).removeChildren();
@@ -57,6 +54,11 @@ Models.parseModels = (models) => {
             THOTH.Transforms?.getModelTransform(modelId) || modelData.transforms,
             G
         );
+        Models.modelMap.set(modelId, G);
+
+        THOTH.Selections?.parseSelections(modelId, modelData.selections);
+        THOTH.MSR?.parseMeasurements(modelData.measurements, modelId);
+        THOTH.SemAnnotations?.parseAnnotations(modelData.semantic_annotations, modelId);
 
         if (modelURL) {
             G.load(modelURL, () => {
@@ -67,8 +69,6 @@ Models.parseModels = (models) => {
         else {
             G.attachToRoot();
         }
-
-        Models.modelMap.set(modelId, G);
     }
 };
 
@@ -170,14 +170,10 @@ Models._applyCanonicalTransforms = (transforms = {}, model) => {
         transforms.rotation,
         { x: 0, y: 0, z: 0 }
     );
-    const scale = Models._vectorFromTransformValue(
-        transforms.scale,
-        { x: 1, y: 1, z: 1 }
-    );
 
     model.position.set(translation.x, translation.y, translation.z);
     model.rotation.set(rotation.x, rotation.y, rotation.z);
-    model.scale.set(scale.x, scale.y, scale.z);
+    model.scale.set(1, 1, 1);
 };
 
 Models.refreshModelPicking = (model) => {

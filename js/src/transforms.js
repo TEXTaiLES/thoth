@@ -58,10 +58,6 @@ Transforms.normalize = (data = {}) => {
         rotation: Transforms._vector(
             transforms.rotation || transform.rotation,
             { x: 0, y: 0, z: 0 }
-        ),
-        scale: Transforms._vector(
-            transforms.scale || transform.scale,
-            { x: 1, y: 1, z: 1 }
         )
     };
 };
@@ -79,11 +75,6 @@ Transforms.fromNode = (model) => {
             x: Number(model.rotation.x),
             y: Number(model.rotation.y),
             z: Number(model.rotation.z)
-        },
-        scale: {
-            x: Number(model.scale.x),
-            y: Number(model.scale.y),
-            z: Number(model.scale.z)
         }
     };
 };
@@ -126,11 +117,7 @@ Transforms.applyModelTransform = (modelId, transform) => {
             transforms.rotation.y,
             transforms.rotation.z
         );
-        model.scale.set(
-            transforms.scale.x,
-            transforms.scale.y,
-            transforms.scale.z
-        );
+        model.scale.set(1, 1, 1);
 
         if (THOTH.transform && THOTH.transform.object === model) {
             THOTH.transform.updateMatrixWorld(true);
@@ -192,6 +179,10 @@ Transforms._setupGizmoEvents = () => {
         const obj = THOTH.transform.object;
         if (!obj) return;
 
+        if (THOTH.transform.getMode() === "scale") {
+            obj.scale.set(1, 1, 1);
+            THOTH.transform.setMode("translate");
+        }
         Transforms.transformStart = Transforms.fromNode(obj);
     });
 
@@ -199,6 +190,10 @@ Transforms._setupGizmoEvents = () => {
         const obj = THOTH.transform.object;
         if (!obj) return;
 
+        if (THOTH.transform.getMode() === "scale") {
+            obj.scale.set(1, 1, 1);
+            THOTH.transform.setMode("translate");
+        }
         THOTH.UI.syncTransformUI(obj);
     });
 
@@ -211,10 +206,18 @@ Transforms._setupGizmoEvents = () => {
         const prevValue = Transforms.getModelTransform(modelId);
         const nextValue = Transforms.fromNode(obj);
 
+        if (mode === "scale") {
+            obj.scale.set(1, 1, 1);
+            THOTH.transform.setMode("translate");
+            THOTH.transform.updateMatrixWorld(true);
+            THOTH.UI?.syncTransformUI?.(obj);
+            Transforms.transformStart = null;
+            return;
+        }
+
         let field = "transforms";
         if (mode === "translate") field = "translation";
         if (mode === "rotate") field = "rotation";
-        if (mode === "scale") field = "scale";
 
         const value = {
             ...prevValue,
@@ -251,6 +254,9 @@ Transforms.attachGizmo = (modelId) => {
     const transform = Transforms._ensureGizmo();
     Transforms._setupGizmoEvents();
 
+    if (transform.getMode() === "scale") {
+        transform.setMode("translate");
+    }
     transform.attach(model);
     transform.traverse(o => {
         if (o.material) {

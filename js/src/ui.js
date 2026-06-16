@@ -13,8 +13,7 @@ let UI = {};
 
 UI.activeTransformControls = {
     position: null,
-    rotation: null,
-    scale: null
+    rotation: null
 };
 
 
@@ -194,19 +193,6 @@ UI.modelTransformControl = (options) => {
         UI.activeTransformControls.position = elPos;//added this
     }
 
-    // Scale
-    if (options.scale){
-        let elScale = UI.createVectorControl({
-            vector   : N.scale,
-            step     : options.scale.step,
-            reset    : [1,1,1],
-            modelName: N.name,
-        }, "scale");
-        el.append(ATON.UI.elem("<label class='form-label hathor-text-block' for='"+elScale.id+"'>Scale</label>") );
-        el.append(elScale);
-        UI.activeTransformControls.scale = elScale;
-    }
-
     // Rotation
     if (options.rotation){
         let elRot = UI.createVectorControl({
@@ -241,13 +227,6 @@ UI.syncTransformUI = (obj) => {
         el.children[2].value = obj.rotation.z.toFixed(3);
     }
 
-    if (UI.activeTransformControls.scale) {
-
-        const el = UI.activeTransformControls.scale;
-        el.children[0].value = obj.scale.x.toFixed(3);
-        el.children[1].value = obj.scale.y.toFixed(3);
-        el.children[2].value = obj.scale.z.toFixed(3);
-    }
 };
 
 UI.createVectorControl = (options, transform)=>{
@@ -302,9 +281,6 @@ UI.createVectorControl = (options, transform)=>{
                     //THOTH.fire("modelTransformRotInput", (l)); 
                     THOTH.fire("modelTransformRot", (l)); 
                 }
-                else if (transform === "scale") {
-                    THOTH.fire("modelTransformScale", (l));
-                }
                 if (options.onupdate) options.onupdate();
             }
         }))
@@ -331,9 +307,6 @@ UI.createVectorControl = (options, transform)=>{
         else if (transform === "rotation") {
             THOTH.fire("modelTransformRot", l);
         }
-        else if (transform === "scale") {
-            THOTH.fire("modelTransformScale", l);
-        }
          
         if (options.onupdate) options.onupdate();
     };
@@ -355,9 +328,6 @@ UI.createVectorControl = (options, transform)=>{
           //  THOTH.fire("modelTransformRotInput", (l));
             THOTH.fire("modelTransformRot", (l));
         }
-        else if (transform === "scale") {
-            THOTH.fire("modelTransformScale", l);
-        }
       
         if (options.onupdate) options.onupdate();
     };
@@ -378,9 +348,6 @@ UI.createVectorControl = (options, transform)=>{
         else if (transform === "rotation") {
             //THOTH.fire("modelTransformRotInput", (l));
             THOTH.fire("modelTransformRot", (l));
-        }
-        else if (transform === "scale") {
-            THOTH.fire("modelTransformScale", l);
         }
         if (options.onupdate) options.onupdate();
     };
@@ -941,13 +908,6 @@ UI.createModelTransformEditor = (modelName) => {
             onpress: () => THOTH.requireAuth("edit transforms", () => {
                 if (THOTH.transform) THOTH.transform.setMode("rotate");
             })
-        }),
-        ATON.UI.createButton({
-            text   : "Scale",
-            size: "medium",
-            onpress: () => THOTH.requireAuth("edit transforms", () => {
-                if (THOTH.transform) THOTH.transform.setMode("scale");
-            })
         })
     );
 
@@ -958,7 +918,6 @@ UI.createModelTransformEditor = (modelName) => {
         UI.modelTransformControl({
             node    : modelName,
             position: true,
-            scale   : true,
             rotation: true
         })
     );

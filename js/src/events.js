@@ -14,7 +14,6 @@ Events.authRequiredEvents = new Map([
     [ "deleteModel", "delete models" ],
     [ "modelTransformPos", "edit transforms" ],
     [ "modelTransformRot", "edit transforms" ],
-    [ "modelTransformScale", "edit transforms" ],
     [ "createSelection", "create selections" ],
     [ "deleteSelection", "delete selections" ],
     [ "editSelectionMetadata", "edit selections" ],
@@ -780,18 +779,6 @@ Events.setupModelEvents = () => {
             field   : "rotation"
         }, value, prevValue);
     }); 
-    THOTH.on("modelTransformScale", (l) => {
-        const prevValue = Events.clone(THOTH.SceneStore.getModel(l.modelName)?.transforms);
-        const value = {
-            ...prevValue,
-            scale: l.value
-        };
-
-        Events.applyLocal("model.update_transform", {
-            model_id: l.modelName,
-            field   : "scale"
-        }, value, prevValue);
-    });
 };
 
 Events.setupToolboxEvents = () => {

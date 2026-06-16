@@ -17,6 +17,7 @@ SemAnnotations.setup = () => {
     SemAnnotations.semNodeMap = new Map();
 
     SemAnnotations.nodes = SemAnnotations.createAnnotationNodes();
+    SemAnnotations.modelNodeMap = new Map();
     SemAnnotations.tempNode = null;
 
     SemAnnotations.enabled = false;
@@ -52,6 +53,12 @@ SemAnnotations.parseAnnotations = (annotations, modelId) => {
             model_id: modelId ?? annotations[id]?.model_id
         });
         SemAnnotations.semMap.set(id, annotation);
+        THOTH.SceneStore?.setModelCollectionItem?.(
+            annotation.model_id,
+            "semantic_annotations",
+            id,
+            SemAnnotations.toCanonicalAnnotation(id, annotation)
+        );
         THOTH.FE.addSemAnnotation(id);
         SemAnnotations.addAnnotationSem(id);
     }
@@ -69,17 +76,28 @@ SemAnnotations.cloneAnnotation = (annotation) => {
 SemAnnotations.normalizeAnnotation = (annotation) => {
     if (!annotation) return annotation;
 
-    const point = annotation.point ||
+    let point = annotation.point ||
         SemAnnotations.fromCanonicalPoint(annotation.annotation?.point, annotation.model_id);
+    const coordinateSpace = annotation.coordinate_space || annotation.annotation?.coordinate_space;
+    if (coordinateSpace !== "model_local" && !annotation.point && annotation.annotation?.point) {
+        point = SemAnnotations.pointWorldToModelLocal(annotation.model_id, point);
+    }
     const normalized = THOTH.Annotations?.createBaseAnnotation(annotation.id, {
         ...annotation,
         annotation: {
-            point: SemAnnotations.toCanonicalPoint(point)
+            ...(annotation.annotation || {}),
+            coordinate_space: "model_local",
+            point           : SemAnnotations.toCanonicalPoint(point)
         }
     }) || structuredClone(annotation);
 
     normalized.point = SemAnnotations.normalizePoint(point);
     normalized.model_id = annotation.model_id;
+    normalized.annotation = {
+        ...(normalized.annotation || {}),
+        coordinate_space: "model_local",
+        point           : SemAnnotations.toCanonicalPoint(normalized.point)
+    };
 
     if (!normalized.name) normalized.name = `Semantic ${normalized.id}`;
     if (normalized.visible === undefined) normalized.visible = true;
@@ -146,14 +164,63 @@ SemAnnotations.toCanonicalAnnotation = (annotationId, data = {}) => {
         ...data,
         id        : data.id ?? annotationId,
         annotation: {
-            point: SemAnnotations.toCanonicalPoint(point)
+            ...(data.annotation || {}),
+            coordinate_space: "model_local",
+            point           : SemAnnotations.toCanonicalPoint(point)
         }
     }) || {
         id        : data.id ?? annotationId,
         annotation: {
-            point: SemAnnotations.toCanonicalPoint(point)
+            coordinate_space: "model_local",
+            point           : SemAnnotations.toCanonicalPoint(point)
         },
         visible: data.visible !== false
+    };
+};
+
+SemAnnotations.getModelNode = (modelId, create = false) => {
+    if (!modelId) return null;
+
+    return THOTH.Models?.modelMap?.get(modelId) ||
+        ATON.getSceneNode?.(modelId) ||
+        (create ? ATON.getOrCreateSceneNode?.(modelId) : null);
+};
+
+SemAnnotations._coordsToVector3 = (coords) => {
+    if (coords instanceof THREE.Vector3) return coords.clone();
+
+    return new THREE.Vector3(
+        Number(coords?.x ?? coords?.[0] ?? 0),
+        Number(coords?.y ?? coords?.[1] ?? 0),
+        Number(coords?.z ?? coords?.[2] ?? 0)
+    );
+};
+
+SemAnnotations.worldToModelLocal = (modelId, coords) => {
+    const model = SemAnnotations.getModelNode(modelId);
+    const point = SemAnnotations._coordsToVector3(coords);
+    if (!model) return point;
+
+    model.updateMatrixWorld(true);
+    return model.worldToLocal(point);
+};
+
+SemAnnotations.modelLocalToWorld = (modelId, coords) => {
+    const model = SemAnnotations.getModelNode(modelId);
+    const point = SemAnnotations._coordsToVector3(coords);
+    if (!model) return point;
+
+    model.updateMatrixWorld(true);
+    return model.localToWorld(point);
+};
+
+SemAnnotations.pointWorldToModelLocal = (modelId, point) => {
+    if (!point) return point;
+
+    const normalized = SemAnnotations.normalizePoint(point);
+    return {
+        ...normalized,
+        coords: SemAnnotations.worldToModelLocal(modelId || SemAnnotations.getPointModelId(normalized), normalized.coords)
     };
 };
 
@@ -284,13 +351,43 @@ SemAnnotations.getAnnotation = (annotationId) => {
     return SemAnnotations.semMap.get(SemAnnotations.getAnnotationKey(annotationId));
 };
 
+SemAnnotations._syncAnnotationPointCoordinates = (annotation) => {
+    if (!annotation?.point) return;
+
+    annotation.point = SemAnnotations.normalizePoint(annotation.point);
+    annotation.annotation = {
+        ...(annotation.annotation || {}),
+        coordinate_space: "model_local",
+        point           : SemAnnotations.toCanonicalPoint(annotation.point)
+    };
+};
+
 
 // Geometries
 
 SemAnnotations.createAnnotationNodes = () => {
-    const nodes = new ATON.Node("semanticAnnotations", ATON.NTYPES.UI);
-    ATON._mainRoot.add(nodes);
-    return nodes;
+    return new Map();
+};
+
+SemAnnotations.getModelAnnotationNode = (modelId) => {
+    if (!modelId) return null;
+    if (SemAnnotations.modelNodeMap.has(modelId)) {
+        const node = SemAnnotations.modelNodeMap.get(modelId);
+        if (node?.parent) return node;
+
+        SemAnnotations.modelNodeMap.delete(modelId);
+        SemAnnotations.nodes.delete(modelId);
+    }
+
+    const model = SemAnnotations.getModelNode(modelId, true);
+    if (!model) return null;
+
+    const node = new ATON.Node(`semanticAnnotations_${modelId}`, ATON.NTYPES.UI);
+    node.attachTo(model);
+    SemAnnotations.modelNodeMap.set(modelId, node);
+    SemAnnotations.nodes.set(modelId, node);
+
+    return node;
 };
 
 SemAnnotations.createPointFromHit = () => {
@@ -299,12 +396,13 @@ SemAnnotations.createPointFromHit = () => {
     const hit    = ATON._hitsScene[0];
     const mesh   = hit.object;
     const meshId = THOTH.Models?.getParent(mesh) ?? mesh.name;
+    const coords = SemAnnotations.worldToModelLocal(meshId, hit.point);
 
     return {
         meshId  : meshId,
         meshName: mesh.name,
         faceId  : hit.faceIndex,
-        coords  : hit.point
+        coords  : coords
     };
 };
 
@@ -337,13 +435,16 @@ SemAnnotations.createLabelSem = (annotationId) => {
 SemAnnotations.addTempAnnotationSem = (point) => {
     SemAnnotations.clearTempAnnotationSem();
     SemAnnotations.tempNode = SemAnnotations.createPointSem(point);
-    SemAnnotations.nodes.add(SemAnnotations.tempNode);
+    const modelNode = SemAnnotations.getModelAnnotationNode(SemAnnotations.getPointModelId(point));
+    if (modelNode) modelNode.add(SemAnnotations.tempNode);
 };
 
 SemAnnotations.clearTempAnnotationSem = () => {
     if (!SemAnnotations.tempNode) return;
 
-    SemAnnotations.nodes.remove(SemAnnotations.tempNode);
+    if (SemAnnotations.tempNode.parent) {
+        SemAnnotations.tempNode.parent.remove(SemAnnotations.tempNode);
+    }
     SemAnnotations.tempNode = null;
 };
 
@@ -353,6 +454,8 @@ SemAnnotations.addAnnotationSem = (annotationId) => {
     const annotationKey = SemAnnotations.getAnnotationKey(annotationId);
     const annotation = SemAnnotations.semMap.get(annotationKey);
     if (!annotation) return;
+    const modelNode = SemAnnotations.getModelAnnotationNode(annotation.model_id || SemAnnotations.getPointModelId(annotation.point));
+    if (!modelNode) return;
 
     const oldNode = SemAnnotations.semNodeMap.get(annotationKey);
     if (oldNode?.parent) oldNode.parent.remove(oldNode);
@@ -370,7 +473,7 @@ SemAnnotations.addAnnotationSem = (annotationId) => {
     });
 
     SemAnnotations.semNodeMap.set(annotationKey, node);
-    node.attachTo(SemAnnotations.nodes);
+    node.attachTo(modelNode);
 
     SemAnnotations.refreshMarkerScales();
     SemAnnotations.refreshAnnotationVisibility();
@@ -431,6 +534,7 @@ SemAnnotations.updateAnnotation = (annotationId, data) => {
 
     Object.assign(annotation, normalized);
     if (data.point) annotation.point = SemAnnotations.normalizePoint(data.point);
+    SemAnnotations._syncAnnotationPointCoordinates(annotation);
 
     SemAnnotations.updateAnnotationSem(annotationKey);
 
