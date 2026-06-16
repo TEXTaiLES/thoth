@@ -104,6 +104,73 @@ UI.createToolOptionRow = (label, control, tooltip) => {
     return elRow;
 };
 
+UI.createToolSlider = (options = {}) => {
+    const baseid = ATON.Utils.generateID("thoth-slider");
+    const range  = options.range || [0, 1];
+    const step   = options.step !== undefined ? options.step : 1;
+    const value  = options.value !== undefined ? options.value : range[0];
+
+    const el = ATON.UI.createContainer({
+        classes: "thoth-tool-slider"
+    });
+
+    if (options.classes) el.className = el.className + " " + options.classes;
+
+    const elInput = ATON.UI.elem(`
+        <input
+            type="range"
+            class="thoth-tool-slider-input aton-input"
+            min="${range[0]}"
+            max="${range[1]}"
+            step="${step}"
+            id="${baseid}"
+            value="${value}">
+    `);
+    ATON.UI.registerElementAsComponent(elInput, "input");
+
+    const elValue = document.createElement("span");
+    elValue.classList.add("thoth-tool-slider-value");
+    elValue.textContent = value;
+
+    const updateValue = () => {
+        elValue.textContent = elInput.value;
+    };
+
+    el.setValue = (nextValue, emitOptions = {}) => {
+        elInput.value = nextValue;
+        updateValue();
+
+        if (emitOptions.emitInput && options.oninput) options.oninput(elInput.value);
+        if (emitOptions.emitChange && options.onchange) options.onchange(elInput.value);
+    };
+
+    el.getValue = () => elInput.value;
+
+    elInput.onfocus = () => { ATON.UI._bInput = true; };
+    elInput.onblur  = () => { ATON.UI._bInput = false; };
+    elInput.oninput = () => {
+        updateValue();
+        if (options.oninput) options.oninput(elInput.value);
+    };
+    elInput.onchange = () => {
+        updateValue();
+        if (options.onchange) options.onchange(elInput.value);
+    };
+
+    el.append(elInput, elValue);
+
+    return el;
+};
+
+UI.syncToolSelectorSize = () => {
+    if (!UI._toolSelectorSizeSliders) return;
+    if (THOTH.Toolbox?.selectorSize === undefined) return;
+
+    for (const elSlider of UI._toolSelectorSizeSliders) {
+        if (elSlider) elSlider.setValue(THOTH.Toolbox.selectorSize);
+    }
+};
+
 UI.modelTransformControl = (options) => {
     // Same as ATON's but with parsable modelName 
     let baseid = ATON.Utils.generateID("ftrans");
@@ -975,18 +1042,22 @@ UI.createMeasureOptions = () => {
 
 UI.createBrushOptions = () => {
     const elContent = ATON.UI.createContainer();
+    const elSizeSlider = UI.createToolSlider({
+        range  : [
+            THOTH.Toolbox.selectorSizeMin,
+            THOTH.Toolbox.selectorSizeMax
+        ],
+        value  : THOTH.Toolbox.selectorSize,
+        oninput: (v) => THOTH.Toolbox.setSelectorSize(v)
+    });
+
+    if (!UI._toolSelectorSizeSliders) UI._toolSelectorSizeSliders = new Set();
+    UI._toolSelectorSizeSliders.add(elSizeSlider);
 
     // Size
     const elBrushSize = UI.createToolOptionRow(
         "Size",
-        ATON.UI.createSlider({
-            range  : [
-                THOTH.Toolbox.selectorSizeMin,
-                THOTH.Toolbox.selectorSizeMax
-            ],
-            value  : THOTH.Toolbox.selectorSize,
-            oninput: (v) => THOTH.Toolbox.setSelectorSize(v)
-        }),
+        elSizeSlider,
         "Select the size of the tool"
     );
     elContent.append(elBrushSize);
@@ -1000,7 +1071,7 @@ UI.createLassoOptions = () => {
     // Precision
     const elPrecision = UI.createToolOptionRow(
         "Pixel precision",
-        ATON.UI.createSlider({
+        UI.createToolSlider({
             range  : [0.1, 1],
             value  : THOTH.Toolbox.lassoPrecision,
             step    : 0.1,
@@ -1011,7 +1082,7 @@ UI.createLassoOptions = () => {
     // Normal
     const elNormal = UI.createToolOptionRow(
         "Normal threshold",
-        ATON.UI.createSlider({
+        UI.createToolSlider({
             range  : [-1, 1],
             step   : 0.1,
             value  : THOTH.Toolbox.normalThreshold,

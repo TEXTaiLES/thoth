@@ -50,6 +50,12 @@ Toolbox.setup = (toolboxDefaults) => {
 
 // Selector
 
+Toolbox.updateSelectorSize = () => {
+    Toolbox.selectorRadius = Toolbox.selectorBaseRadius * THOTH.Utils.computeRadius(Toolbox.selectorSize);
+    Toolbox.selectorMesh.scale.setScalar(Toolbox.selectorRadius);
+    THOTH.UI?.syncToolSelectorSize?.();
+};
+
 Toolbox.createSelectorMesh = (radius) => {
     let selectorGeometry = new THREE.SphereGeometry(1, 32, 16);
     let selectorMaterial = new THREE.MeshStandardMaterial({
@@ -71,26 +77,22 @@ Toolbox.createSelectorMesh = (radius) => {
 
 Toolbox.increaseSelectorSize = () => {
     if (Toolbox.selectorSize < Toolbox.selectorSizeMax) Toolbox.selectorSize += 1;
-    Toolbox.selectorRadius = Toolbox.selectorBaseRadius * THOTH.Utils.computeRadius(Toolbox.selectorSize);
-    Toolbox.selectorMesh.scale.setScalar(Toolbox.selectorRadius);
+    Toolbox.updateSelectorSize();
 };
 
 Toolbox.decreaseSelectorSize = () => {
     if (Toolbox.selectorSize > Toolbox.selectorSizeMin) Toolbox.selectorSize -= 1;
-    Toolbox.selectorRadius = Toolbox.selectorBaseRadius * THOTH.Utils.computeRadius(Toolbox.selectorSize);
-    Toolbox.selectorMesh.scale.setScalar(Toolbox.selectorRadius);
+    Toolbox.updateSelectorSize();
 };
 
 Toolbox.setSelectorSize = (size) => {
     Toolbox.selectorSize = parseInt(size);
-    Toolbox.selectorRadius = Toolbox.selectorBaseRadius * THOTH.Utils.computeRadius(Toolbox.selectorSize);
-    Toolbox.selectorMesh.scale.setScalar(Toolbox.selectorRadius);
+    Toolbox.updateSelectorSize();
 };
 
 Toolbox.setSelectorBaseRadius = (radius) => {
     Toolbox.selectorBaseRadius = parseFloat(radius);
-    Toolbox.selectorRadius = Toolbox.selectorBaseRadius * THOTH.Utils.computeRadius(Toolbox.selectorSize);
-    Toolbox.selectorMesh.scale.setScalar(Toolbox.selectorRadius);
+    Toolbox.updateSelectorSize();
 };
 
 

@@ -1,0 +1,11 @@
+{
+    "sensors": "insert endpoint",
+    "models": "insert endpoint",
+    "artefacts": "insert endpoint",
+    "scene": "insert endpoint",
+    "schemas": "insert endpoint",
+    "metadata": "insert endpoint",
+    "rgb_images": "insert endpoint",
+    "multispectral_images": "insert endpoint",
+    "authentication": "insert endpoint"
+}

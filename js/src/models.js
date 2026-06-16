@@ -85,9 +85,7 @@ Models.onLoad = (model, options = {}) => {
     THOTH.FE.addModel(model.name);
     THOTH.updateVisibility();
 
-    if (options.focus === true) {
-        Models.focusModel(model.name, options.duration);
-    }
+    Models.focusModel(model.name, options.duration);
 };
 
 
