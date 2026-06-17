@@ -134,12 +134,19 @@ MD._getBaseName = (value = "") => {
 MD._getSchemaEntryUrl = (schemaEntry) => {
     if (typeof schemaEntry === "string") return schemaEntry;
 
-    return schemaEntry?.url || schemaEntry?.href || schemaEntry?.path || "";
+    return schemaEntry?.schema_url ||
+        schemaEntry?.url ||
+        schemaEntry?.href ||
+        schemaEntry?.path ||
+        "";
 };
 
 MD._getSchemaEntryName = (schemaEntry, schemaUrl) => {
     if (typeof schemaEntry !== "string") {
-        const entryName = schemaEntry?.name || schemaEntry?.id || schemaEntry?.schemaName;
+        const entryName = schemaEntry?.schema?.name ||
+            schemaEntry?.name ||
+            schemaEntry?.id ||
+            schemaEntry?.schemaName;
         if (entryName) return MD._getBaseName(entryName);
     }
 
@@ -177,6 +184,14 @@ MD._registerSchema = (schemaMap, schemaName, schema, schemaUrl) => {
 };
 
 MD._loadSchemaList = async (schemaListUrl, schemaMap) => {
+    if (THOTH.API?.hasEndpoint?.("list_schemas")) {
+        const apiResponse = await THOTH.API.get("list_schemas");
+        if (apiResponse.ok) {
+            const loadedCount = await MD._loadSchemasFromEndpointList(apiResponse.data, schemaMap);
+            if (loadedCount > 0) return schemaMap;
+        }
+    }
+
     const localSchemaListUrl = THOTH.PATH_RES_SCHEMA + "list_of_schemas.json";
     const localResponse = await MD._requestFirstJSON(
         MD._getSchemaFileCandidates("list_of_schemas.json", schemaListUrl || localSchemaListUrl)
@@ -194,14 +209,44 @@ MD._loadSchemaList = async (schemaListUrl, schemaMap) => {
         }
     }
 
-    const apiResponse = await THOTH.API.get("metadata_schema_list");
-    if (apiResponse.ok) {
-        const loadedCount = await MD._loadSchemas(apiResponse.data, schemaMap, schemaListUrl);
-        if (loadedCount > 0) return schemaMap;
-    }
-
     await MD._loadDefaultSchema(schemaMap);
     return schemaMap;
+};
+
+MD._loadSchemasFromEndpointList = async (schemaList, schemaMap) => {
+    if (!Array.isArray(schemaList)) return 0;
+
+    const loaders = schemaList.map(async schemaEntry => {
+        const schemaName = MD._getSchemaEntryName(schemaEntry, schemaEntry);
+        if (!schemaName) return false;
+
+        let schemaUrl = "";
+        if (THOTH.API?.hasEndpoint?.("schema")) {
+            const response = await THOTH.API.get("schema", {
+                "schema.name": schemaName
+            });
+            if (response.ok) {
+                schemaUrl = response.data?.schema_url ||
+                    response.data?.url ||
+                    response.data?.href ||
+                    response.data?.path ||
+                    (typeof response.data === "string" ? response.data : "");
+            }
+        }
+
+        const rawSchemaUrl = schemaUrl || MD._getSchemaEntryUrl(schemaEntry) || `${schemaName}.json`;
+        const resolvedSchemaUrl = MD._resolveUrl(rawSchemaUrl, THOTH.PATH_RES_SCHEMA);
+        const fileName = String(rawSchemaUrl || resolvedSchemaUrl).split("/").filter(Boolean).pop();
+        const response = await MD._requestFirstJSON(
+            MD._getSchemaFileCandidates(fileName, resolvedSchemaUrl)
+        );
+        if (!response.ok) return false;
+
+        return MD._registerSchema(schemaMap, schemaName, response.data, response.url || resolvedSchemaUrl);
+    });
+
+    const results = await Promise.all(loaders);
+    return results.filter(Boolean).length;
 };
 
 MD._loadSchemas = async (schemaList, schemaMap, schemaListUrl) => {

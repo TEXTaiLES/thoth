@@ -1125,6 +1125,18 @@ UI.modalExport = () => {
 
     // Footer
     const elFooter = UI.createModalFooter({
+        actions: [
+            ATON.UI.createButton({
+                text   : "Download scene",
+                icon   : "download",
+                size   : "large",
+                variant: "secondary",
+                onpress: () => {
+                    THOTH.downloadSceneJSON();
+                    ATON.UI.hideModal();
+                }
+            })
+        ],
         onsuccess: () => {
             // THOTH.exportToHestia();
             THOTH.exportChanges();
@@ -1310,48 +1322,63 @@ UI.modalVPImage = (viewpoint) => {
 UI.modalAddModel = () => {
     // Get models
     THOTH.requireAuth("import models",
-        (u) => {
-            ATON.REQ.get(
-                // THOTH.config.maseDomain+"items/"+u.username+"/models",
-                "items/"+u.username+"/models/",
-                entries => {
-                    // Body
-                    const modelList = new Set();
+        async (u) => {
+            const response = await THOTH.API.listModels(u);
+            if (!response.ok) {
+                THOTH.FE.showToast("Error loading models:" + response.error);
+                return;
+            }
 
-                    const itemNames = entries.map(item => {
-                        return item.replace("items/"+u.username+"/models/", "")
-                    });
-                    const elInput = ATON.UI.createTagsComponent({
-                        list       : itemNames,
-                        label      : "Input models",
-                        icon       : "add",
-                        onaddtag   : (k) => modelList.add(k),
-                        onremovetag: (k) => modelList.delete(k)
-                    });
-                    elInput.classList.add("thoth-add-model-tags");
-        
-                    // Footer
-                    const elFooter = UI.createModalFooter({
-                        onsuccess  : () => {
-                            for (const modelURL of Array.from(modelList)) {
-                                THOTH.fire("addModel", modelURL);
-                            }
-                            ATON.UI.hideModal();
-                        },
-                        successText: "Add models"
-                    });
-        
-                    ATON.UI.showModal({
-                        header: "Add models",
-                        body  : elInput,
-                        footer: elFooter,
-                    });
-        
-                }, 
-                error => THOTH.FE.showToast("Error loading models:" + error),
-            );
+            const entries = Array.isArray(response.data) ? response.data : [];
+            const modelList = new Set();
+            const itemNames = entries
+                .map(item => UI._getModelListName(item, u))
+                .filter(Boolean);
+            const elInput = ATON.UI.createTagsComponent({
+                list       : itemNames,
+                label      : "Input models",
+                icon       : "add",
+                onaddtag   : (k) => modelList.add(k),
+                onremovetag: (k) => modelList.delete(k)
+            });
+            elInput.classList.add("thoth-add-model-tags");
+
+            // Footer
+            const elFooter = UI.createModalFooter({
+                onsuccess  : () => {
+                    for (const modelURL of Array.from(modelList)) {
+                        THOTH.fire("addModel", modelURL);
+                    }
+                    ATON.UI.hideModal();
+                },
+                successText: "Add models"
+            });
+
+            ATON.UI.showModal({
+                header: "Add models",
+                body  : elInput,
+                footer: elFooter,
+            });
         }
     );
+};
+
+UI._getModelListName = (item, user) => {
+    if (typeof item !== "string") {
+        return item?.["artefact.Title"] ||
+            item?.Title ||
+            item?.title ||
+            item?.name ||
+            item?.id ||
+            "";
+    }
+
+    const username = user?.username || user?.id || user?.name || "";
+    const prefix = `items/${username}/models/`;
+
+    if (item.startsWith(prefix)) return item.replace(prefix, "");
+
+    return item;
 };
 
 UI.modalMsrDetails = (msrId, draftData, options = {}) => {

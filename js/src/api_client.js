@@ -7,16 +7,20 @@
 let API = {};
 
 API.endpointNames = [
-    "artefacts",
-    "artefact",
+    "scene",
+    "list_models",
+    "glb_model",
+    "artefact_data",
+    "list_schemas",
+    "schema",
     "metadata",
-    "metadata_schema_list",
-    "metadata_schema",
-    "rgb_images",
-    "multispectral_images",
-    "related_artefacts",
-    "scene_export",
-    "model_import"
+    "list_rgb_images",
+    "rgb_image",
+    "list_multispectral_images",
+    "multispectral_image",
+    "list_sensors",
+    "sensor",
+    "authentication"
 ];
 
 API.setup = (config = {}) => {
@@ -32,10 +36,6 @@ API.setup = (config = {}) => {
     for (const name of API.endpointNames) {
         API.endpoints[name] = configuredEndpoints[name] || config[name];
     }
-
-    if (!API.endpoints.metadata_schema_list) {
-        API.endpoints.metadata_schema_list = config.schemaListUrl;
-    }
 };
 
 API.hasEndpoint = (name) => {
@@ -43,7 +43,22 @@ API.hasEndpoint = (name) => {
 };
 
 API.getEndpoint = (name) => {
-    return API.endpoints?.[name];
+    const endpoint = API.getEndpointConfig(name);
+
+    return endpoint?.endpoint_url || endpoint;
+};
+
+API.getEndpointConfig = (name) => {
+    if (API.config?.use_endpoints !== true) return undefined;
+
+    const endpoint = API.endpoints?.[name];
+    if (!endpoint) return undefined;
+
+    if (typeof endpoint === "string") return endpoint;
+    if (endpoint.enabled !== true) return undefined;
+    if (!endpoint.endpoint_url) return undefined;
+
+    return endpoint;
 };
 
 API.get = (name, params = {}) => {
@@ -67,10 +82,17 @@ API.put = (name, body = {}) => {
     });
 };
 
+API.patch = (name, body = {}) => {
+    return API._request(name, {
+        method: "PATCH",
+        body  : body
+    });
+};
+
 API.delete = (name, body = {}) => {
     return API._request(name, {
         method: "DELETE",
-        body: body
+        body  : body
     });
 };
 
@@ -87,8 +109,184 @@ API.withAuth = (callback, options = {}) => {
     return callback();
 };
 
+API.listModelsFallback = (user) => {
+    return new Promise(resolve => {
+        const username = API._getUsername(user);
+        if (!username) {
+            resolve({
+                ok   : false,
+                error: "Missing user"
+            });
+            return;
+        }
+
+        ATON.REQ.get(
+            `items/${username}/models/`,
+            entries => resolve({
+                ok  : true,
+                data: entries
+            }),
+            error => resolve({
+                ok   : false,
+                error: error || "Error loading models"
+            })
+        );
+    });
+};
+
+API.listModels = async (user) => {
+    if (API.hasEndpoint("list_models")) return API.get("list_models");
+
+    return API.listModelsFallback(user);
+};
+
+API.getGlbModel = async (modelName) => {
+    if (!modelName) {
+        return {
+            ok   : false,
+            error: "Missing model name"
+        };
+    }
+
+    if (!API.hasEndpoint("glb_model")) {
+        return {
+            ok  : true,
+            data: {
+                image_name: modelName,
+                gltf_file : modelName
+            }
+        };
+    }
+
+    return API.get("glb_model", {
+        "artefact.Title": modelName
+    });
+};
+
+API.getArtefactData = async (artefactTitle) => {
+    if (!artefactTitle) {
+        return {
+            ok   : false,
+            error: "Missing artefact title"
+        };
+    }
+
+    if (!API.hasEndpoint("artefact_data")) {
+        return {
+            ok  : true,
+            data: {}
+        };
+    }
+
+    return API.get("artefact_data", {
+        "artefact.Title": artefactTitle
+    });
+};
+
+API.getMetadata = async (artefactTitle) => {
+    if (!API.hasEndpoint("metadata")) {
+        const model = THOTH.SceneStore?.getModel(artefactTitle);
+        return {
+            ok  : true,
+            data: model?.metadata || {}
+        };
+    }
+
+    return API.get("metadata", {
+        "artefact.Title": artefactTitle
+    });
+};
+
+API.putMetadata = async (artefactTitle, metadata) => {
+    if (!API.hasEndpoint("metadata")) {
+        if (artefactTitle && metadata !== undefined) {
+            THOTH.SceneStore?.setModelField(artefactTitle, "metadata", metadata);
+        }
+        return {
+            ok  : true,
+            data: metadata
+        };
+    }
+
+    return API.put("metadata", {
+        "artefact.Title": artefactTitle,
+        body            : metadata
+    });
+};
+
+API.listRgbImages = async () => {
+    if (API.hasEndpoint("list_rgb_images")) return API.get("list_rgb_images");
+
+    return {
+        ok  : true,
+        data: []
+    };
+};
+
+API.getRgbImage = async (imageName) => {
+    if (API.hasEndpoint("rgb_image")) {
+        return API.get("rgb_image", {
+            image_name: imageName
+        });
+    }
+
+    return {
+        ok  : true,
+        data: null
+    };
+};
+
+API.listMultispectralImages = async () => {
+    if (API.hasEndpoint("list_multispectral_images")) {
+        return API.get("list_multispectral_images");
+    }
+
+    return {
+        ok  : true,
+        data: []
+    };
+};
+
+API.getMultispectralImage = async (imageName) => {
+    if (API.hasEndpoint("multispectral_image")) {
+        return API.get("multispectral_image", {
+            image_name: imageName
+        });
+    }
+
+    return {
+        ok  : true,
+        data: null
+    };
+};
+
+API.listSensors = async () => {
+    if (API.hasEndpoint("list_sensors")) return API.get("list_sensors");
+
+    return {
+        ok  : true,
+        data: []
+    };
+};
+
+API.getSensor = async (sensorId) => {
+    if (API.hasEndpoint("sensor")) {
+        return API.get("sensor", {
+            sensor_id: sensorId
+        });
+    }
+
+    return {
+        ok  : true,
+        data: {}
+    };
+};
+
 API._request = async (name, options = {}) => {
-    const endpoint = API.getEndpoint(name);
+    const endpointConfig = API.getEndpointConfig(name);
+    const endpoint = typeof endpointConfig === "string"
+        ? endpointConfig
+        : endpointConfig?.endpoint_url;
 
     if (!endpoint) {
         const error = `Missing endpoint: ${name}`;
@@ -105,6 +303,18 @@ API._request = async (name, options = {}) => {
             method : options.method || "GET",
             headers: API._buildHeaders(options.headers)
         };
+        const timeoutSeconds = Number(endpointConfig?.timeout_seconds);
+        let timeoutId;
+
+        if (
+            Number.isFinite(timeoutSeconds) &&
+            timeoutSeconds > 0 &&
+            typeof AbortController !== "undefined"
+        ) {
+            const controller = new AbortController();
+            timeoutId = setTimeout(() => controller.abort(), timeoutSeconds * 1000);
+            fetchOptions.signal = controller.signal;
+        }
 
         if (options.body instanceof FormData) {
             fetchOptions.body = options.body;
@@ -117,8 +327,10 @@ API._request = async (name, options = {}) => {
         const response = await fetch(requestUrl, fetchOptions);
         const contentType = response.headers.get("content-type") || "";
         const data = contentType.includes("application/json")
-            ? await response.json()
+            ? await API._readJSON(response)
             : await response.text();
+
+        if (timeoutId) clearTimeout(timeoutId);
 
         if (!response.ok) {
             return {
@@ -140,6 +352,13 @@ API._request = async (name, options = {}) => {
             error: err?.message || String(err)
         };
     }
+};
+
+API._readJSON = async (response) => {
+    const text = await response.text();
+    if (!text) return null;
+
+    return JSON.parse(text);
 };
 
 API._buildUrl = (endpoint, params = {}) => {
@@ -172,6 +391,10 @@ API._buildHeaders = (headers = {}) => {
     }
 
     return requestHeaders;
+};
+
+API._getUsername = (user) => {
+    return user?.username || user?.id || user?.name || THOTH.user?.username;
 };
 
 API._showToast = (message) => {

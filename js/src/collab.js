@@ -41,7 +41,7 @@ Collab.syncScene = (sobj) => {
 
 
 Collab.parseCollab = (collab) => {
-    if (collab === true) THOTH.collaborative = true;
+    THOTH.collaborative = collab === true;
 };
 
 

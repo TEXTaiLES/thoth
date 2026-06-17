@@ -67,6 +67,7 @@ THOTH.PATH_RES_SCHEMA = `${THOTH.BASE_URL}/js/res/schema/`;
 
 
 THOTH.scene_id = THOTH.params.get('scene_id');
+THOTH.collaborative = false;
 
 
 THOTH.requireAuth = (actionName, onAllowed) => {
@@ -147,63 +148,85 @@ THOTH.loadConfig = () => {
         "../../a/thoth/config.json",
         data => {
             THOTH.config = data;
-            THOTH.API.setup(data.endpoints);
+            THOTH.API.setup(data);
             ATON.fire("ConfigLoaded");
         },
         err => ATON.UI.showModal("Error loading config" + err)
     );
 };
 
-THOTH.loadScene = (scene_id) => {
+THOTH.loadScene = async (scene_id) => {
     if (scene_id === undefined) return;
 
     ATON.SceneHub._bLoading = true;
     console.log("Loading scene: " + THOTH.scene_id)
     
-    if (THOTH.API.scene /*change to correct variable*/) {
-        fetch(endpoint, {
-            method: "GET",
-            headers: {
-                "Authorization": `Bearer ${THOTH.config.authKey}`,
-                "Accept"       : "application/json"
-            }
-        })
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-            return response.json()
-        })
-        .then(data => {
-            console.log(data)
-            const scene = JSON.parse(data.scenes[0].content)
-            
-            ATON.SceneHub.currData = scene;
-            ATON.SceneHub.currID = scene_id;
+    if (THOTH.API.hasEndpoint("scene")) {
+        const response = await THOTH.API.get("scene", {
+            scene_id: scene_id
+        });
+
+        if (!response.ok) {
             ATON.SceneHub._bLoading = false;
-    
-            ATON.SceneHub.parseScene(scene);
-    
-            ATON.REQ.get("user", (u) => {
-                if (u === false) THOTH.setAuthState(null);
-                else THOTH.onLogin(u);
-            })
-            ATON.fire("SceneJSONLoaded", scene_id);
-        })
-        .catch(err => {
-            console.error("Fetch error:", err)
-        });        
+            THOTH.FE?.showToast?.(response.error || "Scene endpoint failed");
+            console.error("Scene endpoint failed:", response.error);
+            return;
+        }
+
+        const scene = THOTH._parseSceneEndpointResponse(response.data);
+        if (!scene) {
+            ATON.SceneHub._bLoading = false;
+            THOTH.FE?.showToast?.("Scene endpoint returned invalid content");
+            return;
+        }
+
+        ATON.SceneHub.currData = scene;
+        ATON.SceneHub.currID = scene_id;
+        ATON.SceneHub._bLoading = false;
+
+        ATON.SceneHub.parseScene(scene);
+        THOTH._syncAuthUser();
+        ATON.fire("SceneJSONLoaded", scene_id);
+        return;
     }
-    else {
-        ATON.SceneHub.load(
-            THOTH.config.ATONSceneUrl + THOTH.scene_id,
-            THOTH.scene_id,
-            () => {
-                ATON.REQ.get("user", (u) => {
-                    if (u === false) THOTH.setAuthState(null);
-                    else THOTH.onLogin(u);
-                });
-            }
-        );
+
+    THOTH._loadSceneFallback(scene_id);
+};
+
+THOTH._loadSceneFallback = (scene_id) => {
+    ATON.SceneHub.load(
+        THOTH.config.ATONSceneUrl + scene_id,
+        scene_id,
+        () => THOTH._syncAuthUser()
+    );
+};
+
+THOTH._syncAuthUser = () => {
+    ATON.REQ.get("user", (u) => {
+        if (u === false) THOTH.setAuthState(null);
+        else THOTH.onLogin(u);
+    });
+};
+
+THOTH._parseSceneEndpointResponse = (data) => {
+    const rawContent = data?.content ??
+        data?.scene?.content ??
+        data?.scenes?.[0]?.content ??
+        data;
+
+    if (typeof rawContent === "string") {
+        try {
+            return JSON.parse(rawContent);
+        }
+        catch (err) {
+            console.error("Invalid scene JSON:", err);
+            return null;
+        }
     }
+
+    if (rawContent && typeof rawContent === "object") return rawContent;
+
+    return null;
 };
 
 THOTH.update = () => {
@@ -329,29 +352,113 @@ THOTH.updateSceneScale = (model) => {
 
 // Export
 
-THOTH.exportChanges = () => {
+THOTH.exportChanges = async () => {
     if (!THOTH.requireAuth("export changes")) return;
 
     console.log("Exporting changes...");
 
-    let A = THOTH.getExportData();
+    const payload = THOTH.getExportData();
+    const response = THOTH.API.hasEndpoint("scene")
+        ? await THOTH._exportSceneEndpoint(payload)
+        : await THOTH._exportSceneFallback(payload);
 
-    const exportJson = JSON.stringify(A, null, 2);
-    const exportBlob = new Blob([exportJson], { type: "application/json" });
-    const exportUrl = URL.createObjectURL(exportBlob);
-    const exportLink = document.createElement("a");
-    exportLink.href = exportUrl;
-    exportLink.download = `${THOTH.scene_id || "scene"}.json`;
-    exportLink.click();
-    URL.revokeObjectURL(exportUrl);
-    THOTH.FE.showToast("Scene JSON downloaded locally.");
+    if (!response.ok) {
+        THOTH.FE.showToast(response.error || "Scene export failed");
+        return response;
+    }
+
+    THOTH.FE.showToast("Scene exported successfully.");
+    return response;
 };
 
 THOTH.getExportData = () => {
     return {
         models: THOTH.SceneStore.getExportData().models,
-        collaborative: THOTH.collaborative
+        collaborative: THOTH.collaborative === true
     };
+};
+
+THOTH.downloadSceneJSON = () => {
+    const payload = THOTH.getExportData();
+    const exportJson = JSON.stringify(payload, null, 2);
+    const exportBlob = new Blob([exportJson], { type: "application/json" });
+    const exportUrl = URL.createObjectURL(exportBlob);
+    const exportLink = document.createElement("a");
+
+    exportLink.href = exportUrl;
+    exportLink.download = `${THOTH.scene_id || "scene"}.json`;
+    exportLink.click();
+    URL.revokeObjectURL(exportUrl);
+    THOTH.FE.showToast("Scene JSON downloaded locally.");
+
+    return true;
+};
+
+THOTH._exportSceneEndpoint = (payload) => {
+    return THOTH.API.put("scene", {
+        scene_id: THOTH.scene_id,
+        body    : {
+            content: payload
+        }
+    });
+};
+
+THOTH._exportSceneFallback = async (payload) => {
+    if (!THOTH.scene_id) {
+        return {
+            ok   : false,
+            error: "Missing scene id"
+        };
+    }
+
+    const sceneUrl = THOTH.config.ATONSceneUrl + THOTH.scene_id;
+    const resetResponse = await THOTH._patchAtonScene(sceneUrl, {
+        mode: "DEL",
+        data: {
+            models       : {},
+            collaborative: {}
+        }
+    });
+    if (!resetResponse.ok) return resetResponse;
+
+    return THOTH._patchAtonScene(sceneUrl, {
+        mode: "ADD",
+        data: payload
+    });
+};
+
+THOTH._patchAtonScene = async (sceneUrl, body) => {
+    try {
+        const response = await fetch(new URL(sceneUrl, window.location.href).toString(), {
+            method : "PATCH",
+            headers: THOTH.API._buildHeaders(),
+            body   : JSON.stringify(body)
+        });
+        const contentType = response.headers.get("content-type") || "";
+        const data = contentType.includes("application/json")
+            ? await response.json()
+            : await response.text();
+
+        if (!response.ok) {
+            return {
+                ok    : false,
+                error : data || response.statusText,
+                status: response.status
+            };
+        }
+
+        return {
+            ok    : true,
+            data  : data,
+            status: response.status
+        };
+    }
+    catch (err) {
+        return {
+            ok   : false,
+            error: err?.message || String(err)
+        };
+    }
 };
 
 THOTH.getModelMetadataExportData = (modelId) => {
@@ -389,7 +496,7 @@ THOTH.exportModelMetadata = async (modelId) => {
         };
     }
 
-    const response = await THOTH.API.post("metadata", payload);
+    const response = await THOTH.API.putMetadata(modelId, payload);
     if (!response.ok) {
         THOTH.FE.showToast(response.error || "Metadata export failed");
         return response;

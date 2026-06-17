@@ -86,7 +86,7 @@ Artefacts.fetchArtefactDetails = async (artefactId) => {
         };
     }
 
-    const response = await THOTH.API.get("artefact", { id: artefactId });
+    const response = await THOTH.API.getArtefactData(artefactId);
     if (!response.ok) return response;
 
     return {

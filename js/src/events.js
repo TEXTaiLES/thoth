@@ -733,12 +733,30 @@ Events.setupModelEvents = () => {
     });
 
     // Add/Delete
-    THOTH.on("addModel", (id) => {
-        const modelId = id.split('/').filter(Boolean).pop();
+    THOTH.on("addModel", async (id) => {
+        const glbResponse = await THOTH.API.getGlbModel(id);
+        if (!glbResponse.ok) {
+            THOTH.FE?.showToast?.(glbResponse.error || "Error loading model URL");
+            return;
+        }
+
+        const modelURL = Events._getGlbModelUrl(glbResponse.data, id);
+        if (!modelURL) {
+            THOTH.FE?.showToast?.("No model URL found");
+            return;
+        }
+
+        const artefactResponse = await THOTH.API.getArtefactData(id);
+        const artefact = artefactResponse.ok
+            ? THOTH.Artefacts.normalize(artefactResponse.data || {})
+            : THOTH.Artefacts.normalize();
+        const modelId = (artefact.title || id).split('/').filter(Boolean).pop();
         const value = {
             id      : modelId,
             artefact: {
-                gltf_file: id
+                ...artefact,
+                title    : artefact.title || modelId,
+                gltf_file: artefact.gltf_file || modelURL
             }
         };
 
@@ -779,6 +797,17 @@ Events.setupModelEvents = () => {
             field   : "rotation"
         }, value, prevValue);
     }); 
+};
+
+Events._getGlbModelUrl = (data, fallbackUrl) => {
+    if (typeof data === "string") return data;
+
+    return data?.gltf_file ||
+        data?.glb_file ||
+        data?.url ||
+        data?.path ||
+        data?.src ||
+        fallbackUrl;
 };
 
 Events.setupToolboxEvents = () => {
