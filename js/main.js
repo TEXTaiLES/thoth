@@ -66,8 +66,8 @@ THOTH.PATH_RES_ICONS  = `${THOTH.BASE_URL}/js/res/icons/`;
 THOTH.PATH_RES_SCHEMA = `${THOTH.BASE_URL}/js/res/schema/`;
 
 
-THOTH.sid = THOTH.params.get('s');
-// THOTH.oid = THOTH.params.get('id');
+THOTH.scene_id = THOTH.params.get('scene_id');
+
 
 THOTH.requireAuth = (actionName, onAllowed) => {
     return THOTH.Auth.requireAuth(actionName, onAllowed);
@@ -143,23 +143,55 @@ THOTH.setup = () => {
             // Init front end 
             THOTH.FE.setup();
             THOTH.FE.setupToolboxElements();
-
-            if (THOTH.sid) {
-                ATON.SceneHub.load(
-                    THOTH.config.baseSceneUrl + THOTH.sid,
-                    THOTH.sid,
-                    () => {
-                        THOTH.initData = ATON.SceneHub.currData;
-                        ATON.REQ.get("user", (u) => {
-                            if (u === false) THOTH.setAuthState(null);
-                            else THOTH.onLogin(u);
-                        });
-
-                    }
-                );
+            
+            // Load scene
+            if (THOTH.scene_id) {
+                THOTH.loadScene(THOTH.scene_id)
             }
         })
     })
+};
+
+THOTH.loadScene = (scene_id) => {
+    ATON.SceneHub._bLoading = true;
+    console.log("Loading scene: " + THOTH.scene_id)
+    
+    let scene_contents = {}
+
+    if (THOTH.scene_endpoint) {
+        const endpoint = undefined; // modify
+         fetch(THOTH.scene_endpoint, {
+            method: "GET",
+            headers: {
+                //
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+            return response.json()
+        })
+        .then(data => {
+            const scene = JSON.parse(data.scenes[0].content)
+            //
+        })
+        .catch(err => {
+            console.error("Fetch error:", err)
+        });
+    }
+    else {
+        ATON.SceneHub.load(
+            THOTH.config.baseSceneUrl + THOTH.scene_id,
+            THOTH.scene_id,
+            () => {
+                THOTH.initData = ATON.SceneHub.currData;
+                ATON.REQ.get("user", (u) => {
+                    if (u === false) THOTH.setAuthState(null);
+                    else THOTH.onLogin(u);
+                });
+
+            }
+        );
+    }
 };
 
 THOTH.update = () => {
@@ -283,67 +315,6 @@ THOTH.updateSceneScale = (model) => {
 };
 
 
-// Texture Maps
-
-// TODO: update this for multi-mesh
-THOTH.updateNormalMap = (path, mesh, intensity = 10) => {
-    if (!path) return false;
-    if (mesh === undefined) mesh = THOTH.Scene.mainMesh;
-
-    THOTH.textureLoader.load(path, (tex)=>{
-        const mat = mesh.material;
-
-        if (mat.normalMap) {
-            mat.normalMap.image = tex.image;
-        }
-        else {
-            mat.normalMap       = tex;
-            mat.normalMap.flipY = false;
-            mat.normalMap.wrapS = mat.map.wrapS;
-            mat.normalMap.wrapT = mat.map.wrapT;
-            mat.normalScale.set(intensity, intensity);
-            // mat.normalScale.set(intensity, -intensity);
-        }
-        mat.normalMap.needsUpdate   = true;
-        mat.needsUpdate             = true;
-        THOTH.updateVisibility(mesh);
-    });
-};
-
-THOTH.removeNormalMap = (mesh) => {
-    if (mesh === undefined) mesh = THOTH.Scene.mainMesh;
-    const mat = mesh.material;
-
-    if (mat.normalMap) {
-        mat.normalMap.dispose();
-        mat.normalMap = null;
-        mat.needsUpdate = true;
-        THOTH.updateVisibility(mesh);
-    }
-};
-
-THOTH.updateTextureMap = (path, mesh) => {
-    if (!path) return false;
-    if (mesh === undefined) mesh = THOTH.Scene.mainMesh;
-
-    THOTH.textureLoader.load(path, (tex)=>{
-        const mat = mesh.material;
-
-        if (mat.map) {
-            mat.map.image = tex.image;
-        }
-        else {
-            mat.map = tex;
-            mat.map.wrapS = mat.map.wrapS;
-            mat.map.wrapT = mat.map.wrapT;
-        }
-        mat.map.needsUpdate = true;
-        mat.needsUpdate     = true;
-        THOTH.updateVisibility(mesh);
-    });
-};
-
-
 // Export
 
 THOTH.exportChanges = () => {
@@ -358,95 +329,10 @@ THOTH.exportChanges = () => {
     const exportUrl = URL.createObjectURL(exportBlob);
     const exportLink = document.createElement("a");
     exportLink.href = exportUrl;
-    exportLink.download = `${THOTH.sid || "scene"}.json`;
+    exportLink.download = `${THOTH.scene_id || "scene"}.json`;
     exportLink.click();
     URL.revokeObjectURL(exportUrl);
     THOTH.FE.showToast("Scene JSON downloaded locally.");
-    
-    // Remove all annotation objects and ADD them again with changes
-    // ATON.REQ.patch(
-    //     THOTH.config.baseSceneUrl + THOTH.sid,
-    //     {
-    //         data: THOTH.initData,
-    //         mode: "DEL"
-    //     },
-    //     () => {},
-    //     err => {
-    //         console.log(err);
-    //         return;
-    //     }
-    // );
-
-    // Patch changes
-    // ATON.REQ.patch(
-    //     THOTH.config.baseSceneUrl + THOTH.sid,
-    //     {
-    //         data: A,
-    //         mode: "ADD"
-    //     },
-    //     () => {
-    //         THOTH.FE.showToast("Changes exported successfully!");
-    //         // Update for next export;
-    //         THOTH.initData = A;
-    //     },
-    //     (err) => console.log(err)
-    // );
-
-};
-
-THOTH.exportToHestia = async () => {
-    if (!THOTH.requireAuth("export changes")) return {
-        ok   : false,
-        error: "Authentication required"
-    };
-
-    console.log("Exporting to Hestia");
-
-    const endpoint = THOTH.config.hestiaEndpoint || THOTH.config.endpoint;
-    const token    = THOTH.config.hestiaToken || THOTH.config.token;
-
-    if (!endpoint) {
-        THOTH.FE.showToast("Missing endpoint: scene_export");
-        return {
-            ok   : false,
-            error: "Missing endpoint: scene_export"
-        };
-    }
-
-    // FORM DATA
-    const formData = new FormData();
-    // Scene id
-    formData.append("scene_id", THOTH.sid);
-    // Model urls
-    for (const modelName in THOTH.Models.modelMap) {
-        formData.append("file", THOTH.Models.getModelURL(modelName));
-    }
-    // Payload
-    const payload = THOTH.getExportData();
-    formData.append("scene", JSON.stringify(payload));
-    
-    // POST
-    const response = await fetch(endpoint, {
-        method: "POST",
-        header: {
-            Authorization: `Bearer ${token}`,
-        },
-        body: formData
-    });
-    
-    // RESPONSE
-    if (!response.ok) {
-        const text = await response.text;
-        THOTH.FE.showToast(text)
-        throw new Error(
-            `Export failed (${response.status}): ${text}`
-        );
-    }
-    else {
-        THOTH.FE.showToast("Export successful!");
-    }
-
-    return response.json();
 };
 
 THOTH.getExportData = () => {

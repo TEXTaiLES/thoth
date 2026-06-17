@@ -1,0 +1,137 @@
+{
+    "annotation_avro_schema": {
+        "scene_id": "str",
+        "content (the entire scene content)": "str"
+    },
+    "scene": {
+        "GET": {
+            "functionality": "Reads the scene_id from the url params, uses it to read and load the scene contents",
+            "request": {
+                "scene_id": "str"
+            },
+            "response": {
+                "content": "str"
+            },
+            "fallback": "existing scene loading logic"
+        },
+        "PUT": {
+            "functionality": "Export changes for specified scene_id and replace existing content",
+            "request": {
+                "scene_id": "str",
+                "body": {
+                    "content": "object"
+                }
+            },
+            "fallback": "Use ATON's existing scene update API to update local scene"
+        }
+    },
+    "model_list": {
+        "functionality": "Retrieve list of available models to list",
+        "response": [
+            "artefact.Title"
+        ],
+        "fallback": "ATON's api (existing logic)"
+    },
+    "glb_model": {
+        "request": {
+            "artefact.Title": "str"
+        },
+        "response": {
+            "gltf_file_(the one that works)": "url"
+        }
+    },
+    "artefact_data": {
+        "request": {
+            "artefact.Title": "str"
+        },
+        "response": {
+            "artefact.title": "str",
+            "artefact.glb_file": "str",
+            "artefact.description": "str",
+            "artefact.owner": "str",
+            "artefact.keywords": [
+                "str",
+                "str"
+            ],
+            "artefact.copyright": "str"
+        }
+    },
+    "list_schemas": {
+        "response": [
+            "schema.name"
+        ]
+    },
+    "schema": {
+        "request": {
+            "schema.name" : "str"
+        },
+        "response": {
+            "schema_url": "str"
+        }
+    },
+    "metadata": {
+        "GET": {
+            "request": {
+                "artefact.Title": "str"
+            },
+            "response": {
+                "artefact.metadata": "object"
+            }
+        },
+        "PUT" : {
+            "request": {
+                "artefact.Title": "str",
+                "body": "artefact.metadata"
+            }
+        }
+    },
+    "list_rgb_images": {
+        "response" : [
+            "image_name",
+            "description" 
+        ]
+    },
+    "rgb_image": {
+        "request": {
+            "image_name": "str"
+        },
+        "response": {
+            "image_name": "str",
+            "image_url": "str",
+            "description": "null for now"
+        }
+    },
+    "list_multispectral_images": "same as rgb_but for multispectral",
+    "multispectral_image": {
+        "request": {
+            "image_name": "str"
+        },
+        "response": {
+            "image_name": "str",
+            "image_url": {
+                "url_for_x_nm": "str"
+            },
+            "description": "null for now"
+        }
+    },
+    "list_sensors": {
+        "response": [
+            "sensor_id"
+        ]
+    },
+    "sensor": {
+        "request": {
+            "sensor_id": "str"
+        },
+        "response": {
+            "latest_reading": "object"
+        }
+    },
+    "authentication": {
+        "POST": {
+            "body": {
+                "cookie": "str"
+            }
+        }
+    }
+}

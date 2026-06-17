@@ -1,11 +1,16 @@
 {
-    "sensors": "insert endpoint",
-    "models": "insert endpoint",
-    "artefacts": "insert endpoint",
-    "scene": "insert endpoint",
-    "schemas": "insert endpoint",
-    "metadata": "insert endpoint",
-    "rgb_images": "insert endpoint",
-    "multispectral_images": "insert endpoint",
-    "authentication": "insert endpoint"
+    "scene": "endpoint_url",
+    "list_models": "endpoint_url",
+    "glb_model": "endpoint_url",
+    "artefact_data": "endpoint_url",
+    "list_schemas": "endpoint_url",
+    "schema": "endpoint_url",
+    "metadata": "endpoint_url",
+    "list_rgb_images": "endpoint_url",
+    "rgb_image": "endpoint_url",
+    "list_multispectral_images": "endpoint_url",
+    "multispectral_image": "endpoint_url",
+    "list_sensors": "endpoint_url",
+    "sensor": "endpoint_url",
+    "authentication": "endpoint_url"
 }
