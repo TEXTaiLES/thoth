@@ -43,6 +43,45 @@ Selections._getSelectionColor = (selectionId, data = {}) => {
         THOTH.Utils.getHighlightColor(selectionId);
 };
 
+Selections._parseFaceRangeString = (value = "") => {
+    const faces = [];
+    const parts = String(value).split(",");
+
+    for (const rawPart of parts) {
+        const part = rawPart.trim();
+        if (!part) continue;
+
+        const rangeMatch = part.match(/^(\d+)\s*-\s*(\d+)$/);
+        if (rangeMatch) {
+            const start = Number(rangeMatch[1]);
+            const end   = Number(rangeMatch[2]);
+            const step  = start <= end ? 1 : -1;
+
+            for (let face = start; face !== end + step; face += step) {
+                faces.push(face);
+            }
+            continue;
+        }
+
+        const face = Number(part);
+        if (Number.isInteger(face) && face >= 0) faces.push(face);
+    }
+
+    return faces;
+};
+
+Selections._normalizeFaceList = (faces) => {
+    const rawFaces = typeof faces === "string"
+        ? Selections._parseFaceRangeString(faces)
+        : Array.from(faces || []);
+
+    return Array.from(new Set(
+        rawFaces
+            .map(face => Number(face))
+            .filter(face => Number.isInteger(face) && face >= 0)
+    ));
+};
+
 Selections._normalizeSelectedFaces = (data = {}) => {
     const selectedFaces = data.annotation?.selected_faces ||
         data.selected_faces ||
@@ -51,7 +90,7 @@ Selections._normalizeSelectedFaces = (data = {}) => {
 
     let output = {};
     for (const meshId in selectedFaces) {
-        output[meshId] = Array.from(new Set(selectedFaces[meshId] || []));
+        output[meshId] = Selections._normalizeFaceList(selectedFaces[meshId]);
     }
 
     return output;
@@ -335,6 +374,52 @@ Selections.refreshAllHighlights = () => {
     }
 };
 
+Selections._encodeFaceRangeString = (faces) => {
+    const sortedFaces = Selections._normalizeFaceList(faces)
+        .sort((a, b) => a - b);
+    const ranges = [];
+
+    let rangeStart = null;
+    let previousFace = null;
+
+    for (const face of sortedFaces) {
+        if (rangeStart === null) {
+            rangeStart = face;
+            previousFace = face;
+            continue;
+        }
+
+        if (face === previousFace + 1) {
+            previousFace = face;
+            continue;
+        }
+
+        ranges.push(rangeStart === previousFace
+            ? String(rangeStart)
+            : `${rangeStart}-${previousFace}`);
+        rangeStart = face;
+        previousFace = face;
+    }
+
+    if (rangeStart !== null) {
+        ranges.push(rangeStart === previousFace
+            ? String(rangeStart)
+            : `${rangeStart}-${previousFace}`);
+    }
+
+    return ranges.join(",");
+};
+
+Selections._encodeSelectedFaces = (selectedFaces = {}) => {
+    let output = {};
+
+    for (const meshId in selectedFaces) {
+        output[meshId] = Selections._encodeFaceRangeString(selectedFaces[meshId]);
+    }
+
+    return output;
+};
+
 Selections.getExportData = (modelId) => {
     const collection = THOTH.SceneStore?.getModel(modelId)?.selections || {};
     let output = {};
@@ -351,7 +436,7 @@ Selections.getExportData = (modelId) => {
             related_multispectral_images: selection.related_multispectral_images,
             related_artefacts           : selection.related_artefacts,
             annotation                  : {
-                selected_faces : Selections._getFaces(selection),
+                selected_faces : Selections._encodeSelectedFaces(Selections._getFaces(selection)),
                 selection_color: selection.selection_color
             },
             visible                     : selection.visible !== false
