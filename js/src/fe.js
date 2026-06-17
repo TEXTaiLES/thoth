@@ -73,7 +73,7 @@ FE.setupToolboxElements = () => {
         FE.userToolbar.append(FE.exportButton);
     }
 
-    if (THOTH.config.toolbox && !FE.toolMap) {
+    if (!FE.toolMap) {
         FE.toolMap        = FE.initToolMap();
         FE.toolOptMap     = FE.initToolOptMap();
         FE.toolOptToolbar = FE.setupToolOptToolbar();

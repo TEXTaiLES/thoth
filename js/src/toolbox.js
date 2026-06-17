@@ -17,13 +17,13 @@ let Toolbox = {};
 
 Toolbox.setup = (toolboxDefaults) => {
     // Adjustable params
-    Toolbox.lassoPrecision        = toolboxDefaults?.lassoPrecision ?? 0.1;           // between 0.1 and 1
-    Toolbox.normalThreshold       = toolboxDefaults?.normalThreshold ?? 1;            // between -1 and 1
-    Toolbox.selectObstructedFaces = toolboxDefaults?.selectObstructedFaces ?? false;
-    Toolbox.selectorBaseRadius    = toolboxDefaults?.selectorBaseRadius ?? 1;
-    Toolbox.selectorSize          = toolboxDefaults?.selectorSize ?? 3;
-    Toolbox.selectorSizeMin       = toolboxDefaults?.selectorSizeMin ?? 0;
-    Toolbox.selectorSizeMax       = toolboxDefaults?.selectorSizeMax ?? 10;
+    Toolbox.lassoPrecision        = 0.1; // between 0.1 and 1
+    Toolbox.normalThreshold       = 1;   // between -1 and 1
+    Toolbox.selectObstructedFaces = false;
+    Toolbox.selectorBaseRadius    = 1;
+    Toolbox.selectorSize          = 3;
+    Toolbox.selectorSizeMin       = 0;
+    Toolbox.selectorSizeMax       = 10;
 
     Toolbox.enabled        = false;
     Toolbox.brushEnabled   = false;

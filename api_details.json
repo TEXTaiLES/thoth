@@ -12,7 +12,7 @@
             "response": {
                 "content": "str"
             },
-            "fallback": "existing scene loading logic"
+            "fallback": "existing scene loading logic using ATON's scenehub parsing"
         },
         "PUT": {
             "functionality": "Export changes for specified scene_id and replace existing content",
@@ -22,25 +22,28 @@
                     "content": "object"
                 }
             },
-            "fallback": "Use ATON's existing scene update API to update local scene"
+            "fallback": "Use ATON's existing scene API to update local scene"
         }
     },
-    "model_list": {
-        "functionality": "Retrieve list of available models to list",
+    "list_models": {
+        "functionality": "Retrieve list of available models as list",
         "response": [
             "artefact.Title"
         ],
-        "fallback": "ATON's api (existing logic)"
+        "fallback": "List model urls from aton's internal api"
     },
     "glb_model": {
+        "functionality": "Get the glb file of the corresponding model",
         "request": {
             "artefact.Title": "str"
         },
         "response": {
             "gltf_file_(the one that works)": "url"
-        }
+        },
+        "fallback": "If model_list is an invalid endpoint then assume we fall back to reading from ATON's API. Then model name == model url"
     },
     "artefact_data": {
+        "functionality": "Given a model name, get the corresponding artefact details",
         "request": {
             "artefact.Title": "str"
         },
@@ -54,22 +57,28 @@
                 "str"
             ],
             "artefact.copyright": "str"
-        }
+        },
+        "fallback": "No aton artefact details - return empty"
     },
     "list_schemas": {
+        "functionality": "Get list of schemas",
         "response": [
             "schema.name"
-        ]
+        ],
+        "fallback": "Read schemas from res folder"
     },
     "schema": {
+        "functionality": "Get schema url from its name",
         "request": {
             "schema.name" : "str"
         },
         "response": {
             "schema_url": "str"
-        }
+        },
+        "fallback": "If list_schemas is invalid then assume we fall back to reading from res folder. Then schema name == schema url"
     },
     "metadata": {
+        "functionality": "Get the metadata of a specific object as an object",
         "GET": {
             "request": {
                 "artefact.Title": "str"
@@ -86,10 +95,12 @@
         }
     },
     "list_rgb_images": {
+        "functionality": "Get list of rgb images",
         "response" : [
             "image_name",
             "description" 
-        ]
+        ],
+        "fallback": "No rgb image endpoint in ATON - return empty"
     },
     "rgb_image": {
         "request": {
@@ -99,10 +110,19 @@
             "image_name": "str",
             "image_url": "str",
             "description": "null for now"
-        }
+        },
+        "fallback" : "No rgb image endpoint in ATON - return null"
     },
-    "list_multispectral_images": "same as rgb_but for multispectral",
+    "list_multispectral_images": {
+        "functionality": "Get list of multispectral images",
+        "response" : [
+            "image_name",
+            "description" 
+        ],
+        "fallback": "No multispectral images in ATON - return empty"
+    },
     "multispectral_image": {
+        "functionality": "Get set of images for multispectral viewing",
         "request": {
             "image_name": "str"
         },
@@ -112,20 +132,25 @@
                 "url_for_x_nm": "str"
             },
             "description": "null for now"
-        }
+        },
+        "fallback" : "No rgb image endpoint in ATON - return null"
     },
     "list_sensors": {
+        "functionality": "Get list of sensors",
         "response": [
             "sensor_id"
-        ]
+        ],
+        "fallback": "No equivalent ATON feature - return empty"
     },
     "sensor": {
+        "functionality": "Get final reading object of a sensor",
         "request": {
             "sensor_id": "str"
         },
         "response": {
             "latest_reading": "object"
-        }
+        },
+        "fallback": "Return empty"
     },
     "authentication": {
         "POST": {

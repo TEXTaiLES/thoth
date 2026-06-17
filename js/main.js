@@ -104,15 +104,7 @@ THOTH.setup = () => {
     });
 
     // Load config
-    ATON.REQ.get(
-        "../../a/thoth/config.json",
-        data => {
-            THOTH.config = data;
-            THOTH.API.setup(data);
-            ATON.fire("ConfigLoaded");
-        },
-        err => ATON.UI.showModal("Error loading schema" + err)
-    );
+    THOTH.loadConfig();
 
     ATON.on("AllFlaresReady", () =>{
         ATON.on("ConfigLoaded", () => {
@@ -135,7 +127,7 @@ THOTH.setup = () => {
             // Init events
             THOTH.Events.setup();
             // Init toolbox
-            THOTH.Toolbox.setup(THOTH.config.toolboxDefaults);
+            THOTH.Toolbox.setup();
             // Init measurements
             THOTH.MSR.setup();
             // Init semantic annotations
@@ -145,25 +137,35 @@ THOTH.setup = () => {
             THOTH.FE.setupToolboxElements();
             
             // Load scene
-            if (THOTH.scene_id) {
-                THOTH.loadScene(THOTH.scene_id)
-            }
+            THOTH.loadScene(THOTH.scene_id)
         })
     })
 };
 
+THOTH.loadConfig = () => {
+    ATON.REQ.get(
+        "../../a/thoth/config.json",
+        data => {
+            THOTH.config = data;
+            THOTH.API.setup(data.endpoints);
+            ATON.fire("ConfigLoaded");
+        },
+        err => ATON.UI.showModal("Error loading config" + err)
+    );
+};
+
 THOTH.loadScene = (scene_id) => {
+    if (scene_id === undefined) return;
+
     ATON.SceneHub._bLoading = true;
     console.log("Loading scene: " + THOTH.scene_id)
     
-    let scene_contents = {}
-
-    if (THOTH.scene_endpoint) {
-        const endpoint = undefined; // modify
-         fetch(THOTH.scene_endpoint, {
+    if (THOTH.API.scene /*change to correct variable*/) {
+        fetch(endpoint, {
             method: "GET",
             headers: {
-                //
+                "Authorization": `Bearer ${THOTH.config.authKey}`,
+                "Accept"       : "application/json"
             }
         })
         .then(response => {
@@ -171,24 +173,34 @@ THOTH.loadScene = (scene_id) => {
             return response.json()
         })
         .then(data => {
+            console.log(data)
             const scene = JSON.parse(data.scenes[0].content)
-            //
+            
+            ATON.SceneHub.currData = scene;
+            ATON.SceneHub.currID = scene_id;
+            ATON.SceneHub._bLoading = false;
+    
+            ATON.SceneHub.parseScene(scene);
+    
+            ATON.REQ.get("user", (u) => {
+                if (u === false) THOTH.setAuthState(null);
+                else THOTH.onLogin(u);
+            })
+            ATON.fire("SceneJSONLoaded", scene_id);
         })
         .catch(err => {
             console.error("Fetch error:", err)
-        });
+        });        
     }
     else {
         ATON.SceneHub.load(
-            THOTH.config.baseSceneUrl + THOTH.scene_id,
+            THOTH.config.ATONSceneUrl + THOTH.scene_id,
             THOTH.scene_id,
             () => {
-                THOTH.initData = ATON.SceneHub.currData;
                 ATON.REQ.get("user", (u) => {
                     if (u === false) THOTH.setAuthState(null);
                     else THOTH.onLogin(u);
                 });
-
             }
         );
     }
@@ -337,7 +349,8 @@ THOTH.exportChanges = () => {
 
 THOTH.getExportData = () => {
     return {
-        models: THOTH.SceneStore.getExportData().models
+        models: THOTH.SceneStore.getExportData().models,
+        collaborative: THOTH.collaborative
     };
 };
 
@@ -392,23 +405,16 @@ THOTH.exportModelMetadata = async (modelId) => {
 THOTH.onLogin = (u) => {
     THOTH.setAuthState(u);
 
-    if (THOTH._mutationEventsReady) {
-        THOTH.FE.setupToolboxElements();
-        if (THOTH.collaborative) ATON.Photon.connect();
-        return;
-    }
-
     // Allow events
     THOTH.Events.setupPhotonEvents();
     THOTH.Events.setupSelectionEvents();
     THOTH.Events.setupModelEvents();
     THOTH.Events.setupMeasurementEvents();
     THOTH.Events.setupSemanticAnnotationEvents();
-    if (THOTH.config.toolbox) THOTH.Events.setupToolboxEvents();
+    THOTH.Events.setupToolboxEvents();
     
     // Update FE
     THOTH.FE.setupToolboxElements();
-    THOTH._mutationEventsReady = true;
     
     // Join collaborative
     if (THOTH.collaborative) ATON.Photon.connect();
