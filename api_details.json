@@ -4,6 +4,12 @@
         "content (the entire scene content)": "str"
     },
     "scene": {
+        "POST": {
+            "functionality": "Creates an empty scene with the specified object if it does not exist.",
+            "request": {
+                "scene_id": "str"
+            }
+        },
         "GET": {
             "functionality": "Reads the scene_id from the url params, uses it to read and load the scene contents",
             "request": {
@@ -32,40 +38,68 @@
         ],
         "fallback": "List model urls from aton's internal api"
     },
-    "glb_model": {
-        "functionality": "Get the glb file of the corresponding model",
-        "request": {
-            "artefact.Title": "str"
-        },
-        "response": {
-            "gltf_file_(the one that works)": "url"
-        },
-        "fallback": "If model_list is an invalid endpoint then assume we fall back to reading from ATON's API. Then model name == model url"
-    },
-    "artefact_data": {
-        "functionality": "Given a model name, get the corresponding artefact details",
-        "request": {
-            "artefact.Title": "str"
-        },
-        "response": {
-            "artefact.title": "str",
-            "artefact.glb_file": "str",
-            "artefact.description": "str",
-            "artefact.owner": "str",
-            "artefact.keywords": [
-                "str",
-                "str"
-            ],
-            "artefact.copyright": "str"
-        },
-        "fallback": "No aton artefact details - return empty"
-    },
     "list_schemas": {
         "functionality": "Get list of schemas",
         "response": [
             "schema.name"
         ],
         "fallback": "Read schemas from res folder"
+    },
+    "list_rgb_images": {
+        "functionality": "Get list of rgb images",
+        "response" : [
+            "image_name",
+            "description" 
+        ],
+        "fallback": "No rgb image endpoint in ATON - return empty"
+    },
+    "list_multispectral_images": {
+        "functionality": "Get list of multispectral images",
+        "response" : [
+            "image_name",
+            "description" 
+        ],
+        "fallback": "No multispectral images in ATON - return empty"
+    },
+    "list_sensors": {
+        "functionality": "Get list of sensors",
+        "response": [
+            "sensor_id"
+        ],
+        "fallback": "No equivalent ATON feature - return empty"
+    },
+    "full_artefact_metadata": {
+        "functionality": "Get everything related to the artefact, including many other fields",
+        "request": {
+            "artefact.Title": "str",
+            "data_type": "str = 'json'"
+        },
+        "response": {
+            "artefact metadata": {
+                "artefact_data": {
+                    "artefact.title": "str",
+                    "artefact.glb_file": "str",
+                    "artefact.description": "str",
+                    "artefact.owner": "str",
+                    "artefact.keywords": [
+                        "str",
+                        "str"
+                    ],
+                    "artefact.copyright": "str"
+                },
+                "annotations": {
+                    "artefact.annotations": "object"
+                },
+                "sensorial_data": {
+                    "related_sensor_id": "str",
+                    "latest_reading": "object"
+                },
+                "artefact_metadata": {
+                    "artefact.metadata": "object"
+                }
+            }
+        },
+        "fallback": "No internal replacement. Fetch scene and model from ATON, ignore other fields."
     },
     "schema": {
         "functionality": "Get schema url from its name",
@@ -94,14 +128,6 @@
             }
         }
     },
-    "list_rgb_images": {
-        "functionality": "Get list of rgb images",
-        "response" : [
-            "image_name",
-            "description" 
-        ],
-        "fallback": "No rgb image endpoint in ATON - return empty"
-    },
     "rgb_image": {
         "request": {
             "image_name": "str"
@@ -112,14 +138,6 @@
             "description": "null for now"
         },
         "fallback" : "No rgb image endpoint in ATON - return null"
-    },
-    "list_multispectral_images": {
-        "functionality": "Get list of multispectral images",
-        "response" : [
-            "image_name",
-            "description" 
-        ],
-        "fallback": "No multispectral images in ATON - return empty"
     },
     "multispectral_image": {
         "functionality": "Get set of images for multispectral viewing",
@@ -134,13 +152,6 @@
             "description": "null for now"
         },
         "fallback" : "No rgb image endpoint in ATON - return null"
-    },
-    "list_sensors": {
-        "functionality": "Get list of sensors",
-        "response": [
-            "sensor_id"
-        ],
-        "fallback": "No equivalent ATON feature - return empty"
     },
     "sensor": {
         "functionality": "Get final reading object of a sensor",
