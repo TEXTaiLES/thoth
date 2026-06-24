@@ -1550,6 +1550,270 @@ UI._parseRelationList = (value, fieldName) => {
     return null;
 };
 
+UI._normalizeImageRelation = (relation) => {
+    if (relation === undefined || relation === null) return null;
+
+    if (typeof relation !== "object") {
+        const id = String(relation).trim();
+        if (!id) return null;
+
+        return {
+            id  : id,
+            name: id,
+            url : ""
+        };
+    }
+
+    const id = String(
+        relation.id ??
+        relation.name ??
+        relation.image_name ??
+        relation.url ??
+        relation.image_url ??
+        ""
+    ).trim();
+    if (!id) return null;
+
+    return {
+        id  : id,
+        name: relation.name || relation.image_name || id,
+        url : relation.url || relation.image_url || relation.path || relation.src || ""
+    };
+};
+
+UI._normalizeImageRelations = (relations) => {
+    const output = [];
+    const seen = new Set();
+
+    for (const relation of Array.from(relations || [])) {
+        const normalized = UI._normalizeImageRelation(relation);
+        if (!normalized || seen.has(normalized.id)) continue;
+
+        seen.add(normalized.id);
+        output.push(normalized);
+    }
+
+    return output;
+};
+
+UI._getImageListName = (item) => {
+    if (typeof item === "string") return item;
+
+    return item?.image_name ||
+        item?.name ||
+        item?.id ||
+        item?.title ||
+        item?.url ||
+        item?.image_url ||
+        "";
+};
+
+UI._resolveRgbImageRelation = async (relation) => {
+    const normalized = UI._normalizeImageRelation(relation);
+    if (!normalized) return null;
+    if (normalized.url) return normalized;
+
+    const response = await THOTH.API.getRgbImage(normalized.id);
+    if (!response.ok || !response.data) return normalized;
+
+    return UI._normalizeImageRelation({
+        ...normalized,
+        ...response.data
+    });
+};
+
+UI.modalRelatedRgbImage = (image) => {
+    const relation = UI._normalizeImageRelation(image);
+    if (!relation?.url) return;
+
+    const elBody = ATON.UI.createContainer({
+        classes: "d-flex flex-column"
+    });
+    const elImgContainer = ATON.UI.createContainer({
+        classes: "d-flex ratio-16x9 w-100 bg-dark"
+    });
+    const elImg = document.createElement("img");
+    elImg.src = relation.url;
+    elImg.alt = relation.name || relation.id;
+    elImg.onerror = () => {};
+    elImg.className = "img-fluid w-100 h-100 object-fit-contain";
+    elImgContainer.append(elImg);
+    elBody.append(elImgContainer);
+
+    const elFooter = ATON.UI.createContainer();
+    elFooter.append(ATON.UI.createButton({
+        text   : "Download",
+        icon   : "download",
+        variant: "success",
+        tooltip: "Download image",
+        onpress: () => THOTH.Utils.downloadImage(relation.url, relation.name || relation.id)
+    }));
+
+    ATON.UI.showModal({
+        header: relation.name || relation.id,
+        body  : elBody,
+        footer: elFooter
+    });
+};
+
+UI._createRelatedRgbImageRow = (relation) => {
+    const elRow = ATON.UI.createContainer({
+        classes: "row g-0 align-items-center w-100 rounded-2 px-2 py-1 mb-1"
+    });
+    const elPreviewCol = ATON.UI.createContainer({
+        classes: "col-4 d-flex align-items-center"
+    });
+    const elNameCol = ATON.UI.createContainer({
+        classes: "col-5 d-flex align-items-center"
+    });
+    const elActionsCol = ATON.UI.createContainer({
+        classes: "col-3 d-flex justify-content-end align-items-center"
+    });
+
+    const elPreviewButton = document.createElement("button");
+    elPreviewButton.type = "button";
+    elPreviewButton.className = "btn btn-sm p-0 border-0 bg-transparent";
+    elPreviewButton.title = relation.url ? "View image" : "Image URL unavailable";
+    elPreviewButton.onclick = () => UI.modalRelatedRgbImage(relation);
+
+    if (relation.url) {
+        const elImg = document.createElement("img");
+        elImg.src = relation.url;
+        elImg.alt = relation.name || relation.id;
+        elImg.className = "img-fluid rounded";
+        elImg.style.maxHeight = "48px";
+        elImg.style.objectFit = "contain";
+        elImg.onerror = () => {
+            elImg.style.display = "none";
+        };
+        elPreviewButton.append(elImg);
+    }
+    else {
+        const elNoPreview = document.createElement("span");
+        elNoPreview.className = "btn btn-sm";
+        elNoPreview.textContent = "No preview";
+        elNoPreview.title = "Image URL unavailable";
+        elPreviewButton.append(elNoPreview);
+    }
+
+    elPreviewCol.append(elPreviewButton);
+    elNameCol.append(ATON.UI.createButton({
+        text   : relation.name || relation.id,
+        size   : "small",
+        tooltip: relation.id
+    }));
+    elActionsCol.append(ATON.UI.createButton({
+        icon   : "download",
+        size   : "small",
+        tooltip: relation.url ? "Download image" : "Image URL unavailable",
+        onpress: () => {
+            if (relation.url) THOTH.Utils.downloadImage(relation.url, relation.name || relation.id);
+        }
+    }));
+
+    elRow.append(elPreviewCol, elNameCol, elActionsCol);
+    return elRow;
+};
+
+UI._renderRelatedRgbImageList = (elList, relations) => {
+    elList.replaceChildren();
+
+    const normalizedRelations = UI._normalizeImageRelations(relations);
+    if (normalizedRelations.length === 0) {
+        elList.append(ATON.UI.createButton({
+            text   : "No related RGB images",
+            size   : "small",
+            tooltip: "No related RGB images"
+        }));
+        return;
+    }
+
+    for (const relation of normalizedRelations) {
+        elList.append(UI._createRelatedRgbImageRow(relation));
+    }
+};
+
+UI.createRelatedRgbImagesControl = (dataTemp) => {
+    dataTemp.related_rgb_images = UI._normalizeImageRelations(dataTemp.related_rgb_images);
+
+    const elBody = ATON.UI.createContainer({
+        classes: "d-grid gap-2"
+    });
+    const elInputWrap = ATON.UI.createContainer();
+    const elList = ATON.UI.createContainer({
+        classes: "d-grid gap-1"
+    });
+
+    UI._renderRelatedRgbImageList(elList, dataTemp.related_rgb_images);
+    elInputWrap.append(ATON.UI.createButton({
+        text   : "Loading RGB images...",
+        size   : "small",
+        tooltip: "Loading RGB images"
+    }));
+    elBody.append(elInputWrap, elList);
+
+    const canLoadImages = THOTH.requireAuth("view RGB images",
+        async () => {
+            const response = await THOTH.API.listRgbImages();
+            if (!response.ok) {
+                elInputWrap.replaceChildren(ATON.UI.createButton({
+                    text   : "Error loading RGB images",
+                    size   : "small",
+                    tooltip: response.error || "Error loading RGB images"
+                }));
+                return;
+            }
+
+            const entries = Array.isArray(response.data) ? response.data : [];
+            const relationByName = new Map();
+            const itemNames = entries
+                .map(item => {
+                    const name = UI._getImageListName(item);
+                    if (!name) return null;
+
+                    relationByName.set(name, UI._normalizeImageRelation({
+                        id       : name,
+                        name     : name,
+                        url      : item?.url,
+                        image_url: item?.image_url
+                    }));
+                    return name;
+                })
+                .filter(Boolean);
+            const elInput = ATON.UI.createTagsComponent({
+                list    : itemNames,
+                label   : "Input RGB images",
+                icon    : "add",
+                onaddtag: async (imageName) => {
+                    const relation = await UI._resolveRgbImageRelation(
+                        relationByName.get(imageName) || imageName
+                    );
+                    if (!relation) return;
+
+                    dataTemp.related_rgb_images = UI._normalizeImageRelations([
+                        ...dataTemp.related_rgb_images,
+                        relation
+                    ]);
+                    UI._renderRelatedRgbImageList(elList, dataTemp.related_rgb_images);
+                }
+            });
+
+            elInput.classList.add("thoth-related-rgb-image-tags");
+            elInputWrap.replaceChildren(elInput);
+        }
+    );
+
+    if (!canLoadImages) {
+        elInputWrap.replaceChildren(ATON.UI.createButton({
+            text   : "Login required",
+            size   : "small",
+            tooltip: "Login required to load RGB image list"
+        }));
+    }
+
+    return elBody;
+};
+
 UI._normalizeArtefactRelation = (relation) => {
     if (relation === undefined || relation === null) return null;
 
@@ -1697,9 +1961,6 @@ UI.createRelatedArtefactsControl = (dataTemp) => {
 };
 
 UI.collectAnnotationSharedFields = (dataTemp) => {
-    const relatedRgbImages = UI._parseRelationList(dataTemp._relatedRgbImagesText, "Related RGB images");
-    if (relatedRgbImages === null) return null;
-
     const relatedMultispectralImages = UI._parseRelationList(
         dataTemp._relatedMultispectralImagesText,
         "Related multispectral images"
@@ -1708,12 +1969,11 @@ UI.collectAnnotationSharedFields = (dataTemp) => {
 
     const data = {
         ...dataTemp,
-        related_rgb_images          : relatedRgbImages,
+        related_rgb_images          : UI._normalizeImageRelations(dataTemp.related_rgb_images),
         related_multispectral_images: relatedMultispectralImages,
         related_artefacts           : UI._normalizeArtefactRelations(dataTemp.related_artefacts)
     };
 
-    delete data._relatedRgbImagesText;
     delete data._relatedMultispectralImagesText;
 
     const normalized = THOTH.Annotations?.normalize(data) || data;
@@ -1728,7 +1988,7 @@ UI.collectAnnotationSharedFields = (dataTemp) => {
 };
 
 UI.createAnnotationSharedItems = (dataTemp, options = {}) => {
-    dataTemp._relatedRgbImagesText = UI._formatRelationList(dataTemp.related_rgb_images);
+    dataTemp.related_rgb_images = UI._normalizeImageRelations(dataTemp.related_rgb_images);
     dataTemp._relatedMultispectralImagesText = UI._formatRelationList(dataTemp.related_multispectral_images);
     dataTemp.related_artefacts = UI._normalizeArtefactRelations(dataTemp.related_artefacts);
 
@@ -1755,12 +2015,7 @@ UI.createAnnotationSharedItems = (dataTemp, options = {}) => {
         {
             title  : "Related RGB images",
             open   : false,
-            content: UI.createTextArea({
-                label  : "JSON",
-                value  : dataTemp._relatedRgbImagesText,
-                rows   : 4,
-                oninput: (v) => dataTemp._relatedRgbImagesText = v
-            })
+            content: UI.createRelatedRgbImagesControl(dataTemp)
         },
         {
             title  : "Related multispectral images",

@@ -109,7 +109,9 @@ Annotations._normalizeRelation = (relation) => {
         relation.id ??
         relation.name ??
         relation.title ??
+        relation.image_name ??
         relation.url ??
+        relation.image_url ??
         relation.gltf_file ??
         ""
     );
@@ -117,8 +119,8 @@ Annotations._normalizeRelation = (relation) => {
     return {
         ...Annotations._clone(relation),
         id  : id,
-        name: relation.name || relation.title || id,
-        url : relation.url || relation.gltf_file || relation.path || relation.src || ""
+        name: relation.name || relation.title || relation.image_name || id,
+        url : relation.url || relation.image_url || relation.gltf_file || relation.path || relation.src || ""
     };
 };
 

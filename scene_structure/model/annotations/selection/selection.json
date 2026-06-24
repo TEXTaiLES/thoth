@@ -2,7 +2,11 @@
     "name": "str",
     "description": "str",
     "related_rgb_images": [
-        "image"
+        {
+            "id": "str",
+            "name": "str",
+            "url": "str"
+        }
     ],
     "related_multispectral_images": [
         "multispectral_image"
