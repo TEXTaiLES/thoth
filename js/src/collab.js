@@ -32,7 +32,6 @@ Collab.syncScene = (sobj) => {
     THOTH.SemAnnotations.semNodeMap = new Map();
     // Reset FE
     THOTH.FE.setupSelectionElements();
-    THOTH.FE.setupModelElements();
     THOTH.FE.setupMsrElements();
     THOTH.FE.setupSemAnnotationElements();
     // Parse scene

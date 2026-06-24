@@ -31,18 +31,47 @@ Artefacts._clone = (value) => {
     return structuredClone(value);
 };
 
+Artefacts._unwrap = (data = {}) => {
+    return data?.artefact_data?.artefact_data ||
+        data?.artefact_data ||
+        data;
+};
+
+Artefacts._getField = (data, fieldName, fallbackFieldNames = []) => {
+    const keys = [
+        fieldName,
+        `artefact.${fieldName}`,
+        ...fallbackFieldNames
+    ];
+
+    for (const key of keys) {
+        if (data?.[key] !== undefined && data[key] !== null) return data[key];
+    }
+
+    return undefined;
+};
+
 Artefacts.normalize = (data = {}) => {
+    const source = Artefacts._unwrap(data);
     const artefact = {
-        title      : data.title || data.name || "",
-        gltf_file  : data.gltf_file || data.url || data.path || data.src || "",
-        description: data.description || "",
-        owner      : data.owner || "",
-        keywords   : Array.isArray(data.keywords) ? Artefacts._clone(data.keywords) : [],
-        copyright  : data.copyright || ""
+        title      : Artefacts._getField(source, "title", [ "name" ]) || "",
+        gltf_file  : Artefacts._getField(source, "glb_file", [
+            "gltf_file",
+            "artefact.gltf_file",
+            "url",
+            "path",
+            "src"
+        ]) || "",
+        description: Artefacts._getField(source, "description") || "",
+        owner      : Artefacts._getField(source, "owner") || "",
+        keywords   : Array.isArray(Artefacts._getField(source, "keywords"))
+            ? Artefacts._clone(Artefacts._getField(source, "keywords"))
+            : [],
+        copyright  : Artefacts._getField(source, "copyright") || ""
     };
 
-    for (const key in data) {
-        if (artefact[key] === undefined) artefact[key] = Artefacts._clone(data[key]);
+    for (const key in source) {
+        if (artefact[key] === undefined) artefact[key] = Artefacts._clone(source[key]);
     }
 
     return artefact;

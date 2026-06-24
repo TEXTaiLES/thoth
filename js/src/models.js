@@ -323,20 +323,19 @@ Models.toggleVisibility = (modelName) => {
     if (modelName === undefined) return;
 
     const model = Models.modelMap.get(modelName);
-    const modelController = THOTH.FE?.modelMap.get(modelName);
 
     if (model === undefined) return;
 
     if (model.visible) {
         Models.hideModelMeshes(modelName);
         model.visible = false;
-        THOTH.FE.toggleControllerVisibility(modelController, false);
     }
     else {
         Models.showModelMeshes(modelName);
         model.visible = true;
-        THOTH.FE.toggleControllerVisibility(modelController, true);
     }
+
+    THOTH.FE?.refreshSceneTree?.();
 };  
 
 

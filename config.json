@@ -8,7 +8,7 @@
     "use_endpoints": true,
     "endpoints": {
         "scene": {
-            "endpoint_url": null,
+            "endpoint_url": "http://localhost:5000/scenes",
             "auth": "default",
             "timeout_seconds": null,
             "enabled": true
@@ -50,25 +50,25 @@
             "enabled": true
         },
         "list_rgb_images": {
-            "endpoint_url": null,
+            "endpoint_url": "http://localhost:5000/rgb/images",
             "auth": "default",
             "timeout_seconds": null,
             "enabled": true
         },
         "rgb_image": {
-            "endpoint_url": null,
+            "endpoint_url": "http://localhost:5000/rgb/image",
             "auth": "default",
             "timeout_seconds": null,
             "enabled": true
         },
         "list_multispectral_images": {
-            "endpoint_url": null,
+            "endpoint_url": "http://localhost:5000/multispectral/images",
             "auth": "default",
             "timeout_seconds": null,
             "enabled": true
         },
         "multispectral_image": {
-            "endpoint_url": null,
+            "endpoint_url": "http://localhost:5000/multispectral/image",
             "auth": "default",
             "timeout_seconds": null,
             "enabled": true

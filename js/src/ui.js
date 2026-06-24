@@ -615,16 +615,6 @@ UI.createExportButton = () => {
     })
 };
 
-UI.createTextBlock = (content)=>{
-    let el = ATON.UI.createContainer({
-        classes: "hathor-text-block"
-    });
-
-    if (content) el.append(content);
-
-    return el;
-}
-
 UI.createColorPicker = (options) => {
     if (!options) options = {};
 
@@ -835,55 +825,6 @@ UI.createPlaceholderPanel = (title, message) => {
 
 
 // Controllers
-
-UI.createModelController = (modelName) => {
-    const elLeft  = ATON.UI.createContainer();
-    const elRight = ATON.UI.createContainer({
-        classes: "d-flex justify-content-end align-items-center gap-1"
-    });
-
-    elLeft.append(
-        // Visibility
-        ATON.UI.createButton({
-            icon   : "visibility",
-            size   : "small",
-            onpress: () => THOTH.Models.toggleVisibility(modelName),
-        }), 
-        // Name
-        ATON.UI.createButton({
-            text   : modelName,
-            size   : "small",
-            onpress: () => {}
-        }),     
-    );
-
-    elRight.append(
-        ATON.UI.createButton({
-            icon   : "focus",
-            size   : "small",
-            tooltip: "Focus model",
-            onpress: () => THOTH.Models.focusModel(modelName)
-        }),
-        ATON.UI.createButton({
-            icon   : ATON.PATH_RES + "icons/trash.png",
-            size   : "small",
-            tooltip: "Delete model",
-            onpress: () => {
-                THOTH.Models.deactivateTransformControls();
-                THOTH.fire("deleteModel", modelName);
-            }
-        })
-    );
-
-    const elController = UI.createSplitRow({
-        // classes   : "row g-0 align-items-center w-100 rounded-2 border px-2 py-1 mb-1",
-        colLeft   : 7,
-        itemsLeft : elLeft,
-        itemsRight: elRight,
-    });
-    
-    return elController;
-};
 
 UI.createSceneController = () => {
     const elController = UI.createSplitRow({
@@ -1147,22 +1088,6 @@ UI.createModelTransformEditor = (modelName) => {
     return elBody;
 };
 
-UI.createMeshList = (modelName) => {
-    const elBody = ATON.UI.createContainer();
-    const meshes = THOTH.Models.getModelMeshes(modelName);
-    for (const mesh of meshes.keys()) {
-        elBody.append(
-            ATON.UI.createButton({
-                text   : mesh,
-                icon   : "collection-item",
-                onpress: () => {}
-            })
-        )
-    }
-    return elBody;
-};
-
-
 // Options
 
 UI.createMeasureOptions = () => {
@@ -1358,6 +1283,46 @@ UI.modalExport = () => {
 
     ATON.UI.showModal({
         header: "Export changes?",
+        body  : elInfo,
+        footer: elFooter
+    });
+};
+
+UI.modalModelExportChanges = (modelName) => {
+    const elInfo = ATON.UI.createContainer();
+    elInfo.textContent = `Export changes for ${modelName}?`;
+
+    const elFooter = ATON.UI.createContainer();
+    elFooter.append(
+        ATON.UI.createButton({
+            text   : "Download",
+            icon   : "download",
+            size   : "large",
+            variant: "secondary",
+            onpress: () => {
+                if (THOTH.downloadModelData(modelName)) ATON.UI.hideModal();
+            }
+        }),
+        ATON.UI.createButton({
+            text   : "Export",
+            icon   : "link",
+            size   : "large",
+            variant: "info",
+            onpress: async () => {
+                const response = await THOTH.exportModelData(modelName);
+                if (response?.ok) ATON.UI.hideModal();
+            }
+        }),
+        ATON.UI.createButton({
+            text   : "Cancel",
+            size   : "large",
+            variant: "secondary",
+            onpress: () => ATON.UI.hideModal()
+        })
+    );
+
+    ATON.UI.showModal({
+        header: "Export model changes",
         body  : elInfo,
         footer: elFooter
     });
@@ -1770,22 +1735,6 @@ UI.createTextArea = (options) => {
     el.append(elInput);
 
     return el;
-};
-
-UI._formatRelationList = (relations) => {
-    return JSON.stringify(Array.isArray(relations) ? relations : [], null, 2);
-};
-
-UI._parseRelationList = (value, fieldName) => {
-    try {
-        const parsed = JSON.parse(value || "[]");
-        if (Array.isArray(parsed)) return parsed;
-    }
-    catch (err) {
-    }
-
-    THOTH.FE.showToast(`${fieldName} must be a JSON array.`);
-    return null;
 };
 
 UI._normalizeImageRelation = (relation) => {
@@ -2299,6 +2248,7 @@ UI.createRelatedMultispectralImagesControl = (dataTemp) => {
                     relationByName.set(name, UI._normalizeMultispectralImageRelation({
                         id       : name,
                         name     : name,
+                        urls     : item?.urls,
                         image_url: item?.image_url
                     }));
                     return name;

@@ -380,17 +380,25 @@ THOTH.getExportData = () => {
 
 THOTH.downloadSceneJSON = () => {
     const payload = THOTH.getExportData();
+    return THOTH._downloadJSON(
+        payload,
+        `${THOTH.scene_id || "scene"}.json`,
+        "Scene JSON downloaded locally."
+    );
+};
+
+THOTH._downloadJSON = (payload, filename, message) => {
     const exportJson = JSON.stringify(payload, null, 2);
     const exportBlob = new Blob([exportJson], { type: "application/json" });
     const exportUrl = URL.createObjectURL(exportBlob);
     const exportLink = document.createElement("a");
 
     exportLink.href = exportUrl;
-    exportLink.download = `${THOTH.scene_id || "scene"}.json`;
+    exportLink.download = filename;
     exportLink.click();
     URL.revokeObjectURL(exportUrl);
-    THOTH.FE.showToast("Scene JSON downloaded locally.");
 
+    if (message) THOTH.FE.showToast(message);
     return true;
 };
 
@@ -461,6 +469,100 @@ THOTH._patchAtonScene = async (sceneUrl, body) => {
     }
 };
 
+THOTH.getModelDataExportData = (modelId) => {
+    const model = THOTH.SceneStore.getModelExportData(modelId);
+    if (!model) return;
+
+    const artefact = model.artefact || {};
+
+    return {
+        "artefact.Title": modelId,
+        data_type       : "json",
+        artefact_data   : {
+            artefact_data: {
+                "artefact.title"      : artefact.title || modelId,
+                "artefact.glb_file"   : artefact.gltf_file || "",
+                "artefact.description": artefact.description || "",
+                "artefact.owner"      : artefact.owner || "",
+                "artefact.keywords"   : Array.isArray(artefact.keywords) ? artefact.keywords : [],
+                "artefact.copyright"  : artefact.copyright || ""
+            },
+            annotations: {
+                "artefact.annotations": model.annotations || {}
+            },
+            sensorial_data: THOTH.getModelSensorialExportData(model),
+            artefact_metadata: {
+                "artefact.metadata": model.metadata || {}
+            }
+        }
+    };
+};
+
+THOTH.getModelSensorialExportData = (model = {}) => {
+    const sensors = Array.isArray(model.sensors) ? model.sensors : [];
+    if (sensors.length === 0) {
+        return {
+            related_sensor_id: "",
+            latest_reading   : {}
+        };
+    }
+
+    const sensor = sensors[0];
+    if (typeof sensor !== "object" || sensor === null) {
+        return {
+            related_sensor_id: String(sensor),
+            latest_reading   : {}
+        };
+    }
+
+    return {
+        ...sensor,
+        related_sensor_id: sensor.related_sensor_id || sensor.sensor_id || sensor.id || "",
+        latest_reading   : sensor.latest_reading || {}
+    };
+};
+
+THOTH.downloadModelData = (modelId) => {
+    const payload = THOTH.getModelDataExportData(modelId);
+    if (!payload) {
+        THOTH.FE.showToast(`No model data found for ${modelId}`);
+        return false;
+    }
+
+    return THOTH._downloadJSON(
+        payload,
+        `${modelId || "model"}_artefact_data.json`,
+        "Model data downloaded locally."
+    );
+};
+
+THOTH.exportModelData = async (modelId) => {
+    if (!THOTH.requireAuth("export model changes")) {
+        return {
+            ok   : false,
+            error: "Authentication required"
+        };
+    }
+
+    const payload = THOTH.getModelDataExportData(modelId);
+    if (!payload) {
+        THOTH.FE.showToast(`No model data found for ${modelId}`);
+        return {
+            ok   : false,
+            error: "No model data found"
+        };
+    }
+
+    const response = await THOTH.API.putArtefactData(modelId, payload.artefact_data);
+    if (!response.ok) {
+        THOTH.FE.showToast(response.error || "Model data export failed");
+        return response;
+    }
+
+    THOTH.FE.showToast("Model data exported successfully!");
+    return response;
+};
+
 THOTH.getModelMetadataExportData = (modelId) => {
     return THOTH.SceneStore.getModelMetadataExportData(modelId);
 };
@@ -472,18 +574,11 @@ THOTH.downloadModelMetadata = (modelId) => {
         return false;
     }
 
-    const exportJson = JSON.stringify(payload, null, 2);
-    const exportBlob = new Blob([exportJson], { type: "application/json" });
-    const exportUrl = URL.createObjectURL(exportBlob);
-    const exportLink = document.createElement("a");
-
-    exportLink.href = exportUrl;
-    exportLink.download = `${modelId || "model"}_metadata.json`;
-    exportLink.click();
-    URL.revokeObjectURL(exportUrl);
-    THOTH.FE.showToast("Model metadata downloaded locally.");
-
-    return true;
+    return THOTH._downloadJSON(
+        payload,
+        `${modelId || "model"}_metadata.json`,
+        "Model metadata downloaded locally."
+    );
 };
 
 THOTH.exportModelMetadata = async (modelId) => {

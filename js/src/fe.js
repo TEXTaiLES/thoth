@@ -22,7 +22,6 @@ FE.setup = () => {
     FE.settingsPanel = FE.setupSettingsPanel();
 
     FE.setupSelectionElements();
-    FE.setupModelElements();
     FE.setupMsrElements();
     FE.setupSemAnnotationElements();
     FE.refreshSceneTree();
@@ -45,11 +44,6 @@ FE.setupSelectionElements = () => {
     FE.selectionControllerMap = new Map();
     FE.selectionList          = ATON.UI.createContainer();
     FE.selectionsPanel        = FE.setupSelectionsPanel(FE.selectionList);
-};
-
-FE.setupModelElements = () => {
-    FE.modelMap    = new Map();
-    FE.modelList   = ATON.UI.createContainer();
 };
 
 FE.setupMsrElements = () => {
@@ -112,32 +106,6 @@ FE.syncAuthControls = () => {
 
 
 // Maps
-
-FE.initSelectionNameMap = () => {
-    const selectionNameMap = new Map();
-    for (const [selectionKey, selection] of THOTH.Selections.selectionMap) {
-        const selectionNameBtn = ATON.UI.createButton({
-            text   : selection.name,
-            onpress: () => THOTH.Annotations?.select?.("selections", selection.id, {
-                modelId: selection.model_id
-            }),
-        });
-        selectionNameMap.set(selectionKey, selectionNameBtn);
-    }
-    return selectionNameMap;
-};
-
-FE.initMsrNameMap = () => {
-    const msrNameMap = new Map();
-    for (const [msrId, msr] of THOTH.MSR.msrMap) {
-        const msrBtn = ATON.UI.createButton({
-            text   : msr.name,
-            onpress: () => {}   // Hightlight msr
-        });
-        msrNameMap.set(msrId, msrBtn);
-    }
-    return msrNameMap;
-};
 
 FE.initToolMap = () => {
     const toolMap = new Map();
@@ -234,45 +202,6 @@ FE.initToolOptMap = () => {
     toolOptMap.set("no_tool", elNoToolOpt);
 
     return toolOptMap;
-};
-
-
-// Lists
-
-FE.setupModelList = (modelMap) => {
-    const elModelList = ATON.UI.createContainer();
-
-    for (const [ , elModelController] of modelMap) {
-        elModelList.append(elModelController)
-    }
-
-    return elModelList;
-};
-
-FE.setupSelectionList = (selectionControllerMap) => {
-    const elSelectionList = ATON.UI.createContainer();
-    
-    for (const [ , elSelectionController] of selectionControllerMap) {
-        elSelectionList.append(elSelectionController)
-    }
-    
-    return elSelectionList;
-};
-
-FE.setupHistoryList = () => {
-    const elHistoryList = ATON.UI.createContainer();
-
-    return elHistoryList;
-};
-
-FE.setupMsrList = (msrMap) => {
-    const elMsrList = ATON.UI.createContainer();
-
-    for (const [ , elMsrController] of msrMap) {
-        elMsrList.append(elMsrController)
-    }
-
-    return elMsrList;
 };
 
 
@@ -393,6 +322,36 @@ FE.setupToolOptToolbar = () => {
     return toolOptToolbar;
 };
 
+FE.createSceneTreeAction = (options = {}) => {
+    return ATON.UI.createButton({
+        size: "small",
+        ...options
+    });
+};
+
+FE.createModelRowActions = (modelId) => {
+    return [
+        FE.createSceneTreeAction({
+            icon   : ATON.PATH_RES + "icons/focus.png",
+            tooltip: "Focus model",
+            onpress: () => THOTH.Models.focusModel(modelId)
+        }),
+        FE.createSceneTreeAction({
+            icon   : "download",
+            tooltip: "Export model changes",
+            onpress: () => THOTH.UI.modalModelExportChanges(modelId)
+        }),
+        FE.createSceneTreeAction({
+            icon   : ATON.PATH_RES + "icons/trash.png",
+            tooltip: "Delete model",
+            onpress: () => {
+                THOTH.Models.deactivateTransformControls();
+                THOTH.fire("deleteModel", modelId);
+            }
+        })
+    ];
+};
+
 FE.refreshSceneTree = () => {
     if (!FE.rightToolbar || !THOTH.UI?.createSceneTreeRow) return;
 
@@ -421,14 +380,7 @@ FE.refreshSceneTree = () => {
             icon      : "scene",
             expandable: true,
             open      : isOpen,
-            actions   : [
-                ATON.UI.createButton({
-                    icon   : ATON.PATH_RES + "icons/focus.png",
-                    size   : "small",
-                    tooltip: "Focus model",
-                    onpress: () => THOTH.Models.focusModel(modelId)
-                })
-            ],
+            actions   : FE.createModelRowActions(modelId),
             onexpand  : () => FE.toggleSceneTreeNode(modelKey),
             onselect  : () => FE.toggleSceneTreeNode(modelKey)
         }));
@@ -603,9 +555,8 @@ FE.createCollectionActions = (modelId, collectionName) => {
     const actions = [];
 
     if (collectionName === "selections") {
-        actions.push(ATON.UI.createButton({
+        actions.push(FE.createSceneTreeAction({
             icon   : "add",
-            size   : "small",
             tooltip: "New Selection",
             onpress: () => THOTH.fire("createSelection", { modelId: modelId })
         }));
@@ -616,9 +567,8 @@ FE.createCollectionActions = (modelId, collectionName) => {
 
 FE.createAnnotationRowActions = (modelId, collectionName, itemId, item) => {
     return [
-        ATON.UI.createButton({
+        FE.createSceneTreeAction({
             icon   : "list",
-            size   : "small",
             tooltip: "Edit details",
             onpress: () => FE.openAnnotationPanel(
                 `model:${modelId}:${collectionName}:${itemId}`,
@@ -627,15 +577,13 @@ FE.createAnnotationRowActions = (modelId, collectionName, itemId, item) => {
                 modelId
             )
         }),
-        ATON.UI.createButton({
+        FE.createSceneTreeAction({
             icon   : item?.visible === false ? THOTH.PATH_RES_ICONS + "visibility_no.png" : "visibility",
-            size   : "small",
             tooltip: item?.visible === false ? "Show" : "Hide",
             onpress: () => FE.toggleAnnotationVisibility(modelId, collectionName, itemId, item)
         }),
-        ATON.UI.createButton({
+        FE.createSceneTreeAction({
             icon   : ATON.PATH_RES + "icons/trash.png",
-            size   : "small",
             tooltip: "Delete",
             onpress: () => FE.deleteAnnotationItem(collectionName, itemId, item)
         })
@@ -725,35 +673,6 @@ FE.countObjectFields = (value = {}) => {
     if (!value || typeof value !== "object") return 0;
     return Object.keys(value).filter(key => value[key] !== undefined && value[key] !== "").length;
 };
-
-FE.setupHistoryToolbar = (historyList) => {
-    const historyToolbar = ATON.UI.get("historyToolbar");
-    const elButtons = ATON.UI.createContainer();
-    elButtons.append(
-        ATON.UI.createButton({
-            icon   : THOTH.PATH_RES_ICONS + "undo.png",
-            tooltip: "Undo (Ctrl + Z)",
-            onpress: () => THOTH.History.undo()
-        }),
-        ATON.UI.createButton({
-            icon   : THOTH.PATH_RES_ICONS + "redo.png",
-            tooltip: "Redo (Ctrl + Y)",
-            onpress: () => THOTH.History.redo()
-        })
-    );
-    const elHeader = THOTH.UI.createSplitRow({
-        classes: "bg-body-secondary",
-        colLeft: 7,
-        itemsLeft: ATON.UI.createButton({
-            text: "History",
-        }),
-        itemsRight: elButtons,
-    });
-    historyToolbar.append(elHeader, historyList);
-
-    return historyToolbar;
-};
-
 
 // Panels
 
@@ -907,22 +826,10 @@ FE.deleteSelection = (selectionId, modelId) => {
 // Models
 
 FE.addModel = (modelName) => {
-    // Handle resurrection for undo
-    if (FE.modelMap.has(modelName)) {
-        FE.modelMap.get(modelName).style.display = 'flex';
-        FE.refreshSceneTree();
-        return;
-    }
-    // Create new
-    const newModelController = THOTH.UI.createModelController(modelName);
-    FE.modelMap.set(modelName, newModelController);
-    FE.modelList.append(newModelController);
     FE.refreshSceneTree();
 };
 
 FE.deleteModel = (modelName) => {
-    const controller = FE.modelMap.get(modelName);
-    if (controller) controller.style.display = 'none';
     FE.refreshSceneTree();
 };
 

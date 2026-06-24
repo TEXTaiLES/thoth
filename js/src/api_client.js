@@ -172,14 +172,62 @@ API.getArtefactData = async (artefactTitle) => {
     }
 
     if (!API.hasEndpoint("artefact_data")) {
+        return API.getArtefactDataFallback(artefactTitle);
+    }
+
+    return API.get("artefact_data", {
+        "artefact.Title": artefactTitle,
+        data_type       : "json"
+    });
+};
+
+API.getArtefactDataFallback = async (artefactTitle) => {
+    const model = THOTH.SceneStore?.getModel(artefactTitle);
+    if (!model || model.trash === true) {
         return {
             ok  : true,
             data: {}
         };
     }
 
-    return API.get("artefact_data", {
-        "artefact.Title": artefactTitle
+    return {
+        ok  : true,
+        data: {
+            artefact_data: {
+                artefact_data  : model.artefact || {},
+                annotations    : {
+                    "artefact.annotations": model.annotations || {}
+                },
+                sensorial_data : {
+                    sensors: model.sensors || []
+                },
+                artefact_metadata: {
+                    "artefact.metadata": model.metadata || {}
+                }
+            }
+        }
+    };
+};
+
+API.putArtefactData = async (artefactTitle, artefactData) => {
+    if (!artefactTitle) {
+        return {
+            ok   : false,
+            error: "Missing artefact title"
+        };
+    }
+
+    if (!API.hasEndpoint("artefact_data")) {
+        return {
+            ok   : false,
+            error: "No artefact_data endpoint configured"
+        };
+    }
+
+    return API.put("artefact_data", {
+        "artefact.Title": artefactTitle,
+        data_type       : "json",
+        artefact_data   : artefactData
     });
 };
 

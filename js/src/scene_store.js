@@ -306,6 +306,13 @@ SceneStore.getExportData = () => {
     return { models };
 };
 
+SceneStore.getModelExportData = (modelId) => {
+    const model = SceneStore.getModel(modelId);
+    if (!model || model.trash === true) return;
+
+    return SceneStore._getExportModel(model);
+};
+
 SceneStore.getModelMetadataExportData = (modelId) => {
     const model = SceneStore.getModel(modelId);
     if (!model || model.trash === true) return;

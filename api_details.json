@@ -7,7 +7,11 @@
         "POST": {
             "functionality": "Creates an empty scene with the specified object if it does not exist.",
             "request": {
-                "scene_id": "str"
+                "scene_id": "str",
+                "collaborative": "bool",
+                "models": [
+                    "model"
+                ]
             }
         },
         "GET": {
@@ -68,38 +72,70 @@
         ],
         "fallback": "No equivalent ATON feature - return empty"
     },
-    "full_artefact_metadata": {
+    "artefact_data": {
         "functionality": "Get everything related to the artefact, including many other fields",
-        "request": {
-            "artefact.Title": "str",
-            "data_type": "str = 'json'"
-        },
-        "response": {
-            "artefact metadata": {
+        "GET": {
+            "request": {
+                "artefact.Title": "str",
+                "data_type": "str = 'json'"
+            },
+            "response": {
                 "artefact_data": {
-                    "artefact.title": "str",
-                    "artefact.glb_file": "str",
-                    "artefact.description": "str",
-                    "artefact.owner": "str",
-                    "artefact.keywords": [
-                        "str",
-                        "str"
-                    ],
-                    "artefact.copyright": "str"
-                },
-                "annotations": {
-                    "artefact.annotations": "object"
-                },
-                "sensorial_data": {
-                    "related_sensor_id": "str",
-                    "latest_reading": "object"
-                },
-                "artefact_metadata": {
-                    "artefact.metadata": "object"
+                    "artefact_data": {
+                        "artefact.title": "str",
+                        "artefact.glb_file": "str",
+                        "artefact.description": "str",
+                        "artefact.owner": "str",
+                        "artefact.keywords": [
+                            "str",
+                            "str"
+                        ],
+                        "artefact.copyright": "str"
+                    },
+                    "annotations": {
+                        "artefact.annotations": "object"
+                    },
+                    "sensorial_data": {
+                        "related_sensor_id": "str",
+                        "latest_reading": "object"
+                    },
+                    "artefact_metadata": {
+                        "artefact.metadata": "object"
+                    }
                 }
-            }
+            },
+            "fallback": "No internal replacement. Fetch scene and model from ATON, ignore other fields."
         },
-        "fallback": "No internal replacement. Fetch scene and model from ATON, ignore other fields."
+        "PUT": {
+            "request": {
+                "artefact.Title": "str",
+                "data_type": "str = 'json'",
+                "artefact_data": {
+                    "artefact_data": {
+                        "artefact.title": "str",
+                        "artefact.glb_file": "str",
+                        "artefact.description": "str",
+                        "artefact.owner": "str",
+                        "artefact.keywords": [
+                            "str",
+                            "str"
+                        ],
+                        "artefact.copyright": "str"
+                    },
+                    "annotations": {
+                        "artefact.annotations": "object"
+                    },
+                    "sensorial_data": {
+                        "related_sensor_id": "str",
+                        "latest_reading": "object"
+                    },
+                    "artefact_metadata": {
+                        "artefact.metadata": "object"
+                    }
+                }
+            },
+            "fallback": "No internal replacement."
+        }
     },
     "schema": {
         "functionality": "Get schema url from its name",
