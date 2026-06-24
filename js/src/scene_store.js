@@ -14,6 +14,12 @@ const COLLECTION_NAMES = new Set([
     "sensors"
 ]);
 
+const ANNOTATION_COLLECTION_NAMES = new Set([
+    "selections",
+    "measurements",
+    "semantic_annotations"
+]);
+
 const RUNTIME_FIELDS = new Set([
     "trash",
     "visible_node",
@@ -172,6 +178,24 @@ SceneStore._normalizeAnnotationCollection = (data) => {
     return collection;
 };
 
+SceneStore._normalizeAnnotations = (data = {}) => {
+    const annotations = SceneStore._isObject(data.annotations)
+        ? data.annotations
+        : {};
+
+    return {
+        selections: SceneStore._normalizeAnnotationCollection(
+            annotations.selections ?? data.selections
+        ),
+        measurements: SceneStore._normalizeAnnotationCollection(
+            annotations.measurements ?? data.measurements
+        ),
+        semantic_annotations: SceneStore._normalizeAnnotationCollection(
+            annotations.semantic_annotations ?? data.semantic_annotations
+        )
+    };
+};
+
 SceneStore._normalizeSensors = (data) => {
     if (Array.isArray(data)) return SceneStore._clone(data);
 
@@ -184,9 +208,7 @@ SceneStore._normalizeModel = (modelId, data = {}) => {
         artefact: SceneStore._normalizeArtefact(data.artefact),
         metadata: SceneStore._normalizeMetadata(data.metadata),
         transforms: SceneStore._normalizeTransforms(data),
-        selections: SceneStore._normalizeAnnotationCollection(data.selections),
-        measurements: SceneStore._normalizeAnnotationCollection(data.measurements),
-        semantic_annotations: SceneStore._normalizeAnnotationCollection(data.semantic_annotations),
+        annotations: SceneStore._normalizeAnnotations(data),
         sensors: SceneStore._normalizeSensors(data.sensors)
     };
 
@@ -231,21 +253,23 @@ SceneStore._getExportModel = (model) => {
     const output = SceneStore._getExportValue(model);
     const modelId = model.id;
 
-    output.selections = SceneStore._getExportAnnotationCollection(
-        modelId,
-        "selections",
-        model.selections
-    );
-    output.measurements = SceneStore._getExportAnnotationCollection(
-        modelId,
-        "measurements",
-        model.measurements
-    );
-    output.semantic_annotations = SceneStore._getExportAnnotationCollection(
-        modelId,
-        "semantic_annotations",
-        model.semantic_annotations
-    );
+    output.annotations = {
+        selections: SceneStore._getExportAnnotationCollection(
+            modelId,
+            "selections",
+            model.annotations?.selections
+        ),
+        measurements: SceneStore._getExportAnnotationCollection(
+            modelId,
+            "measurements",
+            model.annotations?.measurements
+        ),
+        semantic_annotations: SceneStore._getExportAnnotationCollection(
+            modelId,
+            "semantic_annotations",
+            model.annotations?.semantic_annotations
+        )
+    };
 
     return output;
 };
@@ -350,6 +374,13 @@ SceneStore.getModelCollection = (modelId, collectionName) => {
     if (!COLLECTION_NAMES.has(collectionName)) return;
 
     const model = SceneStore.ensureModel(modelId);
+    if (ANNOTATION_COLLECTION_NAMES.has(collectionName)) {
+        if (!model.annotations) model.annotations = SceneStore._normalizeAnnotations(model);
+        if (!model.annotations[collectionName]) model.annotations[collectionName] = {};
+
+        return model.annotations[collectionName];
+    }
+
     return model?.[collectionName];
 };
 

@@ -475,12 +475,13 @@ FE.openTransformPanel = (modelId, key) => {
 };
 
 FE.appendModelSceneRows = (elParent, modelId, model) => {
+    const annotations = model.annotations || {};
     const sections = [
         {
             key    : "selections",
             label  : "Selections",
             icon   : "collection-item",
-            count  : FE.countCollectionItems(model.selections),
+            count  : FE.countCollectionItems(annotations.selections),
             expandable: true,
             actions: () => FE.createCollectionActions(modelId, "selections")
         },
@@ -488,7 +489,7 @@ FE.appendModelSceneRows = (elParent, modelId, model) => {
             key    : "semantic_annotations",
             label  : "Semantic Annotations",
             icon   : "list",
-            count  : FE.countCollectionItems(model.semantic_annotations),
+            count  : FE.countCollectionItems(annotations.semantic_annotations),
             expandable: true,
             actions: () => FE.createCollectionActions(modelId, "semantic_annotations")
         },
@@ -496,7 +497,7 @@ FE.appendModelSceneRows = (elParent, modelId, model) => {
             key    : "measurements",
             label  : "Measurements",
             icon   : "measure",
-            count  : FE.countCollectionItems(model.measurements),
+            count  : FE.countCollectionItems(annotations.measurements),
             expandable: true,
             actions: () => FE.createCollectionActions(modelId, "measurements")
         },
@@ -575,7 +576,7 @@ FE.appendModelSceneRows = (elParent, modelId, model) => {
             section.key === "measurements" ||
             section.key === "semantic_annotations") {
             const elChildren = THOTH.UI.createSceneTreeChildren();
-            FE.appendAnnotationRows(elChildren, modelId, section.key, model[section.key]);
+            FE.appendAnnotationRows(elChildren, modelId, section.key, annotations[section.key]);
             elParent.append(elChildren);
         }
     }

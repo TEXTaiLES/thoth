@@ -11,17 +11,11 @@
         "artefact"
     ],
     "annotation": {
-        "distance": "float",
-        "distance_type": "str",
-        "point1": {
+        "point": {
             "x": "float",
             "y": "float",
-            "z": "float"
-        },
-        "point2": {
-            "x": "float",
-            "y": "float",
-            "z": "float"
+            "z": "float",
+            "face_id": "float"
         }
     },
     "visible": "bool"

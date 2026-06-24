@@ -2,12 +2,7 @@
     "artefact": "artefact",
     "metadata": "metadata",
     "transforms": "transforms",
-    "semantic_annotations": [
-        "semantic_annotation"
-    ],
-    "selections": [
-        "selections"
-    ],
+    "annotations": "annotations",
     "sensors": [
         "sensor"
     ]

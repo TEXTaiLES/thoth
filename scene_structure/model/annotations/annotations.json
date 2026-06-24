@@ -1,0 +1,11 @@
+{
+    "selections": {
+        "selection": "selection"
+    },
+    "measurements": {
+        "measurement": "measurement"
+    },
+    "semantic_annotations": {
+        "semantic_annotation": "semantic_annotation"
+    }
+}

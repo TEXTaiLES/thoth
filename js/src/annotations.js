@@ -418,6 +418,24 @@ Annotations.toExportAnnotation = (annotation) => {
     };
 };
 
+Annotations.toStorageAnnotation = (modality, annotationId, annotation) => {
+    if (modality === "measurements" && THOTH.MSR?.toCanonicalMeasurement) {
+        return THOTH.MSR.toCanonicalMeasurement(annotationId, annotation);
+    }
+
+    if (modality === "semantic_annotations" && THOTH.SemAnnotations?.toCanonicalAnnotation) {
+        return THOTH.SemAnnotations.toCanonicalAnnotation(annotationId, annotation);
+    }
+
+    return Annotations.normalize(annotation);
+};
+
+Annotations.toStorageExportAnnotation = (modality, annotationId, annotation) => {
+    const normalized = Annotations.toStorageAnnotation(modality, annotationId, annotation);
+
+    return Annotations.toExportAnnotation(normalized);
+};
+
 
 // Collections
 
@@ -439,7 +457,8 @@ Annotations.getModelId = (modality, annotationId) => {
 
     const models = THOTH.SceneStore?.getScene()?.models || {};
     for (const modelId in models) {
-        const collection = models[modelId]?.[modality];
+        const model = models[modelId] || {};
+        const collection = model.annotations?.[modality] || model[modality];
         if (collection && collection[annotationId] !== undefined) return modelId;
     }
 
@@ -450,7 +469,7 @@ Annotations.create = (modelId, modality, annotation) => {
     const prefix = Annotations._getOperationPrefix(modality);
     if (!prefix) return false;
 
-    const value = Annotations.normalize(annotation);
+    const value = Annotations.toStorageAnnotation(modality, annotation?.id, annotation);
     const id    = value.id;
     const target = Annotations._makeTarget(modelId, modality, id);
 
@@ -465,7 +484,7 @@ Annotations.update = (modelId, modality, annotationId, data) => {
     const prevValue = Annotations.clone(Annotations.get(resolvedModelId, modality, annotationId));
     if (!prevValue) return false;
 
-    const value = Annotations.normalize({
+    const value = Annotations.toStorageAnnotation(modality, annotationId, {
         ...prevValue,
         ...Annotations._clone(data),
         id: annotationId
@@ -496,7 +515,7 @@ Annotations.setVisible = (modelId, modality, annotationId, visible) => {
     const prevValue = Annotations.clone(Annotations.get(resolvedModelId, modality, annotationId));
     if (!prevValue) return false;
 
-    const value = Annotations.normalize({
+    const value = Annotations.toStorageAnnotation(modality, annotationId, {
         ...prevValue,
         id     : annotationId,
         visible: Boolean(visible)
@@ -515,7 +534,7 @@ Annotations.getExportData = (modelId, modality) => {
         const annotation = collection[annotationId];
         if (!annotation || annotation.trash === true) continue;
 
-        output[annotationId] = Annotations.toExportAnnotation(annotation);
+        output[annotationId] = Annotations.toStorageExportAnnotation(modality, annotationId, annotation);
     }
 
     return output;

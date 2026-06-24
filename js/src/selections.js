@@ -143,7 +143,7 @@ Selections._getFaceCount = (selection) => {
 };
 
 Selections.getNextSelectionId = (modelId) => {
-    const collection = THOTH.SceneStore?.getModel(modelId)?.selections || {};
+    const collection = THOTH.SceneStore?.getModelCollection(modelId, "selections") || {};
     return THOTH.Utils.getFirstUnusedKey(collection);
 };
 
@@ -421,7 +421,7 @@ Selections._encodeSelectedFaces = (selectedFaces = {}) => {
 };
 
 Selections.getExportData = (modelId) => {
-    const collection = THOTH.SceneStore?.getModel(modelId)?.selections || {};
+    const collection = THOTH.SceneStore?.getModelCollection(modelId, "selections") || {};
     let output = {};
 
     for (const selectionId in collection) {

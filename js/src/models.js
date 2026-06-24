@@ -56,9 +56,20 @@ Models.parseModels = (models) => {
         );
         Models.modelMap.set(modelId, G);
 
-        THOTH.Selections?.parseSelections(modelId, modelData.selections);
-        THOTH.MSR?.parseMeasurements(modelData.measurements, modelId);
-        THOTH.SemAnnotations?.parseAnnotations(modelData.semantic_annotations, modelId);
+        const annotations = modelData.annotations || {};
+
+        THOTH.Selections?.parseSelections(
+            modelId,
+            annotations.selections ?? modelData.selections
+        );
+        THOTH.MSR?.parseMeasurements(
+            annotations.measurements ?? modelData.measurements,
+            modelId
+        );
+        THOTH.SemAnnotations?.parseAnnotations(
+            annotations.semantic_annotations ?? modelData.semantic_annotations,
+            modelId
+        );
 
         if (modelURL) {
             G.load(modelURL, () => {
