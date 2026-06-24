@@ -1550,6 +1550,152 @@ UI._parseRelationList = (value, fieldName) => {
     return null;
 };
 
+UI._normalizeArtefactRelation = (relation) => {
+    if (relation === undefined || relation === null) return null;
+
+    if (typeof relation !== "object") {
+        const id = String(relation).trim();
+        if (!id) return null;
+
+        return {
+            id  : id,
+            name: id,
+            url : ""
+        };
+    }
+
+    const id = String(
+        relation.id ??
+        relation.name ??
+        relation.title ??
+        relation.url ??
+        relation.gltf_file ??
+        ""
+    ).trim();
+    if (!id) return null;
+
+    return {
+        id  : id,
+        name: relation.name || relation.title || id,
+        url : relation.url || relation.gltf_file || relation.path || relation.src || ""
+    };
+};
+
+UI._normalizeArtefactRelations = (relations) => {
+    const output = [];
+    const seen = new Set();
+
+    for (const relation of Array.from(relations || [])) {
+        const normalized = UI._normalizeArtefactRelation(relation);
+        if (!normalized || seen.has(normalized.id)) continue;
+
+        seen.add(normalized.id);
+        output.push(normalized);
+    }
+
+    return output;
+};
+
+UI._renderRelatedArtefactList = (elList, relations) => {
+    elList.replaceChildren();
+
+    const normalizedRelations = UI._normalizeArtefactRelations(relations);
+    if (normalizedRelations.length === 0) {
+        elList.append(ATON.UI.createButton({
+            text   : "No related artefacts",
+            size   : "small",
+            tooltip: "No related artefacts"
+        }));
+        return;
+    }
+
+    for (const relation of normalizedRelations) {
+        elList.append(ATON.UI.createButton({
+            text   : relation.name || relation.id,
+            size   : "small",
+            icon   : "scene",
+            tooltip: relation.id,
+            onpress: () => {}
+        }));
+    }
+};
+
+UI.createRelatedArtefactsControl = (dataTemp) => {
+    dataTemp.related_artefacts = UI._normalizeArtefactRelations(dataTemp.related_artefacts);
+
+    const elBody = ATON.UI.createContainer({
+        classes: "d-grid gap-2"
+    });
+    const elInputWrap = ATON.UI.createContainer();
+    const elList = ATON.UI.createContainer({
+        classes: "d-grid gap-1"
+    });
+
+    UI._renderRelatedArtefactList(elList, dataTemp.related_artefacts);
+    elInputWrap.append(ATON.UI.createButton({
+        text   : "Loading models...",
+        size   : "small",
+        tooltip: "Loading models"
+    }));
+    elBody.append(elInputWrap, elList);
+
+    const canLoadModels = THOTH.requireAuth("import models",
+        async (u) => {
+            const response = await THOTH.API.listModels(u);
+            if (!response.ok) {
+                elInputWrap.replaceChildren(ATON.UI.createButton({
+                    text   : "Error loading models",
+                    size   : "small",
+                    tooltip: response.error || "Error loading models"
+                }));
+                return;
+            }
+
+            const entries = Array.isArray(response.data) ? response.data : [];
+            const relationByName = new Map();
+            const itemNames = entries
+                .map(item => {
+                    const name = UI._getModelListName(item, u);
+                    if (!name) return null;
+
+                    relationByName.set(name, UI._normalizeArtefactRelation({
+                        id       : name,
+                        name     : name,
+                        url      : item?.url,
+                        gltf_file: item?.gltf_file || item?.glb_file || item?.path || item?.src
+                    }));
+                    return name;
+                })
+                .filter(Boolean);
+            const elInput = ATON.UI.createTagsComponent({
+                list    : itemNames,
+                label   : "Input related models",
+                icon    : "add",
+                onaddtag: (modelName) => {
+                    dataTemp.related_artefacts = UI._normalizeArtefactRelations([
+                        ...dataTemp.related_artefacts,
+                        relationByName.get(modelName) || modelName
+                    ]);
+                    UI._renderRelatedArtefactList(elList, dataTemp.related_artefacts);
+                }
+            });
+
+            elInput.classList.add("thoth-related-artefact-tags");
+            elInputWrap.replaceChildren(elInput);
+        }
+    );
+
+    if (!canLoadModels) {
+        elInputWrap.replaceChildren(ATON.UI.createButton({
+            text   : "Login required",
+            size   : "small",
+            tooltip: "Login required to load model list"
+        }));
+    }
+
+    return elBody;
+};
+
 UI.collectAnnotationSharedFields = (dataTemp) => {
     const relatedRgbImages = UI._parseRelationList(dataTemp._relatedRgbImagesText, "Related RGB images");
     if (relatedRgbImages === null) return null;
@@ -1560,19 +1706,15 @@ UI.collectAnnotationSharedFields = (dataTemp) => {
     );
     if (relatedMultispectralImages === null) return null;
 
-    const relatedArtefacts = UI._parseRelationList(dataTemp._relatedArtefactsText, "Related artefacts");
-    if (relatedArtefacts === null) return null;
-
     const data = {
         ...dataTemp,
         related_rgb_images          : relatedRgbImages,
         related_multispectral_images: relatedMultispectralImages,
-        related_artefacts           : relatedArtefacts
+        related_artefacts           : UI._normalizeArtefactRelations(dataTemp.related_artefacts)
     };
 
     delete data._relatedRgbImagesText;
     delete data._relatedMultispectralImagesText;
-    delete data._relatedArtefactsText;
 
     const normalized = THOTH.Annotations?.normalize(data) || data;
 
@@ -1588,7 +1730,7 @@ UI.collectAnnotationSharedFields = (dataTemp) => {
 UI.createAnnotationSharedItems = (dataTemp, options = {}) => {
     dataTemp._relatedRgbImagesText = UI._formatRelationList(dataTemp.related_rgb_images);
     dataTemp._relatedMultispectralImagesText = UI._formatRelationList(dataTemp.related_multispectral_images);
-    dataTemp._relatedArtefactsText = UI._formatRelationList(dataTemp.related_artefacts);
+    dataTemp.related_artefacts = UI._normalizeArtefactRelations(dataTemp.related_artefacts);
 
     const items = [
         {
@@ -1633,12 +1775,7 @@ UI.createAnnotationSharedItems = (dataTemp, options = {}) => {
         {
             title  : "Related artefacts",
             open   : false,
-            content: UI.createTextArea({
-                label  : "JSON",
-                value  : dataTemp._relatedArtefactsText,
-                rows   : 4,
-                oninput: (v) => dataTemp._relatedArtefactsText = v
-            })
+            content: UI.createRelatedArtefactsControl(dataTemp)
         }
     ];
 

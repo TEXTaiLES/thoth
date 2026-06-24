@@ -8,7 +8,11 @@
         "multispectral_image"
     ],
     "related_artefacts": [
-        "artefact"
+        {
+            "id": "str",
+            "name": "str",
+            "url": "str"
+        }
     ],
     "annotation": {
         "point": {

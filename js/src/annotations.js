@@ -96,25 +96,38 @@ Annotations._isObject = (value) => {
 
 Annotations._normalizeRelation = (relation) => {
     if (!Annotations._isObject(relation)) {
+        const id = relation === undefined || relation === null ? "" : String(relation);
+
         return {
-            id  : relation === undefined || relation === null ? "" : String(relation),
-            name: "",
+            id  : id,
+            name: id,
             url : ""
         };
     }
 
+    const id = String(
+        relation.id ??
+        relation.name ??
+        relation.title ??
+        relation.url ??
+        relation.gltf_file ??
+        ""
+    );
+
     return {
         ...Annotations._clone(relation),
-        id  : relation.id === undefined || relation.id === null ? "" : String(relation.id),
-        name: relation.name || "",
-        url : relation.url || ""
+        id  : id,
+        name: relation.name || relation.title || id,
+        url : relation.url || relation.gltf_file || relation.path || relation.src || ""
     };
 };
 
 Annotations._normalizeRelations = (relations) => {
     if (!Array.isArray(relations)) return [];
 
-    return relations.map(Annotations._normalizeRelation);
+    return relations
+        .map(Annotations._normalizeRelation)
+        .filter(relation => relation.id);
 };
 
 Annotations._stripRuntime = (value) => {
