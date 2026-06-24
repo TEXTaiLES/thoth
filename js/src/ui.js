@@ -19,6 +19,217 @@ UI.activeTransformControls = {
 
 // Modules
 
+UI.createTagsComponen = (options = {}) => {
+    const baseid = ATON.Utils.generateID("thoth-tags");
+    const tags = {};
+    let isValid = !options.validator;
+
+    const el = ATON.UI.createContainer({
+        classes: "input-group aton-inline"
+    });
+    el.id = baseid;
+
+    let label = "";
+    if (options.label) {
+        label = options.label;
+        el.append(ATON.UI.elem(`<span class="input-group-text aton-inline">${label}</span>`));
+    }
+
+    const elInput = ATON.UI.elem(
+        `<input class="form-control aton-input" aria-label="${label}" type="search" spellcheck="false">`
+    );
+    ATON.UI.registerElementAsComponent(elInput, "input");
+    elInput.id = `${baseid}-input`;
+
+    const elAdd = ATON.UI.createButton({
+        text   : "+",
+        classes: "btn-accent",
+        tooltip: "Add",
+        onpress: () => submitValue()
+    });
+
+    const addTag = (rawValue, emit = true) => {
+        const value = String(rawValue || "").trim();
+        if (value.length < 1) return false;
+        if (tags[value]) return false;
+
+        tags[value] = 1;
+        if (emit && options.onaddtag) options.onaddtag(value);
+
+        return true;
+    };
+
+    const removeTag = (rawValue, emit = true) => {
+        const value = String(rawValue || "").trim();
+        if (value.length < 1 || !tags[value]) return false;
+
+        delete tags[value];
+        if (emit && options.onremovetag) options.onremovetag(value);
+
+        return true;
+    };
+
+    const submitValue = () => {
+        const value = elInput.value.trim();
+        if (value.length < 1 || !isValid) return;
+        if (!addTag(value)) return;
+
+        elInput.value = "";
+    };
+
+    elInput.onfocus = () => { ATON.UI._bInput = true; };
+    elInput.onblur  = () => { ATON.UI._bInput = false; };
+    elInput.onkeydown = (event) => {
+        if (event.keyCode === 13) submitValue();
+    };
+    elInput.oninput = () => {
+        const value = elInput.value.trim();
+
+        if (options.validator) {
+            isValid = options.validator(value);
+            if (isValid) elAdd.removeAttribute("disabled");
+            else elAdd.setAttribute("disabled", true);
+        }
+
+        if (options.oninput) options.oninput(value);
+    };
+
+    if (options.onchange) {
+        elInput.onchange = () => {
+            if (isValid) options.onchange(elInput.value);
+        };
+    }
+
+    if (options.value) elInput.value = String(options.value);
+    if (options.placeholder) elInput.setAttribute("placeholder", options.placeholder);
+    if (!isValid) elAdd.setAttribute("disabled", true);
+
+    el.append(elInput);
+
+    if (options.list) {
+        const list = options.list;
+        elInput.setAttribute("list", `${baseid}-list`);
+        const elDatalist = ATON.UI.elem(`<datalist id="${baseid}-list"></datalist>`);
+        ATON.UI.registerElementAsComponent(elDatalist, "datalist");
+
+        for (let i = 0; i < list.length; i++) {
+            elDatalist.append(ATON.UI.elem(`<option value="${list[i]}"></option>`));
+        }
+
+        el.append(elDatalist);
+    }
+
+    el.append(elAdd);
+
+    if (options.tags) {
+        for (const key in options.tags) addTag(options.tags[key], false);
+    }
+
+    el.addTag = addTag;
+    el.removeTag = removeTag;
+
+    return el;
+};
+
+UI.createTagsComponent = UI.createTagsComponen;
+
+UI.createInputListControl = (options = {}) => {
+    let items = options.items || [];
+    let elInput = null;
+
+    const getItemId = options.getItemId || (item => item?.id ?? item);
+    const getItems = () => options.getItems ? options.getItems() : items;
+    const setItems = (nextItems) => {
+        if (options.setItems) options.setItems(nextItems);
+        else items = nextItems;
+
+        if (options.onchange) options.onchange(nextItems);
+    };
+    const normalizeItems = (nextItems) => {
+        return options.normalizeItems ? options.normalizeItems(nextItems) : Array.from(nextItems || []);
+    };
+
+    const elBody = ATON.UI.createContainer({
+        classes: options.classes || "d-grid gap-2"
+    });
+    const elInputWrap = ATON.UI.createContainer();
+    const elList = ATON.UI.createContainer({
+        classes: options.listClasses || "d-grid gap-1"
+    });
+
+    const render = () => {
+        elList.replaceChildren();
+
+        const currentItems = normalizeItems(getItems());
+        if (currentItems.length === 0) {
+            elList.append(ATON.UI.createButton({
+                text   : options.emptyText || "No items selected",
+                size   : "small",
+                tooltip: options.emptyTooltip || options.emptyText || "No items selected"
+            }));
+            return;
+        }
+
+        const removeItem = (item) => {
+            const itemId = getItemId(item);
+            const nextItems = normalizeItems(getItems()).filter(
+                currentItem => getItemId(currentItem) !== itemId
+            );
+            setItems(nextItems);
+            elInput?.removeTag?.(itemId, false);
+            render();
+        };
+
+        for (const item of currentItems) {
+            elList.append(options.renderItem(item, removeItem));
+        }
+    };
+
+    const showPlaceholder = (text, tooltip) => {
+        elInputWrap.replaceChildren(ATON.UI.createButton({
+            text   : text,
+            size   : "small",
+            tooltip: tooltip || text
+        }));
+    };
+
+    const setInputList = (inputList = []) => {
+        elInput = UI.createTagsComponent({
+            ...(options.inputOptions || {}),
+            list    : inputList,
+            onaddtag: async (value) => {
+                const item = options.resolveItem
+                    ? await options.resolveItem(value)
+                    : value;
+                if (item === undefined || item === null) return;
+
+                setItems(normalizeItems([
+                    ...normalizeItems(getItems()),
+                    item
+                ]));
+                render();
+            }
+        });
+
+        if (options.inputClass) elInput.classList.add(options.inputClass);
+        elInputWrap.replaceChildren(elInput);
+        return elInput;
+    };
+
+    render();
+    showPlaceholder(options.loadingText || "Loading...", options.loadingTooltip);
+    elBody.append(elInputWrap, elList);
+
+    return {
+        el        : elBody,
+        inputWrap : elInputWrap,
+        list      : elList,
+        render    : render,
+        setInputList,
+        showPlaceholder
+    };
+};
+
 UI.createBool = (options) => {
     let container = document.createElement('div');
     container.classList.add('form-check', 'thoth-bool');
@@ -1334,14 +1545,41 @@ UI.modalAddModel = () => {
             const itemNames = entries
                 .map(item => UI._getModelListName(item, u))
                 .filter(Boolean);
-            const elInput = ATON.UI.createTagsComponent({
-                list       : itemNames,
-                label      : "Input models",
-                icon       : "add",
-                onaddtag   : (k) => modelList.add(k),
-                onremovetag: (k) => modelList.delete(k)
+            const modelListControl = UI.createInputListControl({
+                getItems: () => Array.from(modelList),
+                setItems: (items) => {
+                    modelList.clear();
+                    for (const item of items) modelList.add(item);
+                },
+                emptyText     : "No models selected",
+                loadingText   : "Loading models...",
+                inputClass    : "thoth-add-model-tags",
+                inputOptions  : {
+                    label: "Input models"
+                },
+                renderItem: (modelName, removeItem) => {
+                    const elActions = ATON.UI.createContainer();
+                    elActions.append(ATON.UI.createButton({
+                        icon   : ATON.PATH_RES + "icons/trash.png",
+                        size   : "small",
+                        tooltip: "Remove model",
+                        onpress: () => removeItem(modelName)
+                    }));
+
+                    return UI.createSplitRow({
+                        colLeft   : 8,
+                        itemsLeft : ATON.UI.createButton({
+                            text   : modelName,
+                            size   : "small",
+                            icon   : "scene",
+                            tooltip: modelName,
+                            onpress: () => {}
+                        }),
+                        itemsRight: elActions
+                    });
+                }
             });
-            elInput.classList.add("thoth-add-model-tags");
+            modelListControl.setInputList(itemNames);
 
             // Footer
             const elFooter = UI.createModalFooter({
@@ -1356,7 +1594,7 @@ UI.modalAddModel = () => {
 
             ATON.UI.showModal({
                 header: "Add models",
-                body  : elInput,
+                body  : modelListControl.el,
                 footer: elFooter,
             });
         }
@@ -1656,7 +1894,7 @@ UI.modalRelatedRgbImage = (image) => {
     });
 };
 
-UI._createRelatedRgbImageRow = (relation) => {
+UI._createRelatedRgbImageRow = (relation, ondelete) => {
     const elRow = ATON.UI.createContainer({
         classes: "row g-0 align-items-center w-100 rounded-2 px-2 py-1 mb-1"
     });
@@ -1664,10 +1902,10 @@ UI._createRelatedRgbImageRow = (relation) => {
         classes: "col-4 d-flex align-items-center"
     });
     const elNameCol = ATON.UI.createContainer({
-        classes: "col-5 d-flex align-items-center"
+        classes: "col-4 d-flex align-items-center"
     });
     const elActionsCol = ATON.UI.createContainer({
-        classes: "col-3 d-flex justify-content-end align-items-center"
+        classes: "col-4 d-flex justify-content-end align-items-center"
     });
 
     const elPreviewButton = document.createElement("button");
@@ -1702,70 +1940,68 @@ UI._createRelatedRgbImageRow = (relation) => {
         size   : "small",
         tooltip: relation.id
     }));
-    elActionsCol.append(ATON.UI.createButton({
-        icon   : "download",
-        size   : "small",
-        tooltip: relation.url ? "Download image" : "Image URL unavailable",
-        onpress: () => {
-            if (relation.url) THOTH.Utils.downloadImage(relation.url, relation.name || relation.id);
-        }
-    }));
+    elActionsCol.append(
+        ATON.UI.createButton({
+            icon   : "download",
+            size   : "small",
+            tooltip: relation.url ? "Download image" : "Image URL unavailable",
+            onpress: () => {
+                if (relation.url) THOTH.Utils.downloadImage(relation.url, relation.name || relation.id);
+            }
+        }),
+        ATON.UI.createButton({
+            icon   : ATON.PATH_RES + "icons/trash.png",
+            size   : "small",
+            tooltip: "Remove related RGB image",
+            onpress: () => {
+                if (ondelete) ondelete(relation);
+            }
+        })
+    );
 
     elRow.append(elPreviewCol, elNameCol, elActionsCol);
     return elRow;
 };
 
-UI._renderRelatedRgbImageList = (elList, relations) => {
-    elList.replaceChildren();
-
-    const normalizedRelations = UI._normalizeImageRelations(relations);
-    if (normalizedRelations.length === 0) {
-        elList.append(ATON.UI.createButton({
-            text   : "No related RGB images",
-            size   : "small",
-            tooltip: "No related RGB images"
-        }));
-        return;
-    }
-
-    for (const relation of normalizedRelations) {
-        elList.append(UI._createRelatedRgbImageRow(relation));
-    }
-};
-
 UI.createRelatedRgbImagesControl = (dataTemp) => {
     dataTemp.related_rgb_images = UI._normalizeImageRelations(dataTemp.related_rgb_images);
 
-    const elBody = ATON.UI.createContainer({
-        classes: "d-grid gap-2"
+    let relationByName = new Map();
+    const control = UI.createInputListControl({
+        getItems     : () => dataTemp.related_rgb_images,
+        setItems     : items => {
+            dataTemp.related_rgb_images = UI._normalizeImageRelations(items);
+        },
+        normalizeItems: UI._normalizeImageRelations,
+        getItemId    : item => item.id,
+        emptyText    : "No related RGB images",
+        loadingText  : "Loading RGB images...",
+        inputClass   : "thoth-related-rgb-image-tags",
+        inputOptions : {
+            label: "Input RGB images"
+        },
+        resolveItem: async (imageName) => UI._resolveRgbImageRelation(
+            relationByName.get(imageName) || imageName
+        ),
+        renderItem: (relation, removeItem) => UI._createRelatedRgbImageRow(
+            relation,
+            removeItem
+        )
     });
-    const elInputWrap = ATON.UI.createContainer();
-    const elList = ATON.UI.createContainer({
-        classes: "d-grid gap-1"
-    });
-
-    UI._renderRelatedRgbImageList(elList, dataTemp.related_rgb_images);
-    elInputWrap.append(ATON.UI.createButton({
-        text   : "Loading RGB images...",
-        size   : "small",
-        tooltip: "Loading RGB images"
-    }));
-    elBody.append(elInputWrap, elList);
 
     const canLoadImages = THOTH.requireAuth("view RGB images",
         async () => {
             const response = await THOTH.API.listRgbImages();
             if (!response.ok) {
-                elInputWrap.replaceChildren(ATON.UI.createButton({
-                    text   : "Error loading RGB images",
-                    size   : "small",
-                    tooltip: response.error || "Error loading RGB images"
-                }));
+                control.showPlaceholder(
+                    "Error loading RGB images",
+                    response.error || "Error loading RGB images"
+                );
                 return;
             }
 
             const entries = Array.isArray(response.data) ? response.data : [];
-            const relationByName = new Map();
+            relationByName = new Map();
             const itemNames = entries
                 .map(item => {
                     const name = UI._getImageListName(item);
@@ -1780,38 +2016,306 @@ UI.createRelatedRgbImagesControl = (dataTemp) => {
                     return name;
                 })
                 .filter(Boolean);
-            const elInput = ATON.UI.createTagsComponent({
-                list    : itemNames,
-                label   : "Input RGB images",
-                icon    : "add",
-                onaddtag: async (imageName) => {
-                    const relation = await UI._resolveRgbImageRelation(
-                        relationByName.get(imageName) || imageName
-                    );
-                    if (!relation) return;
-
-                    dataTemp.related_rgb_images = UI._normalizeImageRelations([
-                        ...dataTemp.related_rgb_images,
-                        relation
-                    ]);
-                    UI._renderRelatedRgbImageList(elList, dataTemp.related_rgb_images);
-                }
-            });
-
-            elInput.classList.add("thoth-related-rgb-image-tags");
-            elInputWrap.replaceChildren(elInput);
+            control.setInputList(itemNames);
         }
     );
 
     if (!canLoadImages) {
-        elInputWrap.replaceChildren(ATON.UI.createButton({
-            text   : "Login required",
-            size   : "small",
-            tooltip: "Login required to load RGB image list"
-        }));
+        control.showPlaceholder(
+            "Login required",
+            "Login required to load RGB image list"
+        );
     }
 
-    return elBody;
+    return control.el;
+};
+
+UI._normalizeMultispectralUrlMap = (value) => {
+    if (typeof value === "string") {
+        return value ? { rgb: value } : {};
+    }
+
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+
+    const output = {};
+    for (const key in value) {
+        const url = value[key];
+        if (url === undefined || url === null || url === "") continue;
+
+        output[String(key)] = String(url);
+    }
+
+    return output;
+};
+
+UI._normalizeMultispectralImageRelation = (relation) => {
+    if (relation === undefined || relation === null) return null;
+
+    if (typeof relation !== "object") {
+        const id = String(relation).trim();
+        if (!id) return null;
+
+        return {
+            id  : id,
+            name: id,
+            urls: {}
+        };
+    }
+
+    const id = String(
+        relation.id ??
+        relation.name ??
+        relation.image_name ??
+        ""
+    ).trim();
+    if (!id) return null;
+
+    const urls = UI._normalizeMultispectralUrlMap(
+        relation.urls ??
+        relation.image_url ??
+        relation.url
+    );
+
+    return {
+        id  : id,
+        name: relation.name || relation.image_name || id,
+        urls: urls
+    };
+};
+
+UI._normalizeMultispectralImageRelations = (relations) => {
+    const output = [];
+    const seen = new Set();
+
+    for (const relation of Array.from(relations || [])) {
+        const normalized = UI._normalizeMultispectralImageRelation(relation);
+        if (!normalized || seen.has(normalized.id)) continue;
+
+        seen.add(normalized.id);
+        output.push(normalized);
+    }
+
+    return output;
+};
+
+UI._getMultispectralWavelengthEntries = (relation) => {
+    const urls = UI._normalizeMultispectralUrlMap(relation?.urls);
+    return Object.keys(urls)
+        .sort((a, b) => {
+            if (a === "rgb") return -1;
+            if (b === "rgb") return 1;
+
+            const aNum = Number(String(a).replace(/[^\d.]/g, ""));
+            const bNum = Number(String(b).replace(/[^\d.]/g, ""));
+            if (Number.isFinite(aNum) && Number.isFinite(bNum) && aNum !== bNum) {
+                return aNum - bNum;
+            }
+
+            return String(a).localeCompare(String(b));
+        })
+        .map(key => [key, urls[key]]);
+};
+
+UI._resolveMultispectralImageRelation = async (relation) => {
+    const normalized = UI._normalizeMultispectralImageRelation(relation);
+    if (!normalized) return null;
+    if (Object.keys(normalized.urls).length > 0) return normalized;
+
+    const response = await THOTH.API.getMultispectralImage(normalized.id);
+    if (!response.ok || !response.data) return normalized;
+
+    return UI._normalizeMultispectralImageRelation({
+        ...normalized,
+        ...response.data
+    });
+};
+
+UI.modalRelatedMultispectralImage = (image) => {
+    const relation = UI._normalizeMultispectralImageRelation(image);
+    if (!relation) return;
+
+    const wavelengths = UI._getMultispectralWavelengthEntries(relation);
+    let index = 0;
+
+    const elBody = ATON.UI.createContainer({
+        classes: "d-flex flex-column"
+    });
+    const elImgContainer = ATON.UI.createContainer({
+        classes: "d-flex ratio-16x9 w-100 bg-dark"
+    });
+    const elImg = document.createElement("img");
+    elImg.alt = relation.name || relation.id;
+    elImg.onerror = () => {};
+    elImg.className = "img-fluid w-100 h-100 object-fit-contain";
+    const elWavelength = ATON.UI.createButton({
+        text   : wavelengths.length > 0 ? wavelengths[0][0] : "No bitmaps",
+        size   : "small",
+        tooltip: "Current wavelength"
+    });
+
+    const render = () => {
+        if (wavelengths.length === 0) {
+            elImg.removeAttribute("src");
+            elWavelength.textContent = "No bitmaps";
+            return;
+        }
+
+        const [wavelength, url] = wavelengths[index];
+        elImg.src = url;
+        elWavelength.textContent = wavelength;
+    };
+
+    elImgContainer.append(elImg);
+    elBody.append(
+        elImgContainer,
+        UI.createSplitRow({
+            colLeft   : 6,
+            itemsLeft : elWavelength,
+            itemsRight: ATON.UI.createButton({
+                text   : `${wavelengths.length} bitmap${wavelengths.length === 1 ? "" : "s"}`,
+                size   : "small",
+                tooltip: "Available bitmaps"
+            })
+        })
+    );
+
+    const elFooter = ATON.UI.createContainer();
+    elFooter.append(
+        ATON.UI.createButton({
+            text   : "<",
+            tooltip: "Previous wavelength",
+            onpress: () => {
+                if (wavelengths.length === 0) return;
+
+                index = (index - 1 + wavelengths.length) % wavelengths.length;
+                render();
+            }
+        }),
+        ATON.UI.createButton({
+            text   : ">",
+            tooltip: "Next wavelength",
+            onpress: () => {
+                if (wavelengths.length === 0) return;
+
+                index = (index + 1) % wavelengths.length;
+                render();
+            }
+        }),
+        ATON.UI.createButton({
+            text   : "Download",
+            icon   : "download",
+            tooltip: "Download not available yet",
+            onpress: () => {}
+        })
+    );
+
+    render();
+    ATON.UI.showModal({
+        header: relation.name || relation.id,
+        body  : elBody,
+        footer: elFooter
+    });
+};
+
+UI._createRelatedMultispectralImageRow = (relation, ondelete) => {
+    const wavelengths = UI._getMultispectralWavelengthEntries(relation);
+    const elActions = ATON.UI.createContainer();
+    elActions.append(
+        ATON.UI.createButton({
+            icon   : "download",
+            size   : "small",
+            tooltip: "Download not available yet",
+            onpress: () => {}
+        }),
+        ATON.UI.createButton({
+            icon   : ATON.PATH_RES + "icons/trash.png",
+            size   : "small",
+            tooltip: "Remove related multispectral image",
+            onpress: () => {
+                if (ondelete) ondelete(relation);
+            }
+        })
+    );
+
+    return UI.createSplitRow({
+        colLeft   : 8,
+        itemsLeft : ATON.UI.createButton({
+            text   : relation.name || relation.id,
+            size   : "small",
+            icon   : "list",
+            tooltip: `${wavelengths.length} bitmap${wavelengths.length === 1 ? "" : "s"}`,
+            onpress: () => UI.modalRelatedMultispectralImage(relation)
+        }),
+        itemsRight: elActions
+    });
+};
+
+UI.createRelatedMultispectralImagesControl = (dataTemp) => {
+    dataTemp.related_multispectral_images = UI._normalizeMultispectralImageRelations(
+        dataTemp.related_multispectral_images
+    );
+
+    let relationByName = new Map();
+    const control = UI.createInputListControl({
+        getItems     : () => dataTemp.related_multispectral_images,
+        setItems     : items => {
+            dataTemp.related_multispectral_images = UI._normalizeMultispectralImageRelations(items);
+        },
+        normalizeItems: UI._normalizeMultispectralImageRelations,
+        getItemId    : item => item.id,
+        emptyText    : "No related multispectral images",
+        loadingText  : "Loading multispectral images...",
+        inputClass   : "thoth-related-multispectral-image-tags",
+        inputOptions : {
+            label: "Input multispectral images"
+        },
+        resolveItem: async (imageName) => UI._resolveMultispectralImageRelation(
+            relationByName.get(imageName) || imageName
+        ),
+        renderItem: (relation, removeItem) => UI._createRelatedMultispectralImageRow(
+            relation,
+            removeItem
+        )
+    });
+
+    const canLoadImages = THOTH.requireAuth("view multispectral images",
+        async () => {
+            const response = await THOTH.API.listMultispectralImages();
+            if (!response.ok) {
+                control.showPlaceholder(
+                    "Error loading multispectral images",
+                    response.error || "Error loading multispectral images"
+                );
+                return;
+            }
+
+            const entries = Array.isArray(response.data) ? response.data : [];
+            relationByName = new Map();
+            const itemNames = entries
+                .map(item => {
+                    const name = UI._getImageListName(item);
+                    if (!name) return null;
+
+                    relationByName.set(name, UI._normalizeMultispectralImageRelation({
+                        id       : name,
+                        name     : name,
+                        image_url: item?.image_url
+                    }));
+                    return name;
+                })
+                .filter(Boolean);
+            control.setInputList(itemNames);
+        }
+    );
+
+    if (!canLoadImages) {
+        control.showPlaceholder(
+            "Login required",
+            "Login required to load multispectral image list"
+        );
+    }
+
+    return control.el;
 };
 
 UI._normalizeArtefactRelation = (relation) => {
@@ -1860,63 +2364,67 @@ UI._normalizeArtefactRelations = (relations) => {
     return output;
 };
 
-UI._renderRelatedArtefactList = (elList, relations) => {
-    elList.replaceChildren();
+UI._createRelatedArtefactRow = (relation, ondelete) => {
+    const elActions = ATON.UI.createContainer();
+    elActions.append(ATON.UI.createButton({
+        icon   : ATON.PATH_RES + "icons/trash.png",
+        size   : "small",
+        tooltip: "Remove related artefact",
+        onpress: () => {
+            if (ondelete) ondelete(relation);
+        }
+    }));
 
-    const normalizedRelations = UI._normalizeArtefactRelations(relations);
-    if (normalizedRelations.length === 0) {
-        elList.append(ATON.UI.createButton({
-            text   : "No related artefacts",
-            size   : "small",
-            tooltip: "No related artefacts"
-        }));
-        return;
-    }
-
-    for (const relation of normalizedRelations) {
-        elList.append(ATON.UI.createButton({
+    return UI.createSplitRow({
+        colLeft   : 8,
+        itemsLeft : ATON.UI.createButton({
             text   : relation.name || relation.id,
             size   : "small",
             icon   : "scene",
             tooltip: relation.id,
             onpress: () => {}
-        }));
-    }
+        }),
+        itemsRight: elActions
+    });
 };
 
 UI.createRelatedArtefactsControl = (dataTemp) => {
     dataTemp.related_artefacts = UI._normalizeArtefactRelations(dataTemp.related_artefacts);
 
-    const elBody = ATON.UI.createContainer({
-        classes: "d-grid gap-2"
+    let relationByName = new Map();
+    const control = UI.createInputListControl({
+        getItems     : () => dataTemp.related_artefacts,
+        setItems     : items => {
+            dataTemp.related_artefacts = UI._normalizeArtefactRelations(items);
+        },
+        normalizeItems: UI._normalizeArtefactRelations,
+        getItemId    : item => item.id,
+        emptyText    : "No related artefacts",
+        loadingText  : "Loading models...",
+        inputClass   : "thoth-related-artefact-tags",
+        inputOptions : {
+            label: "Input related models"
+        },
+        resolveItem: modelName => relationByName.get(modelName) || modelName,
+        renderItem : (relation, removeItem) => UI._createRelatedArtefactRow(
+            relation,
+            removeItem
+        )
     });
-    const elInputWrap = ATON.UI.createContainer();
-    const elList = ATON.UI.createContainer({
-        classes: "d-grid gap-1"
-    });
-
-    UI._renderRelatedArtefactList(elList, dataTemp.related_artefacts);
-    elInputWrap.append(ATON.UI.createButton({
-        text   : "Loading models...",
-        size   : "small",
-        tooltip: "Loading models"
-    }));
-    elBody.append(elInputWrap, elList);
 
     const canLoadModels = THOTH.requireAuth("import models",
         async (u) => {
             const response = await THOTH.API.listModels(u);
             if (!response.ok) {
-                elInputWrap.replaceChildren(ATON.UI.createButton({
-                    text   : "Error loading models",
-                    size   : "small",
-                    tooltip: response.error || "Error loading models"
-                }));
+                control.showPlaceholder(
+                    "Error loading models",
+                    response.error || "Error loading models"
+                );
                 return;
             }
 
             const entries = Array.isArray(response.data) ? response.data : [];
-            const relationByName = new Map();
+            relationByName = new Map();
             const itemNames = entries
                 .map(item => {
                     const name = UI._getModelListName(item, u);
@@ -1931,50 +2439,29 @@ UI.createRelatedArtefactsControl = (dataTemp) => {
                     return name;
                 })
                 .filter(Boolean);
-            const elInput = ATON.UI.createTagsComponent({
-                list    : itemNames,
-                label   : "Input related models",
-                icon    : "add",
-                onaddtag: (modelName) => {
-                    dataTemp.related_artefacts = UI._normalizeArtefactRelations([
-                        ...dataTemp.related_artefacts,
-                        relationByName.get(modelName) || modelName
-                    ]);
-                    UI._renderRelatedArtefactList(elList, dataTemp.related_artefacts);
-                }
-            });
-
-            elInput.classList.add("thoth-related-artefact-tags");
-            elInputWrap.replaceChildren(elInput);
+            control.setInputList(itemNames);
         }
     );
 
     if (!canLoadModels) {
-        elInputWrap.replaceChildren(ATON.UI.createButton({
-            text   : "Login required",
-            size   : "small",
-            tooltip: "Login required to load model list"
-        }));
+        control.showPlaceholder(
+            "Login required",
+            "Login required to load model list"
+        );
     }
 
-    return elBody;
+    return control.el;
 };
 
 UI.collectAnnotationSharedFields = (dataTemp) => {
-    const relatedMultispectralImages = UI._parseRelationList(
-        dataTemp._relatedMultispectralImagesText,
-        "Related multispectral images"
-    );
-    if (relatedMultispectralImages === null) return null;
-
     const data = {
         ...dataTemp,
         related_rgb_images          : UI._normalizeImageRelations(dataTemp.related_rgb_images),
-        related_multispectral_images: relatedMultispectralImages,
+        related_multispectral_images: UI._normalizeMultispectralImageRelations(
+            dataTemp.related_multispectral_images
+        ),
         related_artefacts           : UI._normalizeArtefactRelations(dataTemp.related_artefacts)
     };
-
-    delete data._relatedMultispectralImagesText;
 
     const normalized = THOTH.Annotations?.normalize(data) || data;
 
@@ -1989,7 +2476,9 @@ UI.collectAnnotationSharedFields = (dataTemp) => {
 
 UI.createAnnotationSharedItems = (dataTemp, options = {}) => {
     dataTemp.related_rgb_images = UI._normalizeImageRelations(dataTemp.related_rgb_images);
-    dataTemp._relatedMultispectralImagesText = UI._formatRelationList(dataTemp.related_multispectral_images);
+    dataTemp.related_multispectral_images = UI._normalizeMultispectralImageRelations(
+        dataTemp.related_multispectral_images
+    );
     dataTemp.related_artefacts = UI._normalizeArtefactRelations(dataTemp.related_artefacts);
 
     const items = [
@@ -2020,12 +2509,7 @@ UI.createAnnotationSharedItems = (dataTemp, options = {}) => {
         {
             title  : "Related multispectral images",
             open   : false,
-            content: UI.createTextArea({
-                label  : "JSON",
-                value  : dataTemp._relatedMultispectralImagesText,
-                rows   : 4,
-                oninput: (v) => dataTemp._relatedMultispectralImagesText = v
-            })
+            content: UI.createRelatedMultispectralImagesControl(dataTemp)
         },
         {
             title  : "Related artefacts",

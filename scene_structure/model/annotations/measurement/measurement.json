@@ -9,7 +9,14 @@
         }
     ],
     "related_multispectral_images": [
-        "multispectral_image"
+        {
+            "id": "str",
+            "name": "str",
+            "urls": {
+                "rgb": "str",
+                "800nm": "str"
+            }
+        }
     ],
     "related_artefacts": [
         {

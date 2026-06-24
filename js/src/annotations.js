@@ -115,12 +115,17 @@ Annotations._normalizeRelation = (relation) => {
         relation.gltf_file ??
         ""
     );
+    const url = typeof relation.url === "string"
+        ? relation.url
+        : typeof relation.image_url === "string"
+            ? relation.image_url
+            : relation.gltf_file || relation.path || relation.src || "";
 
     return {
         ...Annotations._clone(relation),
         id  : id,
         name: relation.name || relation.title || relation.image_name || id,
-        url : relation.url || relation.image_url || relation.gltf_file || relation.path || relation.src || ""
+        url : url
     };
 };
 
