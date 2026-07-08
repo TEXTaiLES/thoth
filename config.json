@@ -1,5 +1,5 @@
 {   
-    "authKey": "Authorization: Bearer change-me-locally",
+    "authKey": "1f8XEe0OA1FqLAh17yO3cjq9zwuiIfLV",
     "ATONSceneUrl" : "../../api/v2/scenes/",
     "ATONModelUrl" : "../../api/v2/items/samples/models/",
     "schemaListUrl": "../../a/thoth/js/res/schema/list_of_schemas.json",
@@ -8,7 +8,7 @@
     "use_endpoints": true,
     "endpoints": {
         "scene": {
-            "endpoint_url": "http://localhost:5000/scenes",
+            "endpoint_url": null,
             "auth": "default",
             "timeout_seconds": null,
             "enabled": true
@@ -50,25 +50,25 @@
             "enabled": true
         },
         "list_rgb_images": {
-            "endpoint_url": "http://localhost:5000/rgb/images",
+            "endpoint_url": "https://api.textailes.athenarc.gr/rgb/images",
             "auth": "default",
             "timeout_seconds": null,
             "enabled": true
         },
         "rgb_image": {
-            "endpoint_url": "http://localhost:5000/rgb/image",
+            "endpoint_url": "https://api.textailes.athenarc.gr/rgb/image",
             "auth": "default",
             "timeout_seconds": null,
             "enabled": true
         },
         "list_multispectral_images": {
-            "endpoint_url": "http://localhost:5000/multispectral/images",
+            "endpoint_url": "https://api.textailes.athenarc.gr/multispectral/images",
             "auth": "default",
             "timeout_seconds": null,
             "enabled": true
         },
         "multispectral_image": {
-            "endpoint_url": "http://localhost:5000/multispectral/image",
+            "endpoint_url": "https://api.textailes.athenarc.gr/multispectral/image",
             "auth": "default",
             "timeout_seconds": null,
             "enabled": true
