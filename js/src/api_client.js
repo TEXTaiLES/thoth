@@ -436,6 +436,11 @@ API._buildHeaders = (headers = {}) => {
             const value = authKey.slice(separatorIndex + 1).trim();
             requestHeaders[key] = value;
         }
+        else {
+            requestHeaders.Authorization = authKey.startsWith("Bearer ")
+                ? authKey
+                : `Bearer ${authKey}`;
+        }
     }
 
     return requestHeaders;
