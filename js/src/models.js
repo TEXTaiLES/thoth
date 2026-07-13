@@ -109,47 +109,23 @@ Models.onLoad = async (model, options = {}) => {
     const meshData = THOTH.MSR.getVerticesAndFaces(mesh);//mergedvertices
     const geo = mesh.geometry;
 
+    const pos = geo.attributes.position;
+    const idx = geo.index;
 
-//const geo = mesh.geometry;
-const pos = geo.attributes.position;
-const idx = geo.index;
+    console.log("ONLOAD: # vertices =", pos.count);
+    console.log("ONLOAD:# faces =",idx.count);
 
-const unique = new Set();
-for (let i = 0; i < pos.count; i++) {
-    unique.add(`${pos.getX(i).toFixed(6)},${pos.getY(i).toFixed(6)},${pos.getZ(i).toFixed(6)}`);
-}
-console.log("ONLOAD:unique vertex positions:", unique.size);
-console.log("ONLOAD: # vertices =", pos.count);
-console.log("ONLOAD:# faces =",idx.count);
-/*
-console.log({
-  vertices: meshData.vertices.length / 3,
-  faces: meshData.faces.length / 3,
-  maxIndex: Math.max(...meshData.faces)
-});
-*/
-const safeData = THOTH.MSR.sanitizeGeodesicMesh(meshData.vertices, meshData.faces);
+    const safeData = THOTH.MSR.sanitizeGeodesicMesh(meshData.vertices, meshData.faces);
 
-console.log(" [SANITIZE] VERT COUNT:", safeData.vertices.length / 3);
-console.log("[SANITIZE] FACE COUNT:", safeData.faces.length / 3);
+    console.log(" [SANITIZE] VERT COUNT:", safeData.vertices.length / 3);
+    console.log("[SANITIZE] FACE COUNT:", safeData.faces.length / 3);
 
-const used2 = new Set();
-for (let i = 0; i < safeData.faces.length; i++) {
-    used2.add(safeData.faces[i]);
-}
-
-const loadresult = await THOTH.API.geodesicLoad({
+    const loadresult = await THOTH.API.geodesicLoad({
        model_id: model_id,
        vertices: safeData.vertices,
        faces: safeData.faces
        });
-    /*
-    const loadresult = await THOTH.API.geodesicLoad({
-       model_id: model_id,
-       vertices: meshData.vertices,
-       faces: meshData.faces
-    });
-    */
+
     if (options.focus === true) {
         Models.focusModel(model.name, options.duration);
     }

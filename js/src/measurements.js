@@ -146,7 +146,7 @@ MSR.refreshMarkerScales = () => {
 };
 
 MSR.refreshMeasurementVisibility = () => {
-    for (const [id, measurement] of MSR.msrMap.geentries()) {
+    for (const [id, measurement] of MSR.msrMap.entries()) {
         const node = MSR.msrSemMap.get(id);
         if (!node || !measurement) continue;
 
@@ -663,25 +663,28 @@ MSR.createExactGeodesicMeasurement = async function (measurementId, point1, poin
     //const startVertex = MSR.getNearestVertexIndex(mesh, point1.coords);
     //const endVertex   = MSR.getNearestVertexIndex(mesh, point2.coords);
     console.log({model_id: THOTH.Events.getPointModelId(point1),start: point1.coords,end: point2.coords});
+    
+    const inv = mesh.matrixWorld.clone().invert();
+    const localP1 = point1.coords.clone().applyMatrix4(inv);
+    const localP2 = point2.coords.clone().applyMatrix4(inv);
 
    const result = await THOTH.API.geodesicExact({
-       model_id  : THOTH.Events.getPointModelId(point1),
-        x1    : point1.coords.x,
-        y1      : point1.coords.y,
-        z1    : point1.coords.z,
-        x2      : point2.coords.x,
-        y2    : point2.coords.y,
-        z2      : point2.coords.z
-    });
+    model_id  : THOTH.Events.getPointModelId(point1),
+    x1: localP1.x,
+    y1: localP1.y,
+    z1: localP1.z,
+    x2: localP2.x,
+    y2: localP2.y,
+    z2: localP2.z
+});
 
     if (!result || result.status !== "ok") {
         throw new Error("Exact geodesic computation failed.");
     }
-
     const worldPoints = result.path.map(
-        p => new THREE.Vector3(p.x, p.y, p.z)
-    );
-
+    p => new THREE.Vector3(p.x,p.y,p.z)
+        .applyMatrix4(mesh.matrixWorld)
+);
     return MSR.normalizeMeasurement(measurementId, {
         description  : options.description || "",
         distanceType : "geodesicExact",
@@ -800,9 +803,9 @@ MSR.addMeasurementSem = (measurementId) => {
     }
      if (measurement.distanceType == "geodesicExact") {
         line  = MSR.drawGeodesicPath(measurement.path);
-        // const worldPoints = MSR.pathToPoints(mesh, measurement.path);
-      //  const points = MSR.geodesicPathToWorldPoints(measurement.model_id,measurement.path);
-      //  line = MSR.drawGeodesicPath(points);
+       //  const worldPoints = MSR.pathToPoints(MSR.getPointMesh(measurement.points[0]), measurement.path);
+      //const points = MSR.geodesicPathToWorldPoints(measurement.model_id,measurement.path);
+      //  line = MSR.drawGeodesicPath(worldPoints);
         
     }
     // Label
@@ -907,7 +910,7 @@ MSR.buildMeshGraph = function (mesh) {
     MSR.meshCache.set(mesh, data);
     return data;
 };
-
+// get the vertices/faces so as to send to exact geodesic module
 MSR.getVerticesAndFaces = function (mesh)
 {
     let geometry = mesh.geometry.clone();
