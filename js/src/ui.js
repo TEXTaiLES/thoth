@@ -953,12 +953,22 @@ UI.createMeasureOptions = () => {
         }
     });
     distanceTypeMap.set('geodesic', elBtnGeodesic);
+
+    const elBtnGeodesicExact = ATON.UI.createButton({
+        text: "Exact Geodesic",
+        onpress: () => {         
+            THOTH.MSR.distanceType = 'geodesicExact';
+            THOTH.FE.handleElementHighlight('geodesicExact', distanceTypeMap);
+        }
+    });
+    distanceTypeMap.set('geodesicExact', elBtnGeodesicExact);
+
     //initial highlight
     THOTH.FE.handleElementHighlight(THOTH.MSR.distanceType,distanceTypeMap);
 
     const elOptions = ATON.UI.createContainer();
     elOptions.classList.add("d-flex", "align-items-center", "gap-1", "justify-content-end");
-    elOptions.append(elBtnEuclidean,elBtnGeodesic);
+    elOptions.append(elBtnEuclidean,elBtnGeodesic,elBtnGeodesicExact);
 
     const elDistance = UI.createToolOptionRow(
         "Type of distance",
@@ -1420,13 +1430,28 @@ UI.modalMsrDetails = (msrId, draftData, options = {}) => {
         onsuccess: () => {
             const sharedData = UI.collectAnnotationSharedFields(dataTemp);
             if (!sharedData) return;
-
+            /*
             if (options.isNew) {
                 THOTH.fire("createMeasurement", {
                     id  : msrId,
                     data: sharedData
                 });
-            }
+            }*/
+            if (options.isNew) {
+
+                const measurementData = {...source,...sharedData,
+                points      : source.points,
+                model_id    : source.model_id,
+                distance    : source.distance,
+                distanceType: source.distanceType,
+                path        : source.path
+    };
+
+    THOTH.fire("createMeasurement", {
+        id  : msrId,
+        data: measurementData
+    });
+}
             else {
                 THOTH.fire("editMeasurement", {
                     id      : msrId,

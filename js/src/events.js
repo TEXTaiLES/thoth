@@ -1,3 +1,6 @@
+//import Models from "./models";
+import Models from "./models.js";
+
 /*===========================================================================
 
     THOTH
@@ -435,7 +438,7 @@ Events.setupMeasurementEvents = () => {
         THOTH.MSR.addMeasurementPoint();
     });
     // Create measurement
-    THOTH.on("createMeasurement", (data) => {
+    THOTH.on("createMeasurement", async (data) => {
         if (data?.data) {
             const measurementData = data.data;
             const modelId = Events.getPointModelId(measurementData.points?.[0] || measurementData.point1);
@@ -452,16 +455,37 @@ Events.setupMeasurementEvents = () => {
         const point2 = THOTH.MSR.points[1];
         const modelId1 = Events.getPointModelId(point1);
         const modelId2 = Events.getPointModelId(point2);
-
+        
         if (modelId1 !== modelId2) {
             THOTH.FE.showToast("Measurements cannot span different models.");
             return;
         }
+        let measurementData;
+         // exact geodesic computation
+    if (THOTH.MSR.distanceType ==="geodesicExact") {
+           
+        try {
+            measurementData = await THOTH.MSR.createExactGeodesicMeasurement(msrId,point1,point2,
+                    {
+                        model_id: modelId1,
+                        description: "",
+                        name: `Measurement ${msrId}`
+                    }
+                );
 
-        const measurementData = THOTH.MSR.createMeasurementData(msrId, point1, point2, {
+        } catch (err) {
+            console.error(err);
+            THOTH.FE.showToast("Exact geodesic failed");
+            return;
+        }
+    }
+    else{
+         measurementData = THOTH.MSR.createMeasurementData(msrId, point1, point2, {
             model_id    : modelId1,
             distanceType: THOTH.MSR.distanceType
         });
+
+        }
         if (!measurementData) return;
 
         THOTH.UI.modalMsrDetails(msrId, measurementData, {
@@ -742,11 +766,12 @@ Events.setupModelEvents = () => {
                 gltf_file: id
             }
         };
-
         Events.applyLocal("model.create", {
             model_id: modelId
         }, value);
+
     });
+
     THOTH.on("deleteModel", (id) => {
         const prevData = Events.clone(THOTH.SceneStore.getModel(id));
         if (!prevData) return;

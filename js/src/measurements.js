@@ -9,6 +9,7 @@
 
 ===========================================================================*/
 import Label from "./measurements.label.js"
+import {mergeVertices} from "./BufferGeometryUtils.js";
 
 let MSR = {};
 
@@ -58,7 +59,7 @@ MSR.setup = () => {
     ATON.on("AllNodeRequestsCompleted", () => {
         MSR.isSceneLoading = false;
         MSR.refreshMarkerScales();
-        MSR.refreshMeasurementVisibility();
+       MSR.refreshMeasurementVisibility();
     });
 };
 
@@ -145,7 +146,7 @@ MSR.refreshMarkerScales = () => {
 };
 
 MSR.refreshMeasurementVisibility = () => {
-    for (const [id, measurement] of MSR.msrMap.entries()) {
+    for (const [id, measurement] of MSR.msrMap.geentries()) {
         const node = MSR.msrSemMap.get(id);
         if (!node || !measurement) continue;
 
@@ -409,7 +410,9 @@ MSR.createMeasurementData = (measurementId, point1, point2, options = {}) => {
 
     if (distanceType === "euclidean") {
         const distance = MSR.getEuclideanDistance(point1, point2);
-
+       // let mesh1 =MSR.getPointMesh(point1);
+       // let mesh2 =MSR.getPointMesh(point2);
+        //console.log("mesh1 and mesh 2:",mesh1);
         measurementData = MSR.normalizeMeasurement(measurementId, {
             description : options.description || "",
             distanceType: distanceType,
@@ -422,7 +425,9 @@ MSR.createMeasurementData = (measurementId, point1, point2, options = {}) => {
         });
     }   
     else if (distanceType === "geodesic") {    
-    // REMOTE / PRECOMPUTED
+    // IF MEASUREMENT ALREADY COMPUTED BY ANOTHER USER, 
+    // READ THE PRECOMPUTED OPTIONS
+    // PHOTON CASE
     if (options.path!==undefined) 
         {   //deserialize just in case
             const path = options.path.map(
@@ -440,14 +445,14 @@ MSR.createMeasurementData = (measurementId, point1, point2, options = {}) => {
             visible      : true
         });
     }
-
-    // LOCAL COMPUTATION
+    //ELSE COMPUTE THE RESULT OF APPROXIMATE GEODESIC
     else {
         const mesh  = MSR.getPointMesh(point1);
         const mesh2 = MSR.getPointMesh(point2);
+
         if (!mesh || !mesh2) {
-            THOTH.FE.showToast("Invalid mesh for geodesic");
-            return;
+            THOTH.FE.showToast("Invalid or unloaded mesh");
+           return;
         }
         if (mesh !== mesh2) {
             THOTH.FE.showToast("Geodesic requires both points on same mesh"
@@ -483,6 +488,10 @@ MSR.createMeasurementData = (measurementId, point1, point2, options = {}) => {
         });
     }
     }
+    else if (distanceType === "geodesicExact") { 
+
+    //measurementData = await MSR.createExactGeodesicMeasurement(options.model_id, point1, point2);
+    }
 
     if (!measurementData) {
         console.warn("Measurement creation failed", measurementId);
@@ -490,7 +499,7 @@ MSR.createMeasurementData = (measurementId, point1, point2, options = {}) => {
 
     return measurementData;
 };
-
+/*
 MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
     if (measurementId === undefined) return;
     if (point1 === undefined || point2 === undefined) return;
@@ -518,6 +527,61 @@ MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
     THOTH.FE.addMsr(measurementId);
 
     // store last measurement for recompute
+    MSR.lastMeasurementId = measurementId;
+    MSR.lastMeasurementPoints = [point1, point2];
+};*/
+
+MSR.addMeasurement = (measurementId, point1, point2, options = {}) => {
+
+    if (measurementId === undefined) return;
+    if (point1 === undefined || point2 === undefined) return;
+
+    const measurement = MSR.getMeasurement(measurementId);
+
+    // Resolve id conflict
+    if (measurement !== undefined) {
+
+        if (measurement.trash === true)
+            MSR.resurrectMeasurement(measurementId);
+        else
+            alert(`Measurement id conflict ${measurementId}`);
+
+        return;
+    }
+
+    let measurementData;
+    // Already a complete measurement? (Photon / Exact Geodesic)
+    const isCompleteMeasurement =options &&Array.isArray(options.points) &&options.distance !== undefined &&
+        (
+            options.distanceType !== undefined ||
+            options.distance_type !== undefined ||
+            options.annotation?.distance_type !== undefined
+        );
+
+    if (isCompleteMeasurement) {
+        measurementData = MSR.normalizeMeasurement(measurementId,options);
+    }
+    else {
+
+        // Old behaviour
+        measurementData = MSR.createMeasurementData(measurementId, point1, point2, options);
+    }
+
+    if (!measurementData) {
+        console.warn("Measurement creation failed", measurementId);
+        return;
+    }
+
+    // Append to Map
+    MSR.msrMap.set(measurementId, measurementData);
+
+    // Update Scene
+    MSR.addMeasurementSem(measurementId);
+
+    // Update Frontend
+    THOTH.FE.addMsr(measurementId);
+
+    // Store last measurement
     MSR.lastMeasurementId = measurementId;
     MSR.lastMeasurementPoints = [point1, point2];
 };
@@ -589,6 +653,47 @@ MSR.updateMeasurementLabel = (measurementId, distance) => {
     label.setText(distance.toFixed(2));
 };
 
+MSR.createExactGeodesicMeasurement = async function (measurementId, point1, point2,options = {})
+{
+    const mesh  = MSR.getPointMesh(point1);
+    const mesh2 = MSR.getPointMesh(point2);
+    if (!mesh || mesh !== mesh2) {
+        throw new Error("Exact geodesic requires both points on the same mesh.");
+    }
+    //const startVertex = MSR.getNearestVertexIndex(mesh, point1.coords);
+    //const endVertex   = MSR.getNearestVertexIndex(mesh, point2.coords);
+    console.log({model_id: THOTH.Events.getPointModelId(point1),start: point1.coords,end: point2.coords});
+
+   const result = await THOTH.API.geodesicExact({
+       model_id  : THOTH.Events.getPointModelId(point1),
+        x1    : point1.coords.x,
+        y1      : point1.coords.y,
+        z1    : point1.coords.z,
+        x2      : point2.coords.x,
+        y2    : point2.coords.y,
+        z2      : point2.coords.z
+    });
+
+    if (!result || result.status !== "ok") {
+        throw new Error("Exact geodesic computation failed.");
+    }
+
+    const worldPoints = result.path.map(
+        p => new THREE.Vector3(p.x, p.y, p.z)
+    );
+
+    return MSR.normalizeMeasurement(measurementId, {
+        description  : options.description || "",
+        distanceType : "geodesicExact",
+        distance     : result.distance,
+        points       : [point1, point2],
+        model_id     :THOTH.Events.getPointModelId(point1),
+        path         : worldPoints,
+        trash        : false,
+        name         : options.name || `Measurement ${measurementId}`,
+        visible      : true
+    });
+};
 
 // SUI
 
@@ -693,7 +798,13 @@ MSR.addMeasurementSem = (measurementId) => {
     if (measurement.distanceType == "geodesic") {
         line  = MSR.drawGeodesicPath(measurement.path);
     }
-    
+     if (measurement.distanceType == "geodesicExact") {
+        line  = MSR.drawGeodesicPath(measurement.path);
+        // const worldPoints = MSR.pathToPoints(mesh, measurement.path);
+      //  const points = MSR.geodesicPathToWorldPoints(measurement.model_id,measurement.path);
+      //  line = MSR.drawGeodesicPath(points);
+        
+    }
     // Label
     const label = MSR.createLabelSem(measurementKey);
 
@@ -756,7 +867,7 @@ MSR.clearMeasurementPoints = () => {
 
 //Geodesic distance 
 
-//Build Graph for every mesh just once
+//Build Graph for every mesh just once (used in aprprox. geodesic)
 MSR.buildMeshGraph = function (mesh) {
     if (MSR.meshCache.has(mesh)) {
         return MSR.meshCache.get(mesh);
@@ -797,8 +908,85 @@ MSR.buildMeshGraph = function (mesh) {
     return data;
 };
 
-//Dikjstra with heuristics using euclidian distance
+MSR.getVerticesAndFaces = function (mesh)
+{
+    let geometry = mesh.geometry.clone();
 
+    console.log("[BEFORE MERGE] #vertices:", geometry.attributes.position.count);
+    console.log("[BEFORE MERGE] #faces:", geometry.index.count / 3);
+
+    //strip attributes
+    geometry.deleteAttribute("normal");
+    geometry.deleteAttribute("uv");
+    geometry.deleteAttribute("color");
+    geometry.deleteAttribute("tangent");
+
+    geometry = mergeVertices(geometry, 1e-5);
+    geometry.computeVertexNormals();
+
+    const pos = geometry.attributes.position;
+    const index = geometry.index;
+
+    console.log("[AFTER MERGE] #vertices:", geometry.attributes.position.count);
+    console.log("[AFTER MERGE] #faces:", geometry.index.count / 3);
+
+    if (!index) {
+        console.log("Failed to build indexed geometry");
+        throw new Error("Failed to build indexed geometry");
+    }
+    // STEP 2: BUILD VERTICES
+    const vertices = new Array(pos.count * 3);
+    let vi = 0;
+    for (let i = 0; i < pos.count; i++)
+    {
+        vertices[vi++] = pos.getX(i);
+        vertices[vi++] = pos.getY(i);
+        vertices[vi++] = pos.getZ(i);
+    }
+
+    // STEP 3: BUILD CLEAN TRIANGLES
+    const faces = [];
+    for (let i = 0; i < index.count; i += 3)
+    {
+        const a = index.getX(i);
+        const b = index.getX(i + 1);
+        const c = index.getX(i + 2);
+        // STRICT FILTER
+        if (a === b || b === c || a === c) continue;
+        faces.push(a, b, c);
+    }
+    return {
+        vertices,
+        faces
+    };
+};
+//removes invalid indices and degenerated triangles
+MSR.sanitizeGeodesicMesh = function(vertices, faces)
+{
+    const vCount = vertices.length / 3;
+
+    const cleanFaces = [];
+
+    for (let i = 0; i < faces.length; i += 3)
+    {
+        const a = faces[i], b = faces[i+1], c = faces[i+2];
+
+        // reject invalid indices
+        if (a >= vCount || b >= vCount || c >= vCount) continue;
+
+        // reject degenerate triangles
+        if (a === b || b === c || a === c) continue;
+
+        cleanFaces.push(a, b, c);
+    }
+
+    return {
+        vertices,
+        faces: cleanFaces
+    };
+}
+
+//Dikjstra with heuristics using euclidian distance
 MSR.aStar = function (graph, vertices, start, goal) {
     const open = new Set([start]);
     const cameFrom = new Map();
@@ -857,7 +1045,7 @@ MSR.reconstructPath = function (cameFrom, current) {
     return path.reverse();
 };
 
-//get cached geodesic path per mesh
+//get cached approximate geodesic path per mesh
 MSR.getGeodesicPath = function (mesh, startVertex, endVertex) {
     let meshPaths = MSR.pathCache.get(mesh);
     if (!meshPaths) {
@@ -924,6 +1112,36 @@ MSR.getNearestVertexIndex = (mesh, worldPoint) => {
         }
     }
     return closest;
+};
+MSR.geodesicPathToWorldPoints = function(modelId, path)
+{
+    const model = ATON.getSceneNode(modelId);
+
+    if (!model)
+    {
+        console.warn(
+            "Model not found for geodesic transform:",
+            modelId
+        );
+
+        return path.map(p =>
+            new THREE.Vector3(
+                p.x,
+                p.y,
+                p.z
+            )
+        );
+    }
+
+
+    return path.map(p =>
+    {
+        return new THREE.Vector3(
+            p.x,
+            p.y,
+            p.z
+        ).applyMatrix4(model.matrixWorld);
+    });
 };
 
 // Visibility

@@ -16,7 +16,9 @@ API.endpointNames = [
     "multispectral_images",
     "related_artefacts",
     "scene_export",
-    "model_import"
+    "model_import",
+    "geodesic_exact",
+    "geodesic_load"
 ];
 
 API.setup = (config = {}) => {
@@ -35,6 +37,12 @@ API.setup = (config = {}) => {
 
     if (!API.endpoints.metadata_schema_list) {
         API.endpoints.metadata_schema_list = config.schemaListUrl;
+    }
+     if (!API.endpoints.geodesic_exact) {
+        API.endpoints.geodesic_exact = "/api/v2/geodesic/exact";
+    }
+    if (!API.endpoints.geodesic_load) {
+        API.endpoints.geodesic_load = "/api/v2/geodesic/load";
     }
 };
 
@@ -176,6 +184,36 @@ API._buildHeaders = (headers = {}) => {
 
 API._showToast = (message) => {
     if (THOTH.FE?.showToast) THOTH.FE.showToast(message);
+};
+
+// ---------------------------------------------------------
+// Exact geodesic (ATON backend -> C++ microservice)
+// ---------------------------------------------------------
+API.geodesicExact = async function (payload) {
+    console.log("payload (geodesicExact):",payload);
+    const result = await API.post("geodesic_exact", payload);
+    if (!result.ok) {
+        throw new Error(
+            typeof result.error === "string"
+                ? result.error
+                : JSON.stringify(result.error)
+        );
+    }
+    return result.data;
+};
+//load the mesh in c++
+API.geodesicLoad = async function (payload) {
+    console.log("payload (geodesicLoad):",payload);
+    const result = await API.post("geodesic_load", payload);
+    if (!result.ok) {
+        throw new Error(
+            typeof result.error === "string"
+                ? result.error
+                : JSON.stringify(result.error)
+        );
+    }
+
+    return result.data;
 };
 
 export default API;
