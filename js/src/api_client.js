@@ -20,6 +20,7 @@ API.endpointNames = [
     "multispectral_image",
     "list_sensors",
     "sensor",
+    "echoes",
     "authentication"
 ];
 
@@ -231,6 +232,21 @@ API.putArtefactData = async (artefactTitle, artefactData) => {
     });
 };
 
+// PUT /echoes/<artefact_id> on Hestia. The endpoint reads the body as an
+// opaque payload and relays it to the ECHOES knowledge base; the artefact
+// must have been registered on ECHOES first (POST /echoes/<artefact_id>).
+API.putEchoesScene = async (artefactId, scenePayload) => {
+    if (!artefactId) {
+        return { ok: false, error: "Missing artefact id" };
+    }
+
+    return API._request("echoes", {
+        method: "PUT",
+        path: `/${encodeURIComponent(artefactId)}`,
+        body: scenePayload
+    });
+};
+
 API.getMetadata = async (artefactTitle) => {
     if (!API.hasEndpoint("metadata")) {
         const model = THOTH.SceneStore?.getModel(artefactTitle);
@@ -346,7 +362,7 @@ API._request = async (name, options = {}) => {
     }
 
     try {
-        const requestUrl = API._buildUrl(endpoint, options.params);
+        const requestUrl = API._buildUrl(endpoint + (options.path || ""), options.params);
         const fetchOptions = {
             method : options.method || "GET",
             headers: API._buildHeaders(options.headers)

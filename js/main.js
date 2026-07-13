@@ -67,6 +67,7 @@ THOTH.PATH_RES_SCHEMA = `${THOTH.BASE_URL}/js/res/schema/`;
 
 
 THOTH.scene_id = THOTH.params.get('scene_id');
+THOTH.artefact_id = THOTH.params.get('artefact_id');
 THOTH.collaborative = false;
 
 
@@ -368,6 +369,29 @@ THOTH.exportChanges = async () => {
     }
 
     THOTH.FE.showToast("Scene exported successfully.");
+
+    // Also push the scene to the artefact's ECHOES Digital Twin when
+    // THOTH was launched with an artefact_id (?artefact_id=<id>).
+    if (THOTH.artefact_id) await THOTH.exportSceneToHestia(THOTH.artefact_id);
+
+    return response;
+};
+
+// Push the current scene state (incl. user annotations) to an artefact's
+// ECHOES entry through Hestia. Usage: THOTH.exportSceneToHestia("<artefact_id>")
+// Pass a payload as the second argument to send custom scene JSON instead.
+THOTH.exportSceneToHestia = async (artefactId = THOTH.artefact_id, payload) => {
+    if (!THOTH.requireAuth("export scene to Hestia")) return;
+
+    payload = payload || { ...THOTH.getExportData(), scene_id: THOTH.scene_id, artefact_id: String(artefactId) };
+    console.log(`Exporting scene to Hestia /echoes/${payload.artefact_id}...`, payload);
+
+    const response = await THOTH.API.putEchoesScene(payload.artefact_id, payload);
+    console.log("Hestia scene export response:", response);
+
+    THOTH.FE.showToast(response.ok
+        ? "Scene exported to Hestia/ECHOES."
+        : (response.error || "Hestia scene export failed"));
     return response;
 };
 
