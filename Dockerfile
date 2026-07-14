@@ -18,6 +18,9 @@ RUN npm install
 RUN mkdir -p /aton/wapps/thoth
 COPY . /aton/wapps/thoth
 
+# 3b. Replace ATON's gateway with the thoth workaround copy
+COPY ./workaround/ATON.service.main.js /aton/services/ATON.service.main.js
+
 # 4. Run ATON
 WORKDIR /aton
 CMD ["pm2-runtime", "ecosystem.config.js"]

@@ -9,6 +9,14 @@ services:
       - ./wapps/thoth:/thoth
     ports:
       - "8054:8080"
+    environment:
+      - EGI_AUTHORIZE_URL=${EGI_AUTHORIZE_URL}
+      - EGI_TOKEN_URL=${EGI_TOKEN_URL}
+      - EGI_USERINFO_URL=${EGI_USERINFO_URL}
+      - EGI_CLIENT_ID=${EGI_CLIENT_ID}
+      - EGI_CLIENT_SECRET=${EGI_CLIENT_SECRET}
+      - EGI_REDIRECT_URI=${EGI_REDIRECT_URI}
+      - THOTH_SESSION_SECRET=${THOTH_SESSION_SECRET}
     networks:
       - textailes
     labels:
