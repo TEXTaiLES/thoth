@@ -1,5 +1,5 @@
 {   
-    "authKey": "1f8XEe0OA1FqLAh17yO3cjq9zwuiIfLV",
+    "authKey": "change-me-locally",
     "ATONSceneUrl" : "../../api/v2/scenes/",
     "ATONModelUrl" : "../../api/v2/items/samples/models/",
     "schemaListUrl": "../../a/thoth/js/res/schema/list_of_schemas.json",
@@ -8,7 +8,7 @@
     "use_endpoints": true,
     "endpoints": {
         "scene": {
-            "endpoint_url": null,
+            "endpoint_url": "http://localhost:5000/scenes",
             "auth": "default",
             "timeout_seconds": null,
             "enabled": true
