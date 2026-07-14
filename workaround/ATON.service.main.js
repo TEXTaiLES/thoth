@@ -176,6 +176,11 @@ app.get('/a/thoth/config.json', (req, res, next) => {
   });
 });
 
+// THOTH EGI Check-In login routes (egi-login / egi-callback / whoami / egi-logout).
+// Mounted here — before the '/a' static handler below — so the routes win over
+// static file serving. The module lives in the thoth wapp, not ATON core.
+require(path.join(Core.DIR_WAPPS, "thoth", "server", "egi-routes.js"))(app);
+
 app.use('/directus', createProxyMiddleware({
   target: DIRECTUS_PROXY_TARGET,
   pathRewrite: { '^/directus': '' },

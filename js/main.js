@@ -203,10 +203,10 @@ THOTH._loadSceneFallback = (scene_id) => {
 };
 
 THOTH._syncAuthUser = () => {
-    ATON.REQ.get("user", (u) => {
-        if (u === false) THOTH.setAuthState(null);
-        else THOTH.onLogin(u);
-    });
+    THOTH.Auth.checkAuth(
+        (u) => THOTH.onLogin(u),
+        () => THOTH.setAuthState(null)
+    );
 };
 
 THOTH._parseSceneEndpointResponse = (data) => {

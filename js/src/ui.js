@@ -593,7 +593,7 @@ UI.createUserButton = () => {
         tooltip : "User"
     });
 
-    ATON.checkAuth(
+    THOTH.Auth.checkAuth(
         (u)=>{
             THOTH.setAuthState(u);
             UI._elUserBTN.classList.add("aton-btn-highlight");
@@ -1203,7 +1203,7 @@ UI.createLassoOptions = () => {
 // Modals
 
 UI.modalUser = (msg) => {
-    ATON.checkAuth(
+    THOTH.Auth.checkAuth(
         // Logged
         (u)=>{
             THOTH.setAuthState(u);
@@ -1216,9 +1216,9 @@ UI.modalUser = (msg) => {
                     onpress: ()=>{
                         THOTH.FE.showToast("Logging out. The page will reload.");
                         THOTH.setAuthState(null);
-                        ATON.REQ.logout(() => location.reload(true));
-                        ATON.UI.hideModal();
                         if (UI._elUserBTN) UI._elUserBTN.classList.remove("aton-btn-highlight");
+                        ATON.UI.hideModal();
+                        THOTH.Auth.logout();
                     }
                 })
             );
@@ -1228,21 +1228,21 @@ UI.modalUser = (msg) => {
                 body: elBody
             })
         },
-        // Not logged
+        // Not logged — redirect through EGI Check-In, carrying the current scene URL.
         () => {
-            const elBody = ATON.UI.createLoginForm({
-                onSuccess: (r) => {
-                    ATON.UI.hideModal();
-                    THOTH.onLogin(r);
-                    if (UI._elUserBTN) UI._elUserBTN.classList.add("aton-btn-highlight");
-                },
-                onFail: () => {
-                    UI.modalUser("Authentication failed");
-                }
-            });
-            if (msg !== undefined) elBody.append(ATON.UI.createButton({
-                text: msg
-            })); 
+            const elBody = ATON.UI.createContainer({ classes: "d-grid gap-2" });
+            if (msg !== undefined) elBody.append(ATON.UI.createButton({ text: msg }));
+            elBody.append(
+                ATON.UI.createButton({
+                    text   : "Login with EGI",
+                    icon   : "user",
+                    classes: "aton-btn-highlight",
+                    onpress: ()=>{
+                        ATON.UI.hideModal();
+                        THOTH.Auth.startLogin();
+                    }
+                })
+            );
             ATON.UI.showModal({
                 header: "User",
                 body: elBody
