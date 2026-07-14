@@ -999,12 +999,19 @@ FE.createToast = () => {
 };
 
 FE.showToast = (msg, timeout=2000) => {
+    // Long messages must wrap: the default aton-btn is a fixed-height,
+    // overflow-hidden, nowrap element that clips them.
+    const elText = ATON.UI.createButton({
+        text: msg,
+    });
+    elText.style.height     = "auto";
+    elText.style.whiteSpace = "normal";
+    elText.style.textAlign  = "left";
+
     const elMsg = THOTH.UI.createSplitRow({
         classes: "bg-body-secondary opacity-75",
         colLeft  : 10,
-        itemsLeft: ATON.UI.createButton({
-            text: msg,
-        }),
+        itemsLeft: elText,
         itemsRight: ATON.UI.createButton({
             icon   : "cancel",
             onpress: () => {
