@@ -87,7 +87,7 @@
         },
         "echoes": {
             "endpoint_url": "http://localhost:5000/echoes",
-            "endpoint_url_prod": "https://api.textailes.athenarc.gr/echoes",
+            "endpoint_url_prod": "http://api:5000/echoes",
             "auth": "default",
             "timeout_seconds": 30,
             "enabled": true
