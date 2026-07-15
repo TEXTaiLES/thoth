@@ -166,6 +166,9 @@ app.get('/a/thoth/config.json', (req, res, next) => {
 
     try {
       const config = JSON.parse(data);
+
+      if (process.env.HESTIA_API_AUTH_KEY) config.authKey = process.env.HESTIA_API_AUTH_KEY;
+
       const rewrittenConfig = rewriteThothEndpointUrls(config);
 
       res.type("json").send(JSON.stringify(rewrittenConfig, null, 4));

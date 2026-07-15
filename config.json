@@ -1,10 +1,10 @@
-{   
+{
     "authKey": "change-me-locally",
     "ATONSceneUrl" : "../../api/v2/scenes/",
     "ATONModelUrl" : "../../api/v2/items/samples/models/",
     "schemaListUrl": "../../a/thoth/js/res/schema/list_of_schemas.json",
     "defaultSchemaName": "puc_schema",
-    
+
     "use_endpoints": true,
     "endpoints": {
         "scene": {

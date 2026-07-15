@@ -19,6 +19,7 @@ services:
       - THOTH_SESSION_SECRET=${THOTH_SESSION_SECRET}
       - HESTIA_PROXY_TARGET=${HESTIA_PROXY_TARGET:-}
       - DIRECTUS_PROXY_TARGET=${DIRECTUS_PROXY_TARGET:-}
+      - HESTIA_API_AUTH_KEY=${HESTIA_API_AUTH_KEY:-}
     networks:
       - textailes
     labels:
