@@ -5,6 +5,7 @@
 
 ===========================================================================*/
 let API = {};
+//const geodesic = require("../../geodesic_addon");
 
 API.endpointNames = [
     "artefacts",
@@ -186,6 +187,36 @@ API._showToast = (message) => {
     if (THOTH.FE?.showToast) THOTH.FE.showToast(message);
 };
 
+API.geodesicExact = async function(payload) {
+    const result = await API.post("geodesic_exact",payload);
+
+    if (!result.ok) {
+        throw new Error(
+            typeof result.error === "string"
+            ? result.error
+            : JSON.stringify(result.error)
+        );
+    }
+
+    return result.data.data;
+};
+
+API.geodesicLoad = async function(payload){
+    const result = await API.post("geodesic_load", payload);
+
+    if (!result.ok) {
+        throw new Error(
+            typeof result.error === "string"
+            ? result.error
+            : JSON.stringify(result.error)
+        );
+    }
+
+    return result.data;
+};
+
+/*
+
 // ---------------------------------------------------------
 // Exact geodesic (ATON backend -> C++ microservice)
 // ---------------------------------------------------------
@@ -215,5 +246,5 @@ API.geodesicLoad = async function (payload) {
 
     return result.data;
 };
-
+*/
 export default API;

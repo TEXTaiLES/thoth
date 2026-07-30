@@ -100,8 +100,6 @@ Models.onLoad = async (model, options = {}) => {
         return;
     }
     console.log("[MODEL LOADED]", model?.name, model);
-  //  console.log("[GEODESIC] mesh count:", meshes.length);
-   // console.log("[GEODESIC] meshes:", meshes);
     
     const mesh = meshes[0];
     const model_id = model.name;
@@ -112,13 +110,7 @@ Models.onLoad = async (model, options = {}) => {
     const pos = geo.attributes.position;
     const idx = geo.index;
 
-    console.log("ONLOAD: # vertices =", pos.count);
-    console.log("ONLOAD:# faces =",idx.count);
-
     const safeData = THOTH.MSR.sanitizeGeodesicMesh(meshData.vertices, meshData.faces);
-
-    console.log(" [SANITIZE] VERT COUNT:", safeData.vertices.length / 3);
-    console.log("[SANITIZE] FACE COUNT:", safeData.faces.length / 3);
 
     const loadresult = await THOTH.API.geodesicLoad({
        model_id: model_id,

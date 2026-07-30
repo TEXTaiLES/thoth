@@ -499,7 +499,7 @@ MSR.createMeasurementData = (measurementId, point1, point2, options = {}) => {
 
     return measurementData;
 };
-/*
+/*//old
 MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
     if (measurementId === undefined) return;
     if (point1 === undefined || point2 === undefined) return;
@@ -677,14 +677,31 @@ MSR.createExactGeodesicMeasurement = async function (measurementId, point1, poin
     y2: localP2.y,
     z2: localP2.z
 });
-
-    if (!result || result.status !== "ok") {
+    console.log("GEODESIC RESULT:", result);
+     if (!result) {
+     //if (!result || !result.status) {
+   // if (!result || result.status !== "ok") {
         throw new Error("Exact geodesic computation failed.");
     }
+    console.log("LOCAL P1", localP1);
+    console.log("LOCAL P2", localP2);
+
+    console.log("WORLD P1", point1.coords);
+    console.log("WORLD P2", point2.coords);
+
+//console.log("CPP PATH", result.path);
+result.path.forEach((p,i)=>{
+    console.log("PATH",i,p);
+});
+
+     // const worldPoints = result.distance.map(
     const worldPoints = result.path.map(
     p => new THREE.Vector3(p.x,p.y,p.z)
         .applyMatrix4(mesh.matrixWorld)
 );
+    worldPoints.forEach((p,i)=>{
+    console.log("WORLD PATH",i,p);
+});
     return MSR.normalizeMeasurement(measurementId, {
         description  : options.description || "",
         distanceType : "geodesicExact",
@@ -964,6 +981,7 @@ MSR.getVerticesAndFaces = function (mesh)
     };
 };
 //removes invalid indices and degenerated triangles
+/*
 MSR.sanitizeGeodesicMesh = function(vertices, faces)
 {
     const vCount = vertices.length / 3;
@@ -987,7 +1005,122 @@ MSR.sanitizeGeodesicMesh = function(vertices, faces)
         vertices,
         faces: cleanFaces
     };
-}
+}*/
+
+MSR.sanitizeGeodesicMesh = function(vertices, faces)
+{
+    const vCount = vertices.length / 3;
+    const cleanFaces = [];
+    // used to remove duplicate triangles
+    const triangleSet = new Set();
+    // used to detect non-manifold edges
+    const edgeCount = new Map();
+
+    function addEdge(a,b)
+    {
+        if (a > b) [a,b] = [b,a];
+
+        const key = a + "_" + b;
+        edgeCount.set(key, (edgeCount.get(key) || 0) + 1);
+    }
+
+    for (let i = 0; i < faces.length; i += 3)
+    {
+        const a = faces[i];
+        const b = faces[i+1];
+        const c = faces[i+2];
+
+        //-------------------------------------------------
+        // invalid indices
+        if (a >= vCount || b >= vCount || c >= vCount)
+            continue;
+
+        //-------------------------------------------------
+        // degenerate triangle
+        if (a === b || b === c || a === c)
+            continue;
+
+        //-------------------------------------------------
+        // duplicate triangle
+        const triKey = [a,b,c].sort((x,y)=>x-y).join("_");
+
+        if (triangleSet.has(triKey))
+            continue;
+
+        triangleSet.add(triKey);
+
+        //-------------------------------------------------
+        // tiny area
+        const ax = vertices[a*3];
+        const ay = vertices[a*3+1];
+        const az = vertices[a*3+2];
+
+        const bx = vertices[b*3];
+        const by = vertices[b*3+1];
+        const bz = vertices[b*3+2];
+
+        const cx = vertices[c*3];
+        const cy = vertices[c*3+1];
+        const cz = vertices[c*3+2];
+
+        const abx = bx-ax;
+        const aby = by-ay;
+        const abz = bz-az;
+
+        const acx = cx-ax;
+        const acy = cy-ay;
+        const acz = cz-az;
+
+        const nx = aby*acz - abz*acy;
+        const ny = abz*acx - abx*acz;
+        const nz = abx*acy - aby*acx;
+
+        const area2 = nx*nx + ny*ny + nz*nz;
+
+        if (area2 < 1e-20)
+            continue;
+
+        //-------------------------------------------------
+        // keep triangle
+        //-------------------------------------------------
+        cleanFaces.push(a,b,c);
+
+        addEdge(a,b);
+        addEdge(b,c);
+        addEdge(c,a);
+    }
+
+    //-------------------------------------------------
+    // non-manifold edge check
+    //-------------------------------------------------
+    let nonManifold = false;
+
+    for (const [key,count] of edgeCount)
+    {
+        if (count > 2)
+        {
+            console.warn("Non-manifold edge:", key, "shared by", count, "faces");
+            nonManifold = true;
+        }
+    }
+
+    if (nonManifold)
+    {
+        throw new Error("Mesh contains non-manifold edges. Exact geodesic cannot be computed.");
+    }
+
+    console.log(
+        "[GEODESIC CLEAN]",
+        "Vertices:", vCount,
+        "Triangles:", faces.length/3,
+        "Clean:", cleanFaces.length/3
+    );
+
+    return {
+        vertices,
+        faces: cleanFaces
+    };
+};
 
 //Dikjstra with heuristics using euclidian distance
 MSR.aStar = function (graph, vertices, start, goal) {

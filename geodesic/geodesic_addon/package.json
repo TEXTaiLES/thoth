@@ -1,0 +1,14 @@
+{
+  "name": "geodesic_addon",
+  "version": "1.0.0",
+  "description": "Native Node.js addon for exact geodesic distance (Kirsanov MMP)",
+  "main": "index.js",
+  "scripts": {
+    "install": "node-gyp rebuild",
+    "build": "node-gyp rebuild"
+  },
+  "dependencies": {
+    "node-addon-api": "^8.9.0"
+  },
+  "gypfile": true
+}
