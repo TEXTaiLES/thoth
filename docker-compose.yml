@@ -5,30 +5,21 @@ services:
     build: .
     image: thoth
     container_name: thoth
-    volumes:
-      - ./wapps/thoth:/thoth
     ports:
       - "8054:8080"
     environment:
-      - EGI_AUTHORIZE_URL=${EGI_AUTHORIZE_URL}
-      - EGI_TOKEN_URL=${EGI_TOKEN_URL}
-      - EGI_USERINFO_URL=${EGI_USERINFO_URL}
-      - EGI_CLIENT_ID=${EGI_CLIENT_ID}
-      - EGI_CLIENT_SECRET=${EGI_CLIENT_SECRET}
-      - EGI_REDIRECT_URI=${EGI_REDIRECT_URI}
-      - THOTH_SESSION_SECRET=${THOTH_SESSION_SECRET}
-      - HESTIA_PROXY_TARGET=${HESTIA_PROXY_TARGET:-}
-      - DIRECTUS_PROXY_TARGET=${DIRECTUS_PROXY_TARGET:-}
-      - HESTIA_API_AUTH_KEY=${HESTIA_API_AUTH_KEY:-}
+      THOTH_DEPLOYMENT_MODE: local
+    volumes:
+      - aton-data:/aton/data
+      - aton-config:/aton/config
     networks:
-      - textailes
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.thoth.rule=Host(`thoth.textailes.athenarc.gr`)"
-      - "traefik.http.routers.thoth.entrypoints=websecure"
-      - "traefik.http.routers.thoth.tls.certresolver=le"
-    restart: "always"
+      - thoth-local
+    restart: unless-stopped
 
 networks:
-  textailes:
-    external: true
+  thoth-local:
+    driver: bridge
+
+volumes:
+  aton-data:
+  aton-config:

@@ -750,7 +750,8 @@ Events.setupModelEvents = () => {
         const artefact = artefactResponse.ok
             ? THOTH.Artefacts.normalize(artefactResponse.data || {})
             : THOTH.Artefacts.normalize();
-        const modelId = (artefact.title || id).split('/').filter(Boolean).pop();
+        const stableId = artefact.artifact_id || artefact.id || artefact.title || id;
+        const modelId = String(stableId).split('/').filter(Boolean).pop();
         const value = {
             id      : modelId,
             artefact: {

@@ -137,6 +137,12 @@ THOTH.setup = () => {
             // Init front end 
             THOTH.FE.setup();
             THOTH.FE.setupToolboxElements();
+
+            const authError = THOTH.Auth.consumeRedirectReason();
+            if (authError) {
+                THOTH.FE.showToast(authError, 6000);
+                THOTH.UI.modalUser(authError);
+            }
             
             // Load scene
             THOTH.loadScene(THOTH.scene_id)
@@ -158,6 +164,16 @@ THOTH.loadConfig = () => {
 
 THOTH.loadScene = async (scene_id) => {
     if (scene_id === undefined) return;
+
+    if (THOTH.Auth.isHestiaMode()) {
+        const user = await THOTH.Auth.getUser().catch(() => null);
+        if (!user) {
+            THOTH.setAuthState(null);
+            THOTH.FE?.showToast?.("Login required to load HESTIA scenes.");
+            return;
+        }
+        THOTH.setAuthState(user);
+    }
 
     ATON.SceneHub._bLoading = true;
     console.log("Loading scene: " + THOTH.scene_id)
@@ -645,4 +661,3 @@ THOTH.onLogin = (u) => {
     // Join collaborative
     if (THOTH.collaborative) ATON.Photon.connect();
 };
-

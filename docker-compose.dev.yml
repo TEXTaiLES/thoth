@@ -1,0 +1,4 @@
+services:
+  thoth:
+    volumes:
+      - .:/aton/wapps/thoth

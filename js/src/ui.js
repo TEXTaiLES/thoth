@@ -1230,6 +1230,20 @@ UI.modalUser = (msg) => {
         },
         // Not logged — redirect through EGI Check-In, carrying the current scene URL.
         () => {
+            if (!THOTH.Auth.isHestiaMode()) {
+                const elBody = ATON.UI.createLoginForm({
+                    onSuccess: (user) => {
+                        ATON.UI.hideModal();
+                        THOTH.onLogin(user);
+                        if (UI._elUserBTN) UI._elUserBTN.classList.add("aton-btn-highlight");
+                    },
+                    onFail: () => UI.modalUser("Authentication failed")
+                });
+                if (msg !== undefined) elBody.append(ATON.UI.createButton({ text: msg }));
+                ATON.UI.showModal({ header: "User", body: elBody });
+                return;
+            }
+
             const elBody = ATON.UI.createContainer({ classes: "d-grid gap-2" });
             if (msg !== undefined) elBody.append(ATON.UI.createButton({ text: msg }));
             elBody.append(
@@ -1239,14 +1253,19 @@ UI.modalUser = (msg) => {
                     classes: "aton-btn-highlight",
                     onpress: ()=>{
                         ATON.UI.hideModal();
-                        THOTH.Auth.startLogin();
+                        THOTH.Auth.startEgiLogin();
+                    }
+                }),
+                ATON.UI.createButton({
+                    text   : "Login through HESTIA Portal",
+                    icon   : "user",
+                    onpress: ()=>{
+                        ATON.UI.hideModal();
+                        THOTH.Auth.startHestiaLogin();
                     }
                 })
             );
-            ATON.UI.showModal({
-                header: "User",
-                body: elBody
-            });
+            ATON.UI.showModal({ header: "User", body: elBody });
         }
     );
 };
@@ -1290,7 +1309,10 @@ UI.modalExport = () => {
 
 UI.modalModelExportChanges = (modelName) => {
     const elInfo = ATON.UI.createContainer();
-    elInfo.textContent = `Export changes for ${modelName}?`;
+    const canExportModel = THOTH.API.supports("artefact_data", "PUT");
+    elInfo.textContent = canExportModel
+        ? `Export changes for ${modelName}?`
+        : "Model changes are stored as part of the scene. Export the scene to persist them remotely.";
 
     const elFooter = ATON.UI.createContainer();
     elFooter.append(
@@ -1302,8 +1324,10 @@ UI.modalModelExportChanges = (modelName) => {
             onpress: () => {
                 if (THOTH.downloadModelData(modelName)) ATON.UI.hideModal();
             }
-        }),
-        ATON.UI.createButton({
+        })
+    );
+    if (canExportModel) {
+        elFooter.append(ATON.UI.createButton({
             text   : "Export",
             icon   : "link",
             size   : "large",
@@ -1312,7 +1336,9 @@ UI.modalModelExportChanges = (modelName) => {
                 const response = await THOTH.exportModelData(modelName);
                 if (response?.ok) ATON.UI.hideModal();
             }
-        }),
+        }));
+    }
+    elFooter.append(
         ATON.UI.createButton({
             text   : "Cancel",
             size   : "large",
@@ -1507,9 +1533,20 @@ UI.modalAddModel = () => {
 
             const entries = Array.isArray(response.data) ? response.data : [];
             const modelList = new Set();
-            const itemNames = entries
-                .map(item => UI._getModelListName(item, u))
-                .filter(Boolean);
+            const modelOptions = entries
+                .map(item => UI._getModelListOption(item, u))
+                .filter(option => option.id);
+            const optionByLabel = new Map();
+            const titleCounts = new Map();
+            for (const option of modelOptions) {
+                titleCounts.set(option.title, (titleCounts.get(option.title) || 0) + 1);
+            }
+            for (const option of modelOptions) {
+                option.label = titleCounts.get(option.title) > 1
+                    ? `${option.title} (${option.id})`
+                    : option.title;
+                optionByLabel.set(option.label, option);
+            }
             const modelListControl = UI.createInputListControl({
                 getItems: () => Array.from(modelList),
                 setItems: (items) => {
@@ -1544,13 +1581,14 @@ UI.modalAddModel = () => {
                     });
                 }
             });
-            modelListControl.setInputList(itemNames);
+            modelListControl.setInputList(Array.from(optionByLabel.keys()));
 
             // Footer
             const elFooter = UI.createModalFooter({
                 onsuccess  : () => {
-                    for (const modelURL of Array.from(modelList)) {
-                        THOTH.fire("addModel", modelURL);
+                    for (const modelLabel of Array.from(modelList)) {
+                        const option = optionByLabel.get(modelLabel);
+                        THOTH.fire("addModel", option?.id || modelLabel);
                     }
                     ATON.UI.hideModal();
                 },
@@ -1582,6 +1620,17 @@ UI._getModelListName = (item, user) => {
     if (item.startsWith(prefix)) return item.replace(prefix, "");
 
     return item;
+};
+
+UI._getModelListOption = (item, user) => {
+    const title = UI._getModelListName(item, user);
+    if (typeof item === "string") return { id: title, title, item };
+    return {
+        id: item?.id || item?.artifact_id || title,
+        title,
+        url: item?.url || item?.gltf_file || item?.glb_file || item?.public_url,
+        item
+    };
 };
 
 UI.modalMsrDetails = (msrId, draftData, options = {}) => {
@@ -2375,20 +2424,25 @@ UI.createRelatedArtefactsControl = (dataTemp) => {
 
             const entries = Array.isArray(response.data) ? response.data : [];
             relationByName = new Map();
-            const itemNames = entries
-                .map(item => {
-                    const name = UI._getModelListName(item, u);
-                    if (!name) return null;
-
-                    relationByName.set(name, UI._normalizeArtefactRelation({
-                        id       : name,
-                        name     : name,
-                        url      : item?.url,
-                        gltf_file: item?.gltf_file || item?.glb_file || item?.path || item?.src
-                    }));
-                    return name;
-                })
-                .filter(Boolean);
+            const options = entries
+                .map(item => UI._getModelListOption(item, u))
+                .filter(option => option.id);
+            const titleCounts = new Map();
+            for (const option of options) {
+                titleCounts.set(option.title, (titleCounts.get(option.title) || 0) + 1);
+            }
+            const itemNames = options.map(option => {
+                const label = titleCounts.get(option.title) > 1
+                    ? `${option.title} (${option.id})`
+                    : option.title;
+                relationByName.set(label, UI._normalizeArtefactRelation({
+                    id       : option.id,
+                    name     : option.title,
+                    url      : option.url,
+                    gltf_file: option.url
+                }));
+                return label;
+            });
             control.setInputList(itemNames);
         }
     );
@@ -2981,9 +3035,11 @@ UI.modalModelMetadata = (modelId, data_temp) => {
         THOTH.MD.editModelMetadata(modelId, data_temp, prev_data);
     };
 
-    const elFooter = UI.createModalFooter({
-        actions: [
-            ATON.UI.createButton({
+    const canExportMetadata = THOTH.config?.deploymentMode !== "hestia" ||
+        THOTH.API.supports("metadata", "PUT");
+    const metadataActions = [];
+    if (canExportMetadata) {
+        metadataActions.push(ATON.UI.createButton({
                 text   : "Export metadata",
                 icon   : "link",
                 size   : "large",
@@ -2992,8 +3048,9 @@ UI.modalModelMetadata = (modelId, data_temp) => {
                     saveMetadataDraft();
                     await THOTH.exportModelMetadata(modelId);
                 }
-            }),
-            ATON.UI.createButton({
+            }));
+    }
+    metadataActions.push(ATON.UI.createButton({
                 text   : "Download metadata",
                 icon   : "download",
                 size   : "large",
@@ -3002,8 +3059,10 @@ UI.modalModelMetadata = (modelId, data_temp) => {
                     saveMetadataDraft();
                     THOTH.downloadModelMetadata(modelId);
                 }
-            })
-        ],
+            }));
+
+    const elFooter = UI.createModalFooter({
+        actions: metadataActions,
         onsuccess: () => {
             saveMetadataDraft();
             ATON.UI.hideModal();

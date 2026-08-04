@@ -1,0 +1,31 @@
+services:
+  thoth:
+    environment:
+      THOTH_DEPLOYMENT_MODE: hestia
+      HESTIA_API_TARGET: ${HESTIA_API_TARGET:-http://api:5000}
+      HESTIA_API_PUBLIC_URL: ${HESTIA_API_PUBLIC_URL:-https://api.textailes.athenarc.gr}
+      HESTIA_DIRECTUS_TARGET: ${HESTIA_DIRECTUS_TARGET:-http://directus:8055}
+      HESTIA_PORTAL_URL: ${HESTIA_PORTAL_URL:-https://textailes.athenarc.gr}
+      HESTIA_COOKIE_NAME: ${HESTIA_COOKIE_NAME:-textailes_refresh_token}
+      HESTIA_COOKIE_DOMAIN: ${HESTIA_COOKIE_DOMAIN:-.textailes.athenarc.gr}
+      HESTIA_API_AUTH_KEY: ${HESTIA_API_AUTH_KEY:?Set HESTIA_API_AUTH_KEY}
+      EGI_AUTHORIZE_URL: ${EGI_AUTHORIZE_URL:?Set EGI_AUTHORIZE_URL}
+      EGI_TOKEN_URL: ${EGI_TOKEN_URL:?Set EGI_TOKEN_URL}
+      EGI_USERINFO_URL: ${EGI_USERINFO_URL:?Set EGI_USERINFO_URL}
+      EGI_CLIENT_ID: ${EGI_CLIENT_ID:?Set EGI_CLIENT_ID}
+      EGI_CLIENT_SECRET: ${EGI_CLIENT_SECRET:?Set EGI_CLIENT_SECRET}
+      EGI_REDIRECT_URI: ${EGI_REDIRECT_URI:?Set EGI_REDIRECT_URI}
+      THOTH_SESSION_SECRET: ${THOTH_SESSION_SECRET:?Set THOTH_SESSION_SECRET}
+    networks:
+      - thoth-local
+      - textailes
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.thoth.rule=Host(`${THOTH_HOST_DOMAIN:-thoth.textailes.athenarc.gr}`)"
+      - "traefik.http.routers.thoth.entrypoints=websecure"
+      - "traefik.http.routers.thoth.tls.certresolver=le"
+    restart: always
+
+networks:
+  textailes:
+    external: true

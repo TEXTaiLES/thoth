@@ -1,0 +1,76 @@
+{
+    "deploymentMode": "hestia",
+    "auth": {
+        "mode": "hestia",
+        "providers": {
+            "egi": true,
+            "hestia": true
+        }
+    },
+    "ATONSceneUrl": "../../api/v2/scenes/",
+    "ATONModelUrl": "../../api/v2/items/samples/models/",
+    "schemaListUrl": "../../a/thoth/js/res/schema/list_of_schemas.json",
+    "defaultSchemaName": "puc_schema",
+    "use_endpoints": true,
+    "endpoints": {
+        "scene": {
+            "endpoint_url": "/hestia/scenes",
+            "methods": ["GET", "POST", "PUT"],
+            "enabled": true
+        },
+        "list_models": {
+            "endpoint_url": "/hestia/artifacts",
+            "methods": ["GET"],
+            "enabled": true
+        },
+        "glb_model": {
+            "endpoint_url": "/hestia/artifacts",
+            "item_path": true,
+            "methods": ["GET"],
+            "enabled": true
+        },
+        "artefact_data": {
+            "endpoint_url": "/hestia/artefacts",
+            "item_path": true,
+            "methods": ["GET"],
+            "enabled": true
+        },
+        "list_rgb_images": {
+            "endpoint_url": "/hestia/rgb/images",
+            "methods": ["GET"],
+            "enabled": true
+        },
+        "rgb_image": {
+            "endpoint_url": "/hestia/rgb/image",
+            "methods": ["GET"],
+            "enabled": true
+        },
+        "list_multispectral_images": {
+            "endpoint_url": "/hestia/multispectral/images",
+            "methods": ["GET"],
+            "enabled": true
+        },
+        "multispectral_image": {
+            "endpoint_url": "/hestia/multispectral/image",
+            "methods": ["GET"],
+            "enabled": true
+        },
+        "list_sensors": {
+            "endpoint_url": "/hestia/sensor-readings",
+            "methods": ["GET"],
+            "enabled": true
+        },
+        "sensor": {
+            "endpoint_url": "/hestia/sensor-readings",
+            "methods": ["GET"],
+            "enabled": true
+        },
+        "echoes": {
+            "endpoint_url": "/hestia/echoes",
+            "item_path": true,
+            "methods": ["GET", "POST", "PUT"],
+            "timeout_seconds": 30,
+            "enabled": true
+        }
+    }
+}

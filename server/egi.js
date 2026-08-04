@@ -1,7 +1,7 @@
 // EGI Check-In OIDC helpers (thoth server-side).
 //
 // CommonJS port of the Directus archive's utils/egi.js, so it can be required
-// directly from ATON's gateway (workaround/ATON.service.main.js), which is
+// directly from THOTH's ATON gateway extension, which is
 // require-based (not ESM).
 //
 // We run the authorization-code + PKCE flow against EGI's Keycloak, then read
@@ -16,7 +16,7 @@ const { URL, URLSearchParams } = require('url');
 // EGI configuration pulled from env. The three URLs + client creds are required
 // at boot. redirectUri must match a redirect_uri registered on the EGI client
 // byte-for-byte; for thoth this is a single fixed callback (the target scene is
-// carried separately via a cookie, see egi-routes.js).
+// carried separately via a cookie, see auth-routes.js).
 const EGI = {
     authorizeUrl: process.env.EGI_AUTHORIZE_URL,
     tokenUrl:     process.env.EGI_TOKEN_URL,
@@ -62,6 +62,11 @@ const httpsRequest = ({ url, method = 'GET', headers = {}, body = null }) =>
             });
         });
         req.on('error', reject);
+        req.setTimeout(10000, () => {
+            const error = new Error('[EGI] Upstream request timed out');
+            error.code = 'ETIMEDOUT';
+            req.destroy(error);
+        });
         if (body) req.write(body);
         req.end();
     });

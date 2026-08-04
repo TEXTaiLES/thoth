@@ -60,12 +60,24 @@ To verify everything runs properly, navigate to [http://localhost:8080/](http://
 To open a scene using the THOTH web app, open the following url on your web browser.
 
 ```
-{base_url}/a/thoth/?s={scene_url}
+{base_url}/a/thoth/?scene_id={scene_id}
 ```
 
-where `base_url` is the base thoth uri and `scene_url` the uri of the scene. The default `base url` is [http://localhost:8080](http://localhost:8080).
+where `base_url` is the ATON base URL and `scene_id` is the scene identifier. The default base URL is [http://localhost:8080](http://localhost:8080).
 
 You can create a scene from the ATON front end (Shu) or through a post request through the [ATON REST API](../api/rest.md).
+
+## Docker and HESTIA deployment
+
+Local Docker is the default container deployment:
+
+```sh
+docker compose up --build -d
+```
+
+It uses ATON's local API and authentication. HESTIA integration is selected explicitly with `docker-compose.hestia.yml` and provides separate EGI and HESTIA Portal login buttons.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for native ATON, PM2, local Docker, HESTIA Docker, environment variables, persistence, and troubleshooting.
 
 ## Documentation
 
