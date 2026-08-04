@@ -67,9 +67,9 @@
     },
     "list_sensors": {
         "functionality": "Get list of sensors",
-        "response": [
-            "sensor_id"
-        ],
+        "response": {
+            "sensors": ["sensor_id"]
+        },
         "fallback": "No equivalent ATON feature - return empty"
     },
     "artefact_data": {
@@ -192,11 +192,14 @@
     "sensor": {
         "functionality": "Get final reading object of a sensor",
         "request": {
-            "sensor_id": "str"
+            "sensor_id": "str",
+            "per_page": 1
         },
-        "response": {
-            "latest_reading": "object"
-        },
+        "response": [
+            {
+                "latest_reading": "object"
+            }
+        ],
         "fallback": "Return empty"
     },
     "authentication": {
