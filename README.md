@@ -77,7 +77,7 @@ docker compose up --build -d
 
 It uses ATON's local API and authentication. HESTIA integration is selected explicitly with `docker-compose.hestia.yml` and provides separate EGI and HESTIA Portal login buttons.
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for native ATON, PM2, local Docker, HESTIA Docker, environment variables, persistence, and troubleshooting.
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for native ATON, PM2, local Docker, HESTIA Docker, environment variables, persistence, and troubleshooting.
 
 ## Documentation
 

@@ -74,6 +74,9 @@ module.exports = (app, { Core }) => {
 
     registerAuthRoutes(app);
 
+    // Browser clients use this same-origin route instead of contacting HESTIA
+    // directly. Besides keeping the service credential on the server, this is
+    // the CORS workaround formerly carried by the copied ATON gateway file.
     app.use('/hestia', requireAuthentication, (request, response, next) => {
         if (!isAllowedApiRequest(request.method, request.path)) {
             response.status(404).json({ error: 'HESTIA route is not enabled for THOTH', code: 'ROUTE_NOT_ALLOWED' });

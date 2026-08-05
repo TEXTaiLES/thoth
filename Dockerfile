@@ -18,7 +18,8 @@ RUN npm install
 RUN mkdir -p /aton/wapps/thoth
 COPY . /aton/wapps/thoth
 
-# 3b. Add the minimal THOTH hook to ATON's gateway inside this image only.
+# 3b. Install the THOTH same-origin gateway hook into this private image copy.
+# This never edits the host ATON checkout.
 RUN node /aton/wapps/thoth/server/deployment/install-gateway.cjs /aton/services/ATON.service.main.js
 
 # 4. Run ATON

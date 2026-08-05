@@ -1,9 +1,0 @@
-{
-    "artefact": "artefact",
-    "metadata": "metadata",
-    "transforms": "transforms",
-    "annotations": "annotations",
-    "sensors": [
-        "sensor"
-    ]
-}

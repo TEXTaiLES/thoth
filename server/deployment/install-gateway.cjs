@@ -1,6 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 
+// This utility modifies only the explicitly supplied gateway file. The Docker
+// build points it at the ATON checkout cloned inside the image. It is never
+// invoked by native `npm start`; a host ATON checkout can therefore only be
+// changed by an operator running this command manually.
 const gatewayPath = process.argv[2];
 if (!gatewayPath) throw new Error('Usage: node install-gateway.cjs <ATON.service.main.js>');
 
