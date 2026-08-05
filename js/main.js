@@ -30,6 +30,7 @@ import Auth                from "./src/auth.js";
 import Artefacts           from "./src/artefacts.js";
 import Transforms          from "./src/transforms.js";
 import Annotations         from "./src/annotations.js";
+import DeploymentConfig    from "./src/deployment_config.js";
 
 
 // Realize 
@@ -59,6 +60,7 @@ THOTH.Auth           = Auth;
 THOTH.Artefacts      = Artefacts;
 THOTH.Transforms     = Transforms;
 THOTH.Annotations    = Annotations;
+THOTH.DeploymentConfig = DeploymentConfig;
 
 
 THOTH.BASE_URL        = "../thoth";
@@ -150,15 +152,43 @@ THOTH.setup = () => {
     })
 };
 
+THOTH._showConfigError = (error) => {
+    const message = error?.message || error || "Unknown error";
+    ATON.UI.showModal(`Error loading THOTH configuration: ${message}`);
+};
+
 THOTH.loadConfig = () => {
     ATON.REQ.get(
-        "../../a/thoth/config.json",
-        data => {
-            THOTH.config = data;
-            THOTH.API.setup(data);
-            ATON.fire("ConfigLoaded");
+        `${DeploymentConfig.BASE_URL}deployment.json`,
+        selector => {
+            let source;
+            try {
+                source = DeploymentConfig.getSource(selector);
+            }
+            catch (error) {
+                THOTH._showConfigError(error);
+                return;
+            }
+
+            ATON.REQ.get(
+                `${DeploymentConfig.BASE_URL}${source}`,
+                baseConfig => {
+                    let config;
+                    try {
+                        config = DeploymentConfig.resolve(selector, baseConfig);
+                    }
+                    catch (error) {
+                        THOTH._showConfigError(error);
+                        return;
+                    }
+                    THOTH.config = config;
+                    THOTH.API.setup(config);
+                    ATON.fire("ConfigLoaded");
+                },
+                THOTH._showConfigError
+            );
         },
-        err => ATON.UI.showModal("Error loading config" + err)
+        THOTH._showConfigError
     );
 };
 

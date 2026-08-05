@@ -1,11 +1,10 @@
-const fs = require('fs');
-const path = require('path');
 const { createProxyMiddleware, fixRequestBody } = require('http-proxy-middleware');
 const { registerAuthRoutes, requireAuthentication } = require('../auth-routes.js');
 
 const REQUIRED_ENV = [
     'HESTIA_API_AUTH_KEY',
     'HESTIA_API_TARGET',
+    'HESTIA_API_PUBLIC_URL',
     'HESTIA_DIRECTUS_TARGET',
     'HESTIA_PORTAL_URL',
     'EGI_AUTHORIZE_URL',
@@ -42,18 +41,18 @@ const isAllowedApiRequest = (method, requestPath) => ALLOWED_API_ROUTES.some(rou
 const getApiAuthorizationHeader = (environment = process.env) =>
     `Bearer ${environment.HESTIA_API_AUTH_KEY}`;
 
-const loadRuntimeConfig = (configPath, environment = process.env) => {
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    config.auth = {
-        ...(config.auth || {}),
-        portalUrl: environment.HESTIA_PORTAL_URL
-    };
-    config.hestiaApiPublicUrl = environment.HESTIA_API_PUBLIC_URL || environment.HESTIA_API_TARGET;
-    delete config.authKey;
-    return config;
-};
+const getDeploymentSelector = (environment = process.env) => ({
+    mode: 'hestia',
+    source: 'hestia.json',
+    runtime: {
+        hestiaApiPublicUrl: environment.HESTIA_API_PUBLIC_URL,
+        auth: {
+            portalUrl: environment.HESTIA_PORTAL_URL
+        }
+    }
+});
 
-module.exports = (app, { Core }) => {
+module.exports = (app) => {
     const mode = String(process.env.THOTH_DEPLOYMENT_MODE || 'local').toLowerCase();
     if (mode !== 'hestia') {
         console.log('[THOTH] Local deployment mode: using native ATON API and authentication');
@@ -61,15 +60,9 @@ module.exports = (app, { Core }) => {
     }
 
     validateEnvironment();
-    const configPath = path.join(Core.DIR_WAPPS, 'thoth', 'config', 'hestia.json');
 
-    app.get('/a/thoth/config.json', (request, response) => {
-        try {
-            response.json(loadRuntimeConfig(configPath));
-        }
-        catch (error) {
-            response.status(500).json({ error: 'THOTH configuration unavailable', code: 'CONFIGURATION_ERROR' });
-        }
+    app.get('/a/thoth/config/deployment.json', (request, response) => {
+        response.json(getDeploymentSelector());
     });
 
     registerAuthRoutes(app);
@@ -110,7 +103,7 @@ module.exports = (app, { Core }) => {
 };
 
 module.exports.ALLOWED_API_ROUTES = ALLOWED_API_ROUTES;
+module.exports.getDeploymentSelector = getDeploymentSelector;
 module.exports.getApiAuthorizationHeader = getApiAuthorizationHeader;
 module.exports.isAllowedApiRequest = isAllowedApiRequest;
-module.exports.loadRuntimeConfig = loadRuntimeConfig;
 module.exports.validateEnvironment = validateEnvironment;

@@ -27,6 +27,18 @@ node wapps/thoth/server/deployment/install-gateway.cjs services/ATON.service.mai
 
 That manual operation changes the supplied ATON file and is not required for any of the three supported deployment modes.
 
+## Configuration selection
+
+Both browser configurations live under `config/`:
+
+- `local.json` uses ATON authentication and API fallbacks.
+- `hestia.json` uses THOTH authentication and same-origin HESTIA API routes.
+- `deployment.json` is the selector and defaults to `local.json`.
+
+The browser first loads `/a/thoth/config/deployment.json`, validates its `mode` and `source`, and then loads the selected file. Native ATON and local Docker receive the committed local selector through ATON's static-file handler.
+
+In HESTIA Docker mode, THOTH's gateway handles that selector URL before ATON's static handler and returns `mode: hestia`, `source: hestia.json`, and non-secret runtime values such as the public API and Portal URLs. The browser merges those public values into `hestia.json`. Secrets are never part of the selector or either browser configuration.
+
 ## Native ATON
 
 From the ATON repository root, install and start ATON:
