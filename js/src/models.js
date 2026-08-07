@@ -99,12 +99,11 @@ Models.onLoad = async (model, options = {}) => {
         console.warn("No meshes found AFTER load (unexpected)");
         return;
     }
-    console.log("[MODEL LOADED]", model?.name, model);
     
     const mesh = meshes[0];
     const model_id = model.name;
 
-    const meshData = THOTH.MSR.getVerticesAndFaces(mesh);//mergedvertices
+    const meshData = THOTH.MSR.getVerticesAndFaces(mesh);//get merged vertices
     const geo = mesh.geometry;
 
     const pos = geo.attributes.position;

@@ -215,36 +215,4 @@ API.geodesicLoad = async function(payload){
     return result.data;
 };
 
-/*
-
-// ---------------------------------------------------------
-// Exact geodesic (ATON backend -> C++ microservice)
-// ---------------------------------------------------------
-API.geodesicExact = async function (payload) {
-    console.log("payload (geodesicExact):",payload);
-    const result = await API.post("geodesic_exact", payload);
-    if (!result.ok) {
-        throw new Error(
-            typeof result.error === "string"
-                ? result.error
-                : JSON.stringify(result.error)
-        );
-    }
-    return result.data;
-};
-//load the mesh in c++
-API.geodesicLoad = async function (payload) {
-    console.log("payload (geodesicLoad):",payload);
-    const result = await API.post("geodesic_load", payload);
-    if (!result.ok) {
-        throw new Error(
-            typeof result.error === "string"
-                ? result.error
-                : JSON.stringify(result.error)
-        );
-    }
-
-    return result.data;
-};
-*/
 export default API;

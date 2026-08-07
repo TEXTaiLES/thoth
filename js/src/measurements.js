@@ -660,10 +660,7 @@ MSR.createExactGeodesicMeasurement = async function (measurementId, point1, poin
     if (!mesh || mesh !== mesh2) {
         throw new Error("Exact geodesic requires both points on the same mesh.");
     }
-    //const startVertex = MSR.getNearestVertexIndex(mesh, point1.coords);
-    //const endVertex   = MSR.getNearestVertexIndex(mesh, point2.coords);
-    console.log({model_id: THOTH.Events.getPointModelId(point1),start: point1.coords,end: point2.coords});
-    
+       
     const inv = mesh.matrixWorld.clone().invert();
     const localP1 = point1.coords.clone().applyMatrix4(inv);
     const localP2 = point2.coords.clone().applyMatrix4(inv);
@@ -676,32 +673,17 @@ MSR.createExactGeodesicMeasurement = async function (measurementId, point1, poin
     x2: localP2.x,
     y2: localP2.y,
     z2: localP2.z
-});
-    console.log("GEODESIC RESULT:", result);
+    });
+    
      if (!result) {
-     //if (!result || !result.status) {
-   // if (!result || result.status !== "ok") {
         throw new Error("Exact geodesic computation failed.");
     }
-    console.log("LOCAL P1", localP1);
-    console.log("LOCAL P2", localP2);
 
-    console.log("WORLD P1", point1.coords);
-    console.log("WORLD P2", point2.coords);
-
-//console.log("CPP PATH", result.path);
-result.path.forEach((p,i)=>{
-    console.log("PATH",i,p);
-});
-
-     // const worldPoints = result.distance.map(
     const worldPoints = result.path.map(
     p => new THREE.Vector3(p.x,p.y,p.z)
         .applyMatrix4(mesh.matrixWorld)
-);
-    worldPoints.forEach((p,i)=>{
-    console.log("WORLD PATH",i,p);
-});
+    );
+ 
     return MSR.normalizeMeasurement(measurementId, {
         description  : options.description || "",
         distanceType : "geodesicExact",
@@ -819,11 +801,7 @@ MSR.addMeasurementSem = (measurementId) => {
         line  = MSR.drawGeodesicPath(measurement.path);
     }
      if (measurement.distanceType == "geodesicExact") {
-        line  = MSR.drawGeodesicPath(measurement.path);
-       //  const worldPoints = MSR.pathToPoints(MSR.getPointMesh(measurement.points[0]), measurement.path);
-      //const points = MSR.geodesicPathToWorldPoints(measurement.model_id,measurement.path);
-      //  line = MSR.drawGeodesicPath(worldPoints);
-        
+        line  = MSR.drawGeodesicPath(measurement.path);  
     }
     // Label
     const label = MSR.createLabelSem(measurementKey);
@@ -932,8 +910,8 @@ MSR.getVerticesAndFaces = function (mesh)
 {
     let geometry = mesh.geometry.clone();
 
-    console.log("[BEFORE MERGE] #vertices:", geometry.attributes.position.count);
-    console.log("[BEFORE MERGE] #faces:", geometry.index.count / 3);
+   // console.log("[BEFORE MERGE] #vertices:", geometry.attributes.position.count);
+    //console.log("[BEFORE MERGE] #faces:", geometry.index.count / 3);
 
     //strip attributes
     geometry.deleteAttribute("normal");
@@ -947,8 +925,8 @@ MSR.getVerticesAndFaces = function (mesh)
     const pos = geometry.attributes.position;
     const index = geometry.index;
 
-    console.log("[AFTER MERGE] #vertices:", geometry.attributes.position.count);
-    console.log("[AFTER MERGE] #faces:", geometry.index.count / 3);
+   // console.log("[AFTER MERGE] #vertices:", geometry.attributes.position.count);
+   // console.log("[AFTER MERGE] #faces:", geometry.index.count / 3);
 
     if (!index) {
         console.log("Failed to build indexed geometry");
@@ -980,32 +958,7 @@ MSR.getVerticesAndFaces = function (mesh)
         faces
     };
 };
-//removes invalid indices and degenerated triangles
-/*
-MSR.sanitizeGeodesicMesh = function(vertices, faces)
-{
-    const vCount = vertices.length / 3;
 
-    const cleanFaces = [];
-
-    for (let i = 0; i < faces.length; i += 3)
-    {
-        const a = faces[i], b = faces[i+1], c = faces[i+2];
-
-        // reject invalid indices
-        if (a >= vCount || b >= vCount || c >= vCount) continue;
-
-        // reject degenerate triangles
-        if (a === b || b === c || a === c) continue;
-
-        cleanFaces.push(a, b, c);
-    }
-
-    return {
-        vertices,
-        faces: cleanFaces
-    };
-}*/
 
 MSR.sanitizeGeodesicMesh = function(vertices, faces)
 {
