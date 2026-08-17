@@ -2,3 +2,5 @@
 .env
 instructions.md
 node_modules
+geodesic/geodesic_addon/build
+geodesic/geodesic_addon/node_modules

@@ -1,5 +1,6 @@
 const { createProxyMiddleware, fixRequestBody } = require('http-proxy-middleware');
 const { registerAuthRoutes, requireAuthentication } = require('../auth-routes.js');
+const { registerGeodesicRoutes } = require('../geodesic-routes.js');
 
 const REQUIRED_ENV = [
     'HESTIA_API_AUTH_KEY',
@@ -53,6 +54,8 @@ const getDeploymentSelector = (environment = process.env) => ({
 });
 
 module.exports = (app) => {
+    registerGeodesicRoutes(app);
+
     const mode = String(process.env.THOTH_DEPLOYMENT_MODE || 'local').toLowerCase();
     if (mode !== 'hestia') {
         console.log('[THOTH] Local deployment mode: using native ATON API and authentication');

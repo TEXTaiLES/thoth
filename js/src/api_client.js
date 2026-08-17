@@ -6,6 +6,19 @@
 ===========================================================================*/
 let API = {};
 
+API.localEndpoints = {
+    geodesic_exact: {
+        endpoint_url  : "/api/v2/geodesic/exact",
+        methods       : ["POST"],
+        timeout_seconds: 120
+    },
+    geodesic_load: {
+        endpoint_url  : "/api/v2/geodesic/load",
+        methods       : ["POST"],
+        timeout_seconds: 120
+    }
+};
+
 API.endpointNames = [
     "scene",
     "list_models",
@@ -21,7 +34,9 @@ API.endpointNames = [
     "list_sensors",
     "sensor",
     "echoes",
-    "authentication"
+    "authentication",
+    "geodesic_exact",
+    "geodesic_load"
 ];
 
 API.setup = (config = {}) => {
@@ -35,7 +50,7 @@ API.setup = (config = {}) => {
         {};
 
     for (const name of API.endpointNames) {
-        API.endpoints[name] = configuredEndpoints[name] || config[name];
+        API.endpoints[name] = configuredEndpoints[name] || config[name] || API.localEndpoints[name];
     }
 };
 
@@ -58,10 +73,11 @@ API.getEndpoint = (name) => {
 };
 
 API.getEndpointConfig = (name) => {
-    if (API.config?.use_endpoints !== true) return undefined;
-
     const endpoint = API.endpoints?.[name];
     if (!endpoint) return undefined;
+
+    if (API.localEndpoints[name]) return endpoint;
+    if (API.config?.use_endpoints !== true) return undefined;
 
     if (typeof endpoint === "string") return endpoint;
     if (endpoint.enabled !== true) return undefined;
@@ -402,6 +418,26 @@ API.getSensor = async (sensorId) => {
         ok  : true,
         data: {}
     };
+};
+
+API.geodesicLoad = async payload => {
+    const response = await API.post("geodesic_load", payload);
+    if (!response.ok || response.data?.status !== true) {
+        const error = new Error(response.error || "Exact geodesic mesh loading failed");
+        error.code = response.code;
+        throw error;
+    }
+    return response.data;
+};
+
+API.geodesicExact = async payload => {
+    const response = await API.post("geodesic_exact", payload);
+    if (!response.ok || response.data?.status !== true) {
+        const error = new Error(response.error || response.data?.error || "Exact geodesic computation failed");
+        error.code = response.code;
+        throw error;
+    }
+    return response.data;
 };
 
 API._request = async (name, options = {}) => {

@@ -434,7 +434,7 @@ Events.setupMeasurementEvents = () => {
         THOTH.MSR.addMeasurementPoint();
     });
     // Create measurement
-    THOTH.on("createMeasurement", (data) => {
+    THOTH.on("createMeasurement", async (data) => {
         if (data?.data) {
             const measurementData = data.data;
             const modelId = Events.getPointModelId(measurementData.points?.[0] || measurementData.point1);
@@ -457,10 +457,28 @@ Events.setupMeasurementEvents = () => {
             return;
         }
 
-        const measurementData = THOTH.MSR.createMeasurementData(msrId, point1, point2, {
-            model_id    : modelId1,
-            distanceType: THOTH.MSR.distanceType
-        });
+        let measurementData;
+        if (THOTH.MSR.distanceType === "geodesicExact") {
+            try {
+                measurementData = await THOTH.MSR.createExactGeodesicMeasurement(
+                    msrId,
+                    point1,
+                    point2,
+                    { model_id: modelId1 }
+                );
+            }
+            catch (error) {
+                console.error("Exact geodesic computation failed", error);
+                THOTH.FE.showToast(error?.message || "Exact geodesic computation failed");
+                return;
+            }
+        }
+        else {
+            measurementData = THOTH.MSR.createMeasurementData(msrId, point1, point2, {
+                model_id    : modelId1,
+                distanceType: THOTH.MSR.distanceType
+            });
+        }
         if (!measurementData) return;
 
         THOTH.UI.modalMsrDetails(msrId, measurementData, {

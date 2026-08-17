@@ -226,7 +226,9 @@ type Measurement = BaseAnnotation & {
 }
 ```
 
-`distance_type` defaults to `"euclidean"`. Canonical export always writes `coordinate_space: "model_local"`.
+`distance_type` defaults to `"euclidean"`; THOTH also writes `"geodesic"` and
+`"geodesicExact"` for approximate and exact surface paths. Canonical export
+always writes `coordinate_space: "model_local"`.
 
 THOTH also accepts runtime or legacy forms using top-level `distance`, `distance_type`, `distanceType`, `point1`, `point2`, or `points`. An older annotation without `coordinate_space: "model_local"` is interpreted as using world-space points and converted during normalization.
 

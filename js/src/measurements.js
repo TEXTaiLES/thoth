@@ -33,6 +33,7 @@ MSR.setup = () => {
 
     MSR.meshCache = new WeakMap();  //cache meshes
     MSR.pathCache = new WeakMap();  //cache paths
+    MSR.exactMeshLoads = new WeakMap();
 
     MSR.labelScaleFactor = 0.05;
     MSR.lastSceneScale = null;
@@ -508,94 +509,83 @@ MSR.createMeasurementData = (measurementId, point1, point2, options = {}) => {
         return;
     }
 
-    let measurementData = null;
-
     if (distanceType === "euclidean") {
-        const distance = MSR.getEuclideanDistance(point1, point2);
-
-        measurementData = MSR.normalizeMeasurement(measurementId, {
+        return MSR.normalizeMeasurement(measurementId, {
             description : options.description || "",
             distanceType: distanceType,
-            distance    : distance,
+            distance    : MSR.getEuclideanDistance(point1, point2),
             points      : [point1, point2],
             model_id    : options.model_id,
             trash       : false,
             name        : options.name || `Measurement ${measurementId}`,
             visible     : true
         });
-    }   
-    else if (distanceType === "geodesic") {    
-    // REMOTE / PRECOMPUTED
-    if (options.path!==undefined) 
-        {   //deserialize just in case
-            const path = options.path.map(
-                p => new THREE.Vector3(p.x, p.y, p.z));
+    }
 
-        measurementData = MSR.normalizeMeasurement(measurementId, {
-            description  : options.description || "",
-            distanceType : options.distanceType,
-            distance     : options.distance,
-            points       : [point1, point2],
-            model_id     : options.model_id,
-            path         : path,
-            trash        : false,
-            name         : options.name || `Measurement ${measurementId}`,
-            visible      : true
+    if (distanceType !== "geodesic" && distanceType !== "geodesicExact") {
+        console.warn("Unsupported distanceType", distanceType);
+        return;
+    }
+
+    // Collaboration, undo/redo, and scene loading already carry a computed path.
+    if (Array.isArray(options.path)) {
+        return MSR.normalizeMeasurement(measurementId, {
+            description : options.description || "",
+            distanceType: distanceType,
+            distance    : options.distance,
+            points      : [point1, point2],
+            model_id    : options.model_id,
+            path        : options.path.map(point => MSR._coordsToVector3(point)),
+            trash       : false,
+            name        : options.name || `Measurement ${measurementId}`,
+            visible     : true
         });
     }
 
-    // LOCAL COMPUTATION
-    else {
-        const mesh  = MSR.getPointMesh(point1);
-        const mesh2 = MSR.getPointMesh(point2);
-        if (!mesh || !mesh2) {
-            THOTH.FE.showToast("Invalid mesh for geodesic");
-            return;
-        }
-        if (mesh !== mesh2) {
-            THOTH.FE.showToast("Geodesic requires both points on same mesh"
-            );
-            return;
-        }
-        const { vertices } = MSR.buildMeshGraph(mesh);
-        const modelId = options.model_id || MSR.getPointModelId(point1);
-        const startWorldPoint = MSR.modelLocalToWorld(modelId, point1.coords);
-        const endWorldPoint = MSR.modelLocalToWorld(modelId, point2.coords);
-        const startVertex = MSR.getNearestVertexIndex(mesh, startWorldPoint);
-        const endVertex = MSR.getNearestVertexIndex(mesh, endWorldPoint);
+    // New exact measurements are asynchronous and are created by
+    // createExactGeodesicMeasurement().
+    if (distanceType === "geodesicExact") return;
 
-        if (startVertex === -1 || endVertex === -1) {
-            THOTH.FE.showToast("Invalid vertex indices");
-            return;
-        }
-        const path = MSR.getGeodesicPath(mesh,startVertex,endVertex);
-
-        if (!path || path.length === 0) {
-            THOTH.FE.showToast("Geodesic path not found!");
-            return;
-        }
-        const distance = MSR.computePathLength(vertices, path);
-        const worldPoints = MSR.pathToPoints(mesh, path);
-        const localPoints = worldPoints.map(point => MSR.worldToModelLocal(modelId, point));
-        measurementData = MSR.normalizeMeasurement(measurementId, {
-            description  : options.description || "",
-            distanceType : distanceType,
-            distance     : distance,
-            points       : [point1, point2],
-            model_id     : options.model_id,
-            path         : localPoints,
-            trash        : false,
-            name         : options.name || `Measurement ${measurementId}`,
-            visible      : true
-        });
+    const mesh = MSR.getPointMesh(point1);
+    const secondMesh = MSR.getPointMesh(point2);
+    if (!mesh || !secondMesh) {
+        THOTH.FE.showToast("Invalid mesh for geodesic");
+        return;
     }
+    if (mesh !== secondMesh) {
+        THOTH.FE.showToast("Geodesic requires both points on same mesh");
+        return;
     }
 
-    if (!measurementData) {
-        console.warn("Measurement creation failed", measurementId);
+    const { vertices } = MSR.buildMeshGraph(mesh);
+    const modelId = options.model_id || MSR.getPointModelId(point1);
+    const startWorldPoint = MSR.modelLocalToWorld(modelId, point1.coords);
+    const endWorldPoint = MSR.modelLocalToWorld(modelId, point2.coords);
+    const startVertex = MSR.getNearestVertexIndex(mesh, startWorldPoint);
+    const endVertex = MSR.getNearestVertexIndex(mesh, endWorldPoint);
+    if (startVertex === -1 || endVertex === -1) {
+        THOTH.FE.showToast("Invalid vertex indices");
+        return;
     }
 
-    return measurementData;
+    const path = MSR.getGeodesicPath(mesh, startVertex, endVertex);
+    if (!path?.length) {
+        THOTH.FE.showToast("Geodesic path not found!");
+        return;
+    }
+
+    const worldPoints = MSR.pathToPoints(mesh, path);
+    return MSR.normalizeMeasurement(measurementId, {
+        description : options.description || "",
+        distanceType: distanceType,
+        distance    : MSR.computePathLength(vertices, path),
+        points      : [point1, point2],
+        model_id    : options.model_id,
+        path        : worldPoints.map(point => MSR.worldToModelLocal(modelId, point)),
+        trash       : false,
+        name        : options.name || `Measurement ${measurementId}`,
+        visible     : true
+    });
 };
 
 MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
@@ -695,6 +685,176 @@ MSR.updateMeasurementLabel = (measurementId, distance) => {
     }
 
     label.setText(distance.toFixed(2));
+};
+
+MSR.getExactGeodesicMeshData = (mesh, modelId, tolerance = 1e-5) => {
+    const position = mesh?.geometry?.getAttribute?.("position");
+    if (!position || position.itemSize < 3 || position.count < 3) {
+        throw new Error("Exact geodesic requires a triangular position geometry.");
+    }
+
+    const geometryIndex = mesh.geometry.getIndex?.();
+    const indexCount = geometryIndex?.count ?? position.count;
+    if (indexCount < 3 || indexCount % 3 !== 0) {
+        throw new Error("Exact geodesic requires a triangle index count divisible by three.");
+    }
+
+    const vertices = [];
+    const faces = [];
+    const weldedVertices = new Map();
+    const triangles = new Set();
+    const edgeCounts = new Map();
+    const model = MSR.getModelNode(modelId);
+    mesh.updateMatrixWorld(true);
+    model?.updateMatrixWorld?.(true);
+    const meshToModel = model
+        ? model.matrixWorld.clone().invert().multiply(mesh.matrixWorld)
+        : mesh.matrixWorld.clone();
+    const transformedPosition = new THREE.Vector3();
+
+    const getSourceIndex = offset => geometryIndex ? geometryIndex.getX(offset) : offset;
+    const getWeldedIndex = sourceIndex => {
+        transformedPosition.fromBufferAttribute(position, sourceIndex).applyMatrix4(meshToModel);
+        const { x, y, z } = transformedPosition;
+        if (![x, y, z].every(Number.isFinite)) {
+            throw new Error("Exact geodesic mesh contains non-finite vertices.");
+        }
+
+        const hash = [x, y, z]
+            .map(value => Math.round(value / tolerance))
+            .join(":");
+        if (weldedVertices.has(hash)) return weldedVertices.get(hash);
+
+        const weldedIndex = vertices.length / 3;
+        weldedVertices.set(hash, weldedIndex);
+        vertices.push(x, y, z);
+        return weldedIndex;
+    };
+    const addEdge = (first, second) => {
+        const key = first < second ? `${first}:${second}` : `${second}:${first}`;
+        edgeCounts.set(key, (edgeCounts.get(key) || 0) + 1);
+    };
+
+    for (let offset = 0; offset < indexCount; offset += 3) {
+        const first = getWeldedIndex(getSourceIndex(offset));
+        const second = getWeldedIndex(getSourceIndex(offset + 1));
+        const third = getWeldedIndex(getSourceIndex(offset + 2));
+        if (first === second || second === third || first === third) continue;
+
+        const triangleKey = [first, second, third].sort((a, b) => a - b).join(":");
+        if (triangles.has(triangleKey)) continue;
+
+        const ax = vertices[first * 3];
+        const ay = vertices[first * 3 + 1];
+        const az = vertices[first * 3 + 2];
+        const abx = vertices[second * 3] - ax;
+        const aby = vertices[second * 3 + 1] - ay;
+        const abz = vertices[second * 3 + 2] - az;
+        const acx = vertices[third * 3] - ax;
+        const acy = vertices[third * 3 + 1] - ay;
+        const acz = vertices[third * 3 + 2] - az;
+        const nx = aby * acz - abz * acy;
+        const ny = abz * acx - abx * acz;
+        const nz = abx * acy - aby * acx;
+        if (nx * nx + ny * ny + nz * nz < 1e-20) continue;
+
+        triangles.add(triangleKey);
+        faces.push(first, second, third);
+        addEdge(first, second);
+        addEdge(second, third);
+        addEdge(third, first);
+    }
+
+    if (faces.length === 0) throw new Error("Exact geodesic mesh has no valid triangles.");
+    for (const count of edgeCounts.values()) {
+        if (count > 2) {
+            throw new Error("Mesh contains non-manifold edges. Exact geodesic cannot be computed.");
+        }
+    }
+
+    return { vertices, faces };
+};
+
+MSR.getExactGeodesicMeshId = (mesh, modelId) => {
+    mesh.userData = mesh.userData || {};
+    if (!mesh.userData.thothExactGeodesicId) {
+        mesh.userData.thothExactGeodesicId = `${modelId || "model"}:${mesh.uuid || mesh.name || "mesh"}`;
+    }
+    return mesh.userData.thothExactGeodesicId;
+};
+
+MSR.prepareExactGeodesicMesh = (mesh, modelId, force = false) => {
+    if (!mesh) return Promise.reject(new Error("Exact geodesic mesh is unavailable."));
+    if (force) MSR.exactMeshLoads.delete(mesh);
+    if (MSR.exactMeshLoads.has(mesh)) return MSR.exactMeshLoads.get(mesh);
+
+    const loading = (async () => {
+        const meshId = MSR.getExactGeodesicMeshId(mesh, modelId);
+        const meshData = MSR.getExactGeodesicMeshData(mesh, modelId);
+        await THOTH.API.geodesicLoad({
+            mesh_id : meshId,
+            vertices: meshData.vertices,
+            faces   : meshData.faces
+        });
+        return meshId;
+    })();
+
+    MSR.exactMeshLoads.set(mesh, loading);
+    loading.catch(() => {
+        if (MSR.exactMeshLoads.get(mesh) === loading) MSR.exactMeshLoads.delete(mesh);
+    });
+    return loading;
+};
+
+MSR.createExactGeodesicMeasurement = async (measurementId, point1, point2, options = {}) => {
+    const mesh = MSR.getPointMesh(point1);
+    const secondMesh = MSR.getPointMesh(point2);
+    if (!mesh || mesh !== secondMesh) {
+        throw new Error("Exact geodesic requires both points on the same mesh.");
+    }
+
+    const modelId = options.model_id || MSR.getPointModelId(point1);
+    const firstLocalPoint = MSR._coordsToVector3(point1.coords);
+    const secondLocalPoint = MSR._coordsToVector3(point2.coords);
+    let meshId = await MSR.prepareExactGeodesicMesh(mesh, modelId);
+
+    const query = () => THOTH.API.geodesicExact({
+        mesh_id: meshId,
+        x1     : firstLocalPoint.x,
+        y1     : firstLocalPoint.y,
+        z1     : firstLocalPoint.z,
+        x2     : secondLocalPoint.x,
+        y2     : secondLocalPoint.y,
+        z2     : secondLocalPoint.z
+    });
+
+    let result;
+    try {
+        result = await query();
+    }
+    catch (error) {
+        if (error.code !== "GEODESIC_MESH_NOT_FOUND") throw error;
+        meshId = await MSR.prepareExactGeodesicMesh(mesh, modelId, true);
+        result = await query();
+    }
+
+    if (!Number.isFinite(result.distance) || !Array.isArray(result.path) || result.path.length === 0) {
+        throw new Error("Exact geodesic computation returned an invalid path.");
+    }
+
+    const modelLocalPath = result.path.map(point => MSR._coordsToVector3(point));
+
+    return MSR.normalizeMeasurement(measurementId, {
+        description : options.description || "",
+        distanceType: "geodesicExact",
+        distance    : result.distance,
+        points      : [point1, point2],
+        model_id    : modelId,
+        path        : modelLocalPath,
+        trash       : false,
+        name        : options.name || `Measurement ${measurementId}`,
+        visible     : true
+    });
 };
 
 
@@ -805,7 +965,7 @@ MSR.addMeasurementSem = (measurementId) => {
         // Line
         line = MSR.createLineSem(point1, point2);
      }
-    if (measurement.distanceType == "geodesic") {
+    if (measurement.distanceType == "geodesic" || measurement.distanceType == "geodesicExact") {
         line  = MSR.drawGeodesicPath(measurement.path);
     }
     

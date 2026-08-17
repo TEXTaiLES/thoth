@@ -1,6 +1,7 @@
 FROM node:20
 
-RUN apt-get update && apt-get install -y git
+RUN apt-get update && apt-get install -y git python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g npm
 RUN npm install -g pm2
@@ -17,6 +18,14 @@ RUN npm install
 # 3. Copy thoth items into ATON wapps as THOTH
 RUN mkdir -p /aton/wapps/thoth
 COPY . /aton/wapps/thoth
+
+# 3a. Build the exact-geodesic N-API addon. Keep a copy outside the wapp
+# directory so docker-compose.dev.yml can bind-mount source without hiding it.
+WORKDIR /aton/wapps/thoth/geodesic/geodesic_addon
+RUN npm ci --omit=dev \
+    && cp build/Release/geodesic_addon.node /aton/services/thoth-geodesic-addon.node \
+    && node -e "require('/aton/services/thoth-geodesic-addon.node')"
+ENV THOTH_GEODESIC_ADDON_PATH=/aton/services/thoth-geodesic-addon.node
 
 # 3b. Install the THOTH same-origin gateway hook into this private image copy.
 # This never edits the host ATON checkout.

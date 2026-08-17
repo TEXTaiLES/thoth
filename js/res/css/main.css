@@ -131,8 +131,8 @@
 
     overflow-y: auto;
 
-    width: min(300px, calc(100vw - 96px)) !important;
-    max-width: min(300px, calc(100vw - 96px));
+    width: min(390px, calc(100vw - 96px)) !important;
+    max-width: min(390px, calc(100vw - 96px));
     white-space: normal;
     display: inline-block;
 
@@ -196,9 +196,10 @@
 }
 
 .thoth-tool-option-label {
-    flex: 0 1 42%;
+    flex: 0 1 32%;
     justify-content: flex-start;
     min-width: 0;
+    text-align: left;
     white-space: normal;
 }
 

@@ -10,6 +10,8 @@ THOTH is a web app developed as part of the [TEXTaiLES](https://www.echoes-eccch
 
 THOTH is based on the [ATON Framework](https://osiris.itabc.cnr.it/aton/), a 3D viewer designed for uses in cultural heritage. Both THOTH and ATON are in turn built on [Node.js](https://nodejs.org/en) using [Three.js](https://threejs.org/).
 
+Measurements support Euclidean distance, mesh-edge approximate geodesics, and exact surface geodesics through the native Kirsanov MMP addon.
+
 <p align="center">
     <a href = "https://www.echoes-eccch.eu/textailes/" target="_blank">
         <img src="res/Logo-Textailes-Colour-RGB-Hor.png" alt="TEXTaiLES" width="800"/>

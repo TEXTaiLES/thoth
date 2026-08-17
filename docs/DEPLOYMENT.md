@@ -4,7 +4,9 @@ THOTH supports native ATON, local Docker, and Docker connected to HESTIA. Native
 
 ## Requirements
 
-- Node.js for native deployment.
+- Node.js for native deployment. Exact geodesic measurements additionally
+  require Python, a C++17 compiler, and the platform build tools used by
+  `node-gyp`.
 - Docker with the Compose plugin for container deployments.
 - THOTH checked out as `wapps/thoth` inside an ATON checkout for native deployment.
 - A running HESTIA/Directus stack and EGI client registration for HESTIA mode.
@@ -13,19 +15,19 @@ The Docker image always uses ATON commit `22afaf28bcb6deb57ff1ea8e3737336a5a85d0
 
 ## ATON source boundary and CORS
 
-THOTH does not modify the host ATON checkout. Native ATON and local Docker use ATON's existing API, authentication, and static routes without loading any HESTIA code.
+THOTH does not modify the host ATON checkout automatically. Native ATON and local Docker use ATON's existing API, authentication, and static routes without loading any HESTIA code. The THOTH gateway extension also owns the same-origin exact-geodesic routes in every deployment mode.
 
 HESTIA mode avoids browser CORS requests with a same-origin `/hestia` gateway owned entirely by THOTH. The browser calls THOTH, and THOTH authenticates the user, injects the service credential, and forwards the allow-listed request to HESTIA.
 
 During a Docker build, THOTH clones the pinned ATON commit into the image and `server/deployment/install-gateway.cjs` adds one loader line to that private image copy. The gateway implementation remains under `server/deployment/gateway-extension.js` in THOTH. No host ATON file is mounted or edited.
 
-The installer requires an explicit target path and is not run by `npm start`. If a maintainer deliberately wants the gateway in a non-Docker ATON checkout, they must run it manually from the ATON root:
+The installer requires an explicit target path and is not run by `npm start`. A maintainer enabling exact geodesic measurements in a non-Docker ATON checkout must run it manually from the ATON root:
 
 ```sh
 node wapps/thoth/server/deployment/install-gateway.cjs services/ATON.service.main.js
 ```
 
-That manual operation changes the supplied ATON file and is not required for any of the three supported deployment modes.
+That manual operation adds one idempotent loader line to the supplied ATON file. It is required only for exact geodesic measurements in native ATON; both Docker modes install the loader in their private image copy automatically.
 
 ## Configuration selection
 
@@ -41,10 +43,14 @@ In HESTIA Docker mode, THOTH's gateway handles that selector URL before ATON's s
 
 ## Native ATON
 
-From the ATON repository root, install and start ATON:
+From the ATON repository root, install ATON and build THOTH's exact-geodesic addon:
 
 ```sh
 npm install
+cd wapps/thoth/geodesic/geodesic_addon
+npm ci
+cd ../../../..
+node wapps/thoth/server/deployment/install-gateway.cjs services/ATON.service.main.js
 npm start
 ```
 
@@ -77,6 +83,10 @@ http://localhost:8054/a/thoth/?scene_id=<scene-id>
 ```
 
 This mode needs no `.env` file. Named volumes `aton-data` and `aton-config` preserve scenes, models, and ATON users across container recreation. Removing those volumes deletes the persisted local state.
+
+The image builds and verifies the exact-geodesic addon automatically. Its
+compiled copy lives outside `/aton/wapps/thoth`, so the development bind mount
+below does not hide the native module.
 
 For development with the local checkout mounted over the image copy:
 
@@ -164,4 +174,12 @@ Validate both Compose configurations before deployment:
 ```sh
 docker compose -f docker-compose.yml config
 docker compose -f docker-compose.yml -f docker-compose.hestia.yml config
+```
+
+For focused exact-geodesic verification in a native checkout:
+
+```sh
+node server/geodesic-routes.smoke.cjs
+cd geodesic/geodesic_addon
+npm test
 ```
