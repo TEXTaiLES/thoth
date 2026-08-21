@@ -11,6 +11,21 @@
 ===========================================================================*/
 let UI = {};
 
+const normalizeUniqueRelations = (relations, normalizeRelation) => {
+    const output = [];
+    const seen = new Set();
+
+    for (const relation of Array.from(relations || [])) {
+        const normalized = normalizeRelation(relation);
+        if (!normalized || seen.has(normalized.id)) continue;
+
+        seen.add(normalized.id);
+        output.push(normalized);
+    }
+
+    return output;
+};
+
 UI.activeTransformControls = {
     position: null,
     rotation: null
@@ -476,23 +491,7 @@ UI.createVectorControl = (options, transform)=>{
                 elInputY.value = R[1];
                 elInputZ.value = R[2];
 
-                const l = {
-                    modelName: options.modelName,
-                    value    : {
-                        x: R[0],
-                        y: R[1],
-                        z: R[2],
-                    },
-                }
-                if (transform === "position") {
-                    //THOTH.fire("modelTransformPosInput", (l));
-                    THOTH.fire("modelTransformPos", (l));
-                }
-                else if (transform === "rotation") {
-                    //THOTH.fire("modelTransformRotInput", (l)); 
-                    THOTH.fire("modelTransformRot", (l)); 
-                }
-                if (options.onupdate) options.onupdate();
+                emitVectorChange({x: R[0], y: R[1], z: R[2]});
             }
         }))
     }
@@ -503,65 +502,27 @@ UI.createVectorControl = (options, transform)=>{
     let elInputY = el.children[1];
     let elInputZ = el.children[2];
 
-    elInputX.onchange = () => {
+    const emitVectorChange = (value = {
+        x: elInputX.value,
+        y: elInputY.value,
+        z: elInputZ.value
+    }) => {
         const l = {
             modelName: options.modelName,
-            value    : {
-                x: elInputX.value,
-                y: elInputY.value,
-                z: elInputZ.value,
-            },
-        }
+            value    : value
+        };
         if (transform === "position") {
             THOTH.fire("modelTransformPos", l);
         }
         else if (transform === "rotation") {
             THOTH.fire("modelTransformRot", l);
         }
-         
         if (options.onupdate) options.onupdate();
     };
 
-    elInputY.onchange = () => {
-        const l = {
-            modelName: options.modelName,
-            value    : {
-                x: elInputX.value,
-                y: elInputY.value,
-                z: elInputZ.value,
-            },
-        }
-        if (transform === "position") {
-            //THOTH.fire("modelTransformPosInput", (l));
-               THOTH.fire("modelTransformPos", (l));
-        }
-        else if (transform === "rotation") {
-          //  THOTH.fire("modelTransformRotInput", (l));
-            THOTH.fire("modelTransformRot", (l));
-        }
-      
-        if (options.onupdate) options.onupdate();
-    };
-
-    elInputZ.onchange = ()=>{
-        const l = {
-            modelName: options.modelName,
-            value    : {
-                x: elInputX.value,
-                y: elInputY.value,
-                z: elInputZ.value,
-            },
-        }
-        if (transform === "position") {
-            //THOTH.fire("modelTransformPosInput", (l));
-            THOTH.fire("modelTransformPos", (l));
-        }
-        else if (transform === "rotation") {
-            //THOTH.fire("modelTransformRotInput", (l));
-            THOTH.fire("modelTransformRot", (l));
-        }
-        if (options.onupdate) options.onupdate();
-    };
+    elInputX.onchange = () => emitVectorChange();
+    elInputY.onchange = () => emitVectorChange();
+    elInputZ.onchange = () => emitVectorChange();
 
     return el;
 };
@@ -951,7 +912,6 @@ UI.createMsrController = (msrId) => {
             icon   : "list",
             size   : "small",
             tooltip: "View measurement",
-            // onpress: () => THOTH.FE.showToast("TBI")
             onpress: () => {
                 THOTH.Annotations?.select?.("measurements", measurementKey);
                 UI.modalMsrDetails(measurementKey);
@@ -964,7 +924,6 @@ UI.createMsrController = (msrId) => {
             tooltip: "Delete measurement",
             onpress: () => {
                 const msr = THOTH.MSR.getMeasurement(measurementKey);
-                //THOTH.fire("deleteMeasurement", (msrId))
                 THOTH.fire("deleteMeasurement", {
                     id: measurementKey,
                     point1: msr.points[0],
@@ -1137,8 +1096,6 @@ UI.createMeasureOptions = () => {
         "Select type of distance for measurement"
     );
     const elResult = ATON.UI.createContainer({ classes: "thoth-tool-option-result" });
-  //  elResult.textContent = "Distance: ";  // default text
-   // THOTH.MSR.elResult = elResult; 
     elContent.append(elDistance, elResult);
 
     return UI.createToolOptionsPanel("Measure Options", elContent);
@@ -1302,7 +1259,6 @@ UI.modalExport = () => {
             })
         ],
         onsuccess: () => {
-            // THOTH.exportToHestia();
             THOTH.exportChanges();
             ATON.UI.hideModal();
         },
@@ -1835,18 +1791,7 @@ UI._normalizeImageRelation = (relation) => {
 };
 
 UI._normalizeImageRelations = (relations) => {
-    const output = [];
-    const seen = new Set();
-
-    for (const relation of Array.from(relations || [])) {
-        const normalized = UI._normalizeImageRelation(relation);
-        if (!normalized || seen.has(normalized.id)) continue;
-
-        seen.add(normalized.id);
-        output.push(normalized);
-    }
-
-    return output;
+    return normalizeUniqueRelations(relations, UI._normalizeImageRelation);
 };
 
 UI._getImageListName = (item) => {
@@ -2099,18 +2044,7 @@ UI._normalizeMultispectralImageRelation = (relation) => {
 };
 
 UI._normalizeMultispectralImageRelations = (relations) => {
-    const output = [];
-    const seen = new Set();
-
-    for (const relation of Array.from(relations || [])) {
-        const normalized = UI._normalizeMultispectralImageRelation(relation);
-        if (!normalized || seen.has(normalized.id)) continue;
-
-        seen.add(normalized.id);
-        output.push(normalized);
-    }
-
-    return output;
+    return normalizeUniqueRelations(relations, UI._normalizeMultispectralImageRelation);
 };
 
 UI._getMultispectralWavelengthEntries = (relation) => {
@@ -2366,18 +2300,7 @@ UI._normalizeArtefactRelation = (relation) => {
 };
 
 UI._normalizeArtefactRelations = (relations) => {
-    const output = [];
-    const seen = new Set();
-
-    for (const relation of Array.from(relations || [])) {
-        const normalized = UI._normalizeArtefactRelation(relation);
-        if (!normalized || seen.has(normalized.id)) continue;
-
-        seen.add(normalized.id);
-        output.push(normalized);
-    }
-
-    return output;
+    return normalizeUniqueRelations(relations, UI._normalizeArtefactRelation);
 };
 
 UI._createRelatedArtefactRow = (relation, ondelete) => {

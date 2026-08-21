@@ -116,8 +116,6 @@ THOTH.setup = () => {
             THOTH.Selections.setup();
             // Init models
             THOTH.Models.setup();
-            // Init artefacts
-            THOTH.Artefacts.setup();
             // Init metadata
             THOTH.MD.setup();
             // Init transforms

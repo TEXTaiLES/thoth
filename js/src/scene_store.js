@@ -51,65 +51,16 @@ SceneStore.clear = () => {
 
 // Normalize
 
-SceneStore._clone = (value) => {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-
-    return structuredClone(value);
-};
-
 SceneStore._isObject = (value) => {
     return value !== null && typeof value === "object" && !Array.isArray(value);
 };
 
-SceneStore._normalizeVector = (value, defaultValue) => {
-    if (Array.isArray(value)) {
-        return {
-            x: Number(value[0] ?? defaultValue.x),
-            y: Number(value[1] ?? defaultValue.y),
-            z: Number(value[2] ?? defaultValue.z)
-        };
-    }
-
-    if (SceneStore._isObject(value)) {
-        return {
-            x: Number(value.x ?? defaultValue.x),
-            y: Number(value.y ?? defaultValue.y),
-            z: Number(value.z ?? defaultValue.z)
-        };
-    }
-
-    return SceneStore._clone(defaultValue);
-};
-
 SceneStore._normalizeTransforms = (data = {}) => {
-    const transform = data.transform || {};
-    const transforms = data.transforms || {};
-
-    return {
-        translation: SceneStore._normalizeVector(
-            transforms.translation || transforms.position || transform.translation || transform.position,
-            { x: 0, y: 0, z: 0 }
-        ),
-        rotation: SceneStore._normalizeVector(
-            transforms.rotation || transform.rotation,
-            { x: 0, y: 0, z: 0 }
-        )
-    };
+    return THOTH.Transforms.normalize(data);
 };
 
 SceneStore._normalizeArtefact = (data = {}) => {
-    const artefact = SceneStore._isObject(data) ? data : {};
-
-    return {
-        ...SceneStore._clone(artefact),
-        title      : artefact.title || artefact.name || "",
-        gltf_file  : artefact.gltf_file || artefact.url || artefact.path || artefact.src || "",
-        description: artefact.description || "",
-        owner      : artefact.owner || "",
-        keywords   : Array.isArray(artefact.keywords) ? SceneStore._clone(artefact.keywords) : [],
-        copyright  : artefact.copyright || ""
-    };
+    return THOTH.Artefacts.normalize(data, { preserveSceneInput: true });
 };
 
 SceneStore._normalizeMetadata = (data) => {
@@ -140,7 +91,7 @@ SceneStore._normalizeMetadata = (data) => {
         };
     }
 
-    const attributes = SceneStore._clone(metadata);
+    const attributes = structuredClone(metadata);
     delete attributes.schemaName;
     const legacySchemaName = schemaName || (
         Object.keys(attributes).length > 0 ? "puc_schema" : ""
@@ -158,7 +109,7 @@ SceneStore._normalizeMetadata = (data) => {
 };
 
 SceneStore._normalizeObjectMap = (data) => {
-    if (SceneStore._isObject(data)) return SceneStore._clone(data);
+    if (SceneStore._isObject(data)) return structuredClone(data);
 
     return {};
 };
@@ -197,7 +148,7 @@ SceneStore._normalizeAnnotations = (data = {}) => {
 };
 
 SceneStore._normalizeSensors = (data) => {
-    if (Array.isArray(data)) return SceneStore._clone(data);
+    if (Array.isArray(data)) return structuredClone(data);
 
     return [];
 };
@@ -329,7 +280,7 @@ SceneStore.ensureModel = (modelId, data = {}) => {
     const currentModel = SceneStore.scene.models[modelId] || {};
     const nextData = {
         ...currentModel,
-        ...SceneStore._clone(data)
+        ...structuredClone(data)
     };
 
     SceneStore.scene.models[modelId] = SceneStore._normalizeModel(modelId, nextData);
@@ -371,7 +322,7 @@ SceneStore.setModelField = (modelId, fieldName, value) => {
         model.sensors = SceneStore._normalizeSensors(value);
     }
     else {
-        model[fieldName] = SceneStore._clone(value);
+        model[fieldName] = structuredClone(value);
     }
 
     return model[fieldName];
@@ -396,7 +347,7 @@ SceneStore.setModelCollectionItem = (modelId, collectionName, itemId, value) => 
     if (!collection || itemId === undefined || itemId === null) return;
 
     if (Array.isArray(collection)) {
-        const nextItem = SceneStore._clone(value);
+        const nextItem = structuredClone(value);
         nextItem.id = nextItem.id || itemId;
         const itemIndex = collection.findIndex(item => item?.id === itemId);
 
@@ -406,7 +357,7 @@ SceneStore.setModelCollectionItem = (modelId, collectionName, itemId, value) => 
         return nextItem;
     }
 
-    collection[itemId] = SceneStore._clone(value);
+    collection[itemId] = structuredClone(value);
     return collection[itemId];
 };
 

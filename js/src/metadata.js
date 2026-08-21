@@ -284,10 +284,6 @@ MD._loadDefaultSchema = async (schemaMap) => {
     return MD._registerSchema(schemaMap, "puc_schema", response.data, response.url || schemaUrl);
 };
 
-MD._loadLocalSchemaList = (schemaMap) => {
-    return MD._loadSchemaList(null, schemaMap);
-};
-
 MD._normalizeType = (type) => {
     if (!type) return "";
     return String(type).toLowerCase();

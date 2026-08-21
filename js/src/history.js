@@ -17,13 +17,6 @@ History.setup = () => {
 
 // Utils
 
-History._clone = (value) => {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-
-    return structuredClone(value);
-};
-
 History._getLocalUserId = () => {
     return THOTH.user?.id || THOTH.user?.username || THOTH.user?.name || "local";
 };
@@ -39,7 +32,7 @@ History.push = (inverseOperation) => {
     if (!inverseOperation?.type) return;
     if (!History._isLocalOperation(inverseOperation)) return;
 
-    History.undoStack.push(History._clone(inverseOperation));
+    History.undoStack.push(structuredClone(inverseOperation));
     History.redoStack = [];
 };
 
@@ -51,7 +44,7 @@ History.undo = () => {
         const redoOperation = THOTH.Ops.invert(operation);
         THOTH.Ops.apply(
             {
-                ...History._clone(operation),
+                ...structuredClone(operation),
                 source   : "history",
                 timestamp: Date.now()
             },
@@ -73,7 +66,7 @@ History.redo = () => {
         const undoOperation = THOTH.Ops.invert(operation);
         THOTH.Ops.apply(
             {
-                ...History._clone(operation),
+                ...structuredClone(operation),
                 source   : "history",
                 timestamp: Date.now()
             },

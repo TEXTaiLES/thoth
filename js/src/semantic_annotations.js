@@ -108,53 +108,15 @@ SemAnnotations.normalizeAnnotation = (annotation) => {
 };
 
 SemAnnotations.normalizePoint = (point) => {
-    if (!point) return point;
-
-    if (!point.meshId && point.mesh) {
-        const meshId = THOTH.Models?.getParent(point.mesh) ?? point.mesh.name;
-        point.meshId = meshId;
-        point.meshName = point.mesh.name;
-        delete point.mesh;
-    }
-    if (!point.coords && point.x !== undefined) {
-        point.coords = new THREE.Vector3(
-            Number(point.x),
-            Number(point.y),
-            Number(point.z)
-        );
-    }
-    if (point.face_id !== undefined && point.faceId === undefined) {
-        point.faceId = point.face_id;
-    }
-
-    return point;
+    return THOTH.Annotations.normalizePoint(point);
 };
 
 SemAnnotations.toCanonicalPoint = (point) => {
-    const normalized = SemAnnotations.normalizePoint(point);
-    const coords = normalized?.coords || normalized || {};
-
-    return {
-        x      : Number(coords.x ?? 0),
-        y      : Number(coords.y ?? 0),
-        z      : Number(coords.z ?? 0),
-        face_id: normalized?.faceId ?? normalized?.face_id ?? null
-    };
+    return THOTH.Annotations.toCanonicalPoint(point);
 };
 
 SemAnnotations.fromCanonicalPoint = (point, modelId) => {
-    if (!point) return undefined;
-
-    return SemAnnotations.normalizePoint({
-        meshId  : point.meshId || point.mesh_id || modelId,
-        meshName: point.meshName || point.mesh_name,
-        faceId  : point.face_id ?? point.faceId ?? null,
-        coords  : new THREE.Vector3(
-            Number(point.x ?? point.coords?.x ?? 0),
-            Number(point.y ?? point.coords?.y ?? 0),
-            Number(point.z ?? point.coords?.z ?? 0)
-        )
-    });
+    return THOTH.Annotations.fromCanonicalPoint(point, modelId);
 };
 
 SemAnnotations.toCanonicalAnnotation = (annotationId, data = {}) => {
@@ -179,89 +141,35 @@ SemAnnotations.toCanonicalAnnotation = (annotationId, data = {}) => {
 };
 
 SemAnnotations.getModelNode = (modelId, create = false) => {
-    if (!modelId) return null;
-
-    return THOTH.Models?.modelMap?.get(modelId) ||
-        ATON.getSceneNode?.(modelId) ||
-        (create ? ATON.getOrCreateSceneNode?.(modelId) : null);
+    return THOTH.Annotations.getModelNode(modelId, create);
 };
 
 SemAnnotations._coordsToVector3 = (coords) => {
-    if (coords instanceof THREE.Vector3) return coords.clone();
-
-    return new THREE.Vector3(
-        Number(coords?.x ?? coords?.[0] ?? 0),
-        Number(coords?.y ?? coords?.[1] ?? 0),
-        Number(coords?.z ?? coords?.[2] ?? 0)
-    );
+    return THOTH.Annotations._coordsToVector3(coords);
 };
 
 SemAnnotations.worldToModelLocal = (modelId, coords) => {
-    const model = SemAnnotations.getModelNode(modelId);
-    const point = SemAnnotations._coordsToVector3(coords);
-    if (!model) return point;
-
-    model.updateMatrixWorld(true);
-    return model.worldToLocal(point);
+    return THOTH.Annotations.worldToModelLocal(modelId, coords);
 };
 
 SemAnnotations.modelLocalToWorld = (modelId, coords) => {
-    const model = SemAnnotations.getModelNode(modelId);
-    const point = SemAnnotations._coordsToVector3(coords);
-    if (!model) return point;
-
-    model.updateMatrixWorld(true);
-    return model.localToWorld(point);
+    return THOTH.Annotations.modelLocalToWorld(modelId, coords);
 };
 
 SemAnnotations.pointWorldToModelLocal = (modelId, point) => {
-    if (!point) return point;
-
-    const normalized = SemAnnotations.normalizePoint(point);
-    return {
-        ...normalized,
-        coords: SemAnnotations.worldToModelLocal(modelId || SemAnnotations.getPointModelId(normalized), normalized.coords)
-    };
+    return THOTH.Annotations.pointWorldToModelLocal(modelId, point);
 };
 
 SemAnnotations.getPointModel = (point) => {
-    if (!point?.meshId) return null;
-    return THOTH.Models?.modelMap?.get(point.meshId) ?? null;
+    return THOTH.Annotations.getPointModel(point);
 };
 
 SemAnnotations.getPointModelId = (point) => {
-    if (!point) return undefined;
-    if (point.meshId) return point.meshId;
-    if (point.mesh) return THOTH.Models?.getParent(point.mesh) ?? point.mesh.name;
-
-    return undefined;
+    return THOTH.Annotations.getPointModelId(point);
 };
 
 SemAnnotations.getPointMesh = (point) => {
-    if (!point) return null;
-    if (point.mesh) return point.mesh;
-
-    const model = SemAnnotations.getPointModel(point);
-    if (!model) return null;
-    if (model.isMesh) return model;
-
-    if (point.meshName) {
-        let found = null;
-        model.traverse(node => {
-            if (!found && node.isMesh && node.name === point.meshName) {
-                found = node;
-            }
-        });
-        if (found) return found;
-    }
-
-    let first = null;
-    model.traverse(node => {
-        if (!first && node.isMesh) {
-            first = node;
-        }
-    });
-    return first;
+    return THOTH.Annotations.getPointMesh(point);
 };
 
 SemAnnotations.getLabelScale = () => {
@@ -297,23 +205,11 @@ SemAnnotations.refreshLabelScales = () => {
 };
 
 SemAnnotations.getPointMarkerScale = (point) => {
-    const model = SemAnnotations.getPointModel(point) ?? SemAnnotations.getPointMesh(point);
-    let modelScale = model ? THOTH.Utils.getModelScale(model) : THOTH.sceneScale;
-
-    if (!Number.isFinite(modelScale) || modelScale <= 0) {
-        modelScale = Number.isFinite(THOTH.sceneScale) && THOTH.sceneScale > 0
-            ? THOTH.sceneScale
-            : 1;
-    }
-
-    return modelScale * 0.01;
+    return THOTH.Annotations.getPointMarkerScale(point);
 };
 
 SemAnnotations.applyPointMarkerScale = (marker, point) => {
-    if (!marker || !point) return;
-
-    const scale = SemAnnotations.getPointMarkerScale(point);
-    marker.scale.set(scale, scale, scale);
+    return THOTH.Annotations.applyPointMarkerScale(marker, point);
 };
 
 SemAnnotations.refreshMarkerScales = () => {
@@ -391,19 +287,7 @@ SemAnnotations.getModelAnnotationNode = (modelId) => {
 };
 
 SemAnnotations.createPointFromHit = () => {
-    if (!ATON._hitsScene || ATON._hitsScene.length === 0) return null;
-
-    const hit    = ATON._hitsScene[0];
-    const mesh   = hit.object;
-    const meshId = THOTH.Models?.getParent(mesh) ?? mesh.name;
-    const coords = SemAnnotations.worldToModelLocal(meshId, hit.point);
-
-    return {
-        meshId  : meshId,
-        meshName: mesh.name,
-        faceId  : hit.faceIndex,
-        coords  : coords
-    };
+    return THOTH.Annotations.createPointFromHit() ?? null;
 };
 
 SemAnnotations.createPointSem = (point) => {

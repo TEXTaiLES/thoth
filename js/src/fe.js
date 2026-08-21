@@ -166,16 +166,6 @@ FE.initToolMap = () => {
         onpress: () => THOTH.requireAuth("redo changes", () => THOTH.History.redo())
     });
     toolMap.set("redo", elRedo);
-    // Home
-    // const elHome = ATON.UI.createButton({
-    //     icon   : "home",
-    //     tooltip: "Go home",
-    //     onpress: () => {
-    //         ATON.Nav.requestHome(0.3);
-    //     }
-    // });
-    // toolMap.set("home", elHome);
-    
     return toolMap;
 };
 

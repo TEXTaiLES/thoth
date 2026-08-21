@@ -15,7 +15,6 @@ Models.setup = () => {
     // Create model map for easy access
     Models.modelMap = new Map();
     Models.tempNode = null;
-    Models.gizNode;
     Models._pendingInitialFocusModelId = null;
     Models._hasFocusedInitialScene = false;
 
@@ -44,9 +43,6 @@ Models.parseModels = (models) => {
 
     for (const modelId of modelIds) {
         const modelData = models[modelId];
-
-        THOTH.Artefacts?.parseModelArtefact(modelId, modelData.artefact);
-        THOTH.Transforms?.parseModelTransform(modelId, modelData.transforms);
 
         const modelURL = THOTH.Artefacts?.getModelURL(modelId);
         const G = ATON.getOrCreateSceneNode(modelId).removeChildren();
@@ -152,35 +148,10 @@ Models.focusModel = (modelName, duration = 0.5) => {
     return true;
 };
 
-Models._vectorFromTransformValue = (value, defaultValue) => {
-    if (Array.isArray(value)) {
-        return {
-            x: Number(value[0] ?? defaultValue.x),
-            y: Number(value[1] ?? defaultValue.y),
-            z: Number(value[2] ?? defaultValue.z)
-        };
-    }
-
-    if (value && typeof value === "object") {
-        return {
-            x: Number(value.x ?? defaultValue.x),
-            y: Number(value.y ?? defaultValue.y),
-            z: Number(value.z ?? defaultValue.z)
-        };
-    }
-
-    return { ...defaultValue };
-};
-
 Models._applyCanonicalTransforms = (transforms = {}, model) => {
-    const translation = Models._vectorFromTransformValue(
-        transforms.translation,
-        { x: 0, y: 0, z: 0 }
-    );
-    const rotation = Models._vectorFromTransformValue(
-        transforms.rotation,
-        { x: 0, y: 0, z: 0 }
-    );
+    const normalized = THOTH.Transforms.normalize(transforms);
+    const translation = normalized.translation;
+    const rotation = normalized.rotation;
 
     model.position.set(translation.x, translation.y, translation.z);
     model.rotation.set(rotation.x, rotation.y, rotation.z);

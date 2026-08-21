@@ -24,23 +24,16 @@ Artefacts.setup = () => {};
 
 // Normalize
 
-Artefacts._clone = (value) => {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-
-    return structuredClone(value);
-};
-
 Artefacts._unwrap = (data = {}) => {
     return data?.artefact_data?.artefact_data ||
         data?.artefact_data ||
         data;
 };
 
-Artefacts._getField = (data, fieldName, fallbackFieldNames = []) => {
+Artefacts._getField = (data, fieldName, fallbackFieldNames = [], includeQualified = true) => {
     const keys = [
         fieldName,
-        `artefact.${fieldName}`,
+        ...(includeQualified ? [ `artefact.${fieldName}` ] : []),
         ...fallbackFieldNames
     ];
 
@@ -51,27 +44,41 @@ Artefacts._getField = (data, fieldName, fallbackFieldNames = []) => {
     return undefined;
 };
 
-Artefacts.normalize = (data = {}) => {
-    const source = Artefacts._unwrap(data);
-    const artefact = {
-        title      : Artefacts._getField(source, "title", [ "name" ]) || "",
-        gltf_file  : Artefacts._getField(source, "glb_file", [
+Artefacts.normalize = (data = {}, options = {}) => {
+    const preserveSceneInput = options.preserveSceneInput === true;
+    const source = preserveSceneInput
+        ? data !== null && typeof data === "object" && !Array.isArray(data) ? data : {}
+        : Artefacts._unwrap(data);
+    const getField = (fieldName, fallbackFieldNames = []) => {
+        return Artefacts._getField(
+            source,
+            fieldName,
+            fallbackFieldNames,
+            !preserveSceneInput
+        );
+    };
+    const modelUrl = preserveSceneInput
+        ? getField("gltf_file", [ "url", "path", "src" ])
+        : getField("glb_file", [
             "gltf_file",
             "artefact.gltf_file",
             "url",
             "path",
             "src"
-        ]) || "",
-        description: Artefacts._getField(source, "description") || "",
-        owner      : Artefacts._getField(source, "owner") || "",
-        keywords   : Array.isArray(Artefacts._getField(source, "keywords"))
-            ? Artefacts._clone(Artefacts._getField(source, "keywords"))
+        ]);
+    const artefact = {
+        title      : getField("title", [ "name" ]) || "",
+        gltf_file  : modelUrl || "",
+        description: getField("description") || "",
+        owner      : getField("owner") || "",
+        keywords   : Array.isArray(getField("keywords"))
+            ? structuredClone(getField("keywords"))
             : [],
-        copyright  : Artefacts._getField(source, "copyright") || ""
+        copyright  : getField("copyright") || ""
     };
 
     for (const key in source) {
-        if (artefact[key] === undefined) artefact[key] = Artefacts._clone(source[key]);
+        if (artefact[key] === undefined) artefact[key] = structuredClone(source[key]);
     }
 
     return artefact;
@@ -101,7 +108,7 @@ Artefacts.getModelURL = (modelId) => {
 };
 
 Artefacts.getExportData = (modelId) => {
-    return Artefacts._clone(Artefacts.getModelArtefact(modelId) || Artefacts.normalize());
+    return structuredClone(Artefacts.getModelArtefact(modelId) || Artefacts.normalize());
 };
 
 

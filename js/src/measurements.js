@@ -39,7 +39,6 @@ MSR.setup = () => {
     MSR.lastSceneScale = null;
     MSR.isSceneLoading = true;
 
-    // MSR.distanceType = MSR.distanceType || "euclidean";
     MSR.distanceType = "euclidean";//default
     MSR.lastMeasurementId = null;
     MSR.lastMeasurementPoints = null;
@@ -48,9 +47,6 @@ MSR.setup = () => {
     MSR.defaultGeodesicLineColor  = 0xffffff; // white
     MSR.defaultPointColor = 0xffffff;
     MSR.selectedLineColor = 0xff0000;//red
-    //MSR.selectedLineColor = 0xffff00; // highlight color (yellow)
-    //0xff0000 red
-    //MSR.lastMeasurementPoints = [];
 
     ATON.on("SceneJSONLoaded", () => {
         MSR.isSceneLoading = true;
@@ -122,23 +118,11 @@ MSR.refreshLabelScales = () => {
 };
 
 MSR.getPointMarkerScale = (point) => {
-    const model = MSR.getPointModel(point) ?? MSR.getPointMesh(point);
-    let modelScale = model ? THOTH.Utils.getModelScale(model) : THOTH.sceneScale;
-
-    if (!Number.isFinite(modelScale) || modelScale <= 0) {
-        modelScale = Number.isFinite(THOTH.sceneScale) && THOTH.sceneScale > 0
-            ? THOTH.sceneScale
-            : 1;
-    }
-
-    return modelScale * 0.01;
+    return THOTH.Annotations.getPointMarkerScale(point);
 };
 
 MSR.applyPointMarkerScale = (marker, point) => {
-    if (!marker || !point) return;
-
-    const scale = MSR.getPointMarkerScale(point);
-    marker.scale.set(scale, scale, scale);
+    return THOTH.Annotations.applyPointMarkerScale(marker, point);
 };
 
 MSR.refreshMarkerScales = () => {
@@ -164,51 +148,15 @@ MSR.refreshMeasurementVisibility = () => {
 };
 
 MSR.normalizePoint = (point) => {
-    if (!point) return point;
-    if (!point.meshId && point.mesh) {
-        const meshId = THOTH.Models?.getParent(point.mesh) ?? point.mesh.name;
-        point.meshId = meshId;
-        point.meshName = point.mesh.name;
-        delete point.mesh;
-    }
-    if (!point.coords && point.x !== undefined) {
-        point.coords = new THREE.Vector3(
-            Number(point.x),
-            Number(point.y),
-            Number(point.z)
-        );
-    }
-    if (point.face_id !== undefined && point.faceId === undefined) {
-        point.faceId = point.face_id;
-    }
-    return point;
+    return THOTH.Annotations.normalizePoint(point);
 };
 
 MSR.toCanonicalPoint = (point) => {
-    const normalized = MSR.normalizePoint(point);
-    const coords = normalized?.coords || normalized || {};
-
-    return {
-        x      : Number(coords.x ?? 0),
-        y      : Number(coords.y ?? 0),
-        z      : Number(coords.z ?? 0),
-        face_id: normalized?.faceId ?? normalized?.face_id ?? null
-    };
+    return THOTH.Annotations.toCanonicalPoint(point);
 };
 
 MSR.fromCanonicalPoint = (point, modelId) => {
-    if (!point) return undefined;
-
-    return MSR.normalizePoint({
-        meshId  : point.meshId || point.mesh_id || modelId,
-        meshName: point.meshName || point.mesh_name,
-        faceId  : point.face_id ?? point.faceId ?? null,
-        coords  : new THREE.Vector3(
-            Number(point.x ?? point.coords?.x ?? 0),
-            Number(point.y ?? point.coords?.y ?? 0),
-            Number(point.z ?? point.coords?.z ?? 0)
-        )
-    });
+    return THOTH.Annotations.fromCanonicalPoint(point, modelId);
 };
 
 MSR.toCanonicalMeasurement = (measurementId, data = {}) => {
@@ -288,7 +236,7 @@ MSR.normalizeMeasurement = (measurementId, data = {}) => {
         points
     });
 
-    const base = THOTH.Annotations?.createBaseAnnotation(measurementId, canonical) || {
+    const base = typeof THOTH.Annotations?.createBaseAnnotation === "function" ? canonical : {
         id                            : measurementId,
         name                          : data.name || "",
         description                   : data.description || "",
@@ -340,89 +288,35 @@ MSR._syncMeasurementPointCoordinates = (measurement) => {
 };
 
 MSR.getModelNode = (modelId, create = false) => {
-    if (!modelId) return null;
-
-    return THOTH.Models?.modelMap?.get(modelId) ||
-        ATON.getSceneNode?.(modelId) ||
-        (create ? ATON.getOrCreateSceneNode?.(modelId) : null);
+    return THOTH.Annotations.getModelNode(modelId, create);
 };
 
 MSR._coordsToVector3 = (coords) => {
-    if (coords instanceof THREE.Vector3) return coords.clone();
-
-    return new THREE.Vector3(
-        Number(coords?.x ?? coords?.[0] ?? 0),
-        Number(coords?.y ?? coords?.[1] ?? 0),
-        Number(coords?.z ?? coords?.[2] ?? 0)
-    );
+    return THOTH.Annotations._coordsToVector3(coords);
 };
 
 MSR.worldToModelLocal = (modelId, coords) => {
-    const model = MSR.getModelNode(modelId);
-    const point = MSR._coordsToVector3(coords);
-    if (!model) return point;
-
-    model.updateMatrixWorld(true);
-    return model.worldToLocal(point);
+    return THOTH.Annotations.worldToModelLocal(modelId, coords);
 };
 
 MSR.modelLocalToWorld = (modelId, coords) => {
-    const model = MSR.getModelNode(modelId);
-    const point = MSR._coordsToVector3(coords);
-    if (!model) return point;
-
-    model.updateMatrixWorld(true);
-    return model.localToWorld(point);
+    return THOTH.Annotations.modelLocalToWorld(modelId, coords);
 };
 
 MSR.pointWorldToModelLocal = (modelId, point) => {
-    if (!point) return point;
-
-    const normalized = MSR.normalizePoint(point);
-    return {
-        ...normalized,
-        coords: MSR.worldToModelLocal(modelId || MSR.getPointModelId(normalized), normalized.coords)
-    };
+    return THOTH.Annotations.pointWorldToModelLocal(modelId, point);
 };
 
 MSR.getPointModel = (point) => {
-    if (!point?.meshId) return null;
-    return THOTH.Models?.modelMap?.get(point.meshId) ?? null;
+    return THOTH.Annotations.getPointModel(point);
 };
 
 MSR.getPointModelId = (point) => {
-    if (!point) return undefined;
-    if (point.meshId) return point.meshId;
-    if (point.mesh) return THOTH.Models?.getParent(point.mesh) ?? point.mesh.name;
-
-    return undefined;
+    return THOTH.Annotations.getPointModelId(point);
 };
 
 MSR.getPointMesh = (point) => {
-    if (!point) return null;
-    if (point.mesh) return point.mesh;
-
-    const model = MSR.getPointModel(point);
-    if (!model) return null;
-    if (model.isMesh) return model;
-
-    if (point.meshName) {
-        let found = null;
-        model.traverse(node => {
-            if (!found && node.isMesh && node.name === point.meshName) {
-                found = node;
-            }
-        });
-        if (found) return found;
-    }
-
-    let first = null;
-    model.traverse(node => {
-        if (!first && node.isMesh) {
-            first = node;
-        }
-    });
-    return first;
+    return THOTH.Annotations.getPointMesh(point);
 };
 
 
@@ -430,7 +324,6 @@ MSR.getPointMesh = (point) => {
 
 MSR.createMeasurementLine = () => {
     const line_ = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
-    //const mline = new THREE.Line(line_, ATON.MatHub.getMaterial("measurement"));
     const baseMat = ATON.MatHub.getMaterial("measurement");
     const mat = baseMat.clone(); 
     const mline = new THREE.Line(line_, mat);   
@@ -471,22 +364,9 @@ MSR.getModelMeasurementNode = (modelId) => {
 //  Management
 
 MSR.addMeasurementPoint = () => {
-    // Get face id from ATON
-    if (!ATON._hitsScene || ATON._hitsScene.length === 0) return undefined;
-    const hit    = ATON._hitsScene[0];
-    const idx    = hit.faceIndex;
-    const mesh   = hit.object;
-    // const mesh   = THOTH.hoveredMesh;
-
-    const meshId = THOTH.Models?.getParent(mesh) ?? mesh.name;
-    const coords = MSR.worldToModelLocal(meshId, hit.point);
-
-    const mPoint = {
-        "meshId" : meshId,
-        "meshName": mesh.name,
-        "faceId"  : idx,
-        "coords"  : coords
-    };
+    const mPoint = THOTH.Annotations.createPointFromHit();
+    if (!mPoint) return undefined;
+    const meshId = mPoint.meshId;
 
     if (MSR.points.length === 1 && MSR.getPointModelId(MSR.points[0]) !== meshId) {
         THOTH.FE.showToast("Measurements cannot span different models.");
@@ -664,8 +544,6 @@ MSR.resurrectMeasurement = (measurementId) => {
     if (!measurement.trash) return;
 
     measurement.trash = false;
-    //MSR.removeMeasurementSem(measurementId);
-   // MSR.addMeasurement(measurementId);
     MSR.showMeasurement(measurementKey);
     measurement.visible=true;
     
@@ -887,7 +765,6 @@ MSR.createLineSem = (point1, point2) => {
     const baseMat = ATON.MatHub.getMaterial("measurement");
     const mat = baseMat.clone();
     const mline = new THREE.Line(line_,mat);
-   // const mline = new THREE.Line(line_, ATON.MatHub.getMaterial("measurement"));
 
     mline.renderOrder = ATON.RO_SUI;
     mline.visible = true;
@@ -925,7 +802,6 @@ MSR.createLabelSem = (measurementId) => {
     const distance = measurement.distance.toFixed(4);
 
     const label = new Label("", distance.toString());
-    //const label = new Label("", "yo");
     label.setPosition(
         (point1.coords.x + point2.coords.x) * 0.5,
         (point1.coords.y + point2.coords.y) * 0.5,

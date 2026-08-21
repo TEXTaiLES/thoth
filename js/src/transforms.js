@@ -19,13 +19,6 @@ Transforms.setup = () => {
 
 // Normalize
 
-Transforms._clone = (value) => {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-
-    return structuredClone(value);
-};
-
 Transforms._vector = (value, defaultValue) => {
     if (Array.isArray(value)) {
         return {
@@ -93,7 +86,7 @@ Transforms.parseModelTransform = (modelId, data = {}) => {
 };
 
 Transforms.getModelTransform = (modelId) => {
-    return Transforms._clone(
+    return structuredClone(
         THOTH.SceneStore?.getModel(modelId)?.transforms || Transforms.normalize()
     );
 };

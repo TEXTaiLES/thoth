@@ -21,7 +21,7 @@ const installLine = [
     marker,
     '',
     '// THOTH deployment extension (installed by the THOTH Docker image).',
-    "require(path.join(Core.DIR_WAPPS, 'thoth', 'server', 'deployment', 'gateway-extension.js'))(app, { Core });"
+    "require(path.join(Core.DIR_WAPPS, 'thoth', 'server', 'deployment', 'gateway-extension.js'))(app);"
 ].join('\n');
 fs.writeFileSync(gatewayPath, source.replace(markerPattern, installLine));
 console.log(`Installed THOTH gateway extension into ${path.basename(gatewayPath)}`);

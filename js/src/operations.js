@@ -23,13 +23,6 @@ Ops.setup = () => {
 
 // Utils
 
-Ops._clone = (value) => {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-
-    return structuredClone(value);
-};
-
 Ops._getLocalUserId = () => {
     return THOTH.user?.id || THOTH.user?.username || THOTH.user?.name || "local";
 };
@@ -94,18 +87,12 @@ Ops._getModelId = (operation) => {
     return operation?.target?.model_id || operation?.value?.model_id || operation?.prev_value?.model_id;
 };
 
-Ops._replaceMapValue = (map, itemId, value) => {
-    if (!map || itemId === undefined || value === undefined) return;
-
-    map.set(itemId, Ops._clone(value));
-};
-
 Ops._applySelectionRuntime = (action, modelId, itemId, value, operation) => {
     const resolvedModelId = modelId || value?.model_id || THOTH.Annotations?.getModelId("selections", itemId);
 
     if (action === "create") {
         THOTH.Selections?.applySelectionData(resolvedModelId, itemId, {
-            ...Ops._clone(value),
+            ...structuredClone(value),
             trash: false
         });
         if (operation?.source !== "remote") {
@@ -117,7 +104,7 @@ Ops._applySelectionRuntime = (action, modelId, itemId, value, operation) => {
     }
 
     if (action === "update") {
-        const selection = THOTH.Selections?.applySelectionData(resolvedModelId, itemId, Ops._clone(value));
+        const selection = THOTH.Selections?.applySelectionData(resolvedModelId, itemId, structuredClone(value));
         if (!selection) return;
 
         if (value.name !== undefined) {
@@ -280,9 +267,9 @@ Ops._applyCollection = (operation) => {
 Ops.makeOperation = (type, target, value, prevValue) => {
     return {
         type      : type,
-        target    : Ops._clone(target) || {},
-        value     : Ops._clone(value),
-        prev_value: Ops._clone(prevValue),
+        target    : structuredClone(target) || {},
+        value     : structuredClone(value),
+        prev_value: structuredClone(prevValue),
         user_id   : undefined,
         timestamp : undefined,
         source    : undefined
@@ -313,7 +300,7 @@ Ops.apply = (operation, options = {}) => {
 
 Ops.applyLocal = (operation) => {
     const localOperation = {
-        ...Ops._clone(operation),
+        ...structuredClone(operation),
         user_id  : Ops._getLocalUserId(),
         timestamp: Date.now(),
         source   : "local"
@@ -329,7 +316,7 @@ Ops.applyRemote = (operation) => {
     if (operation?.user_id === Ops._getLocalUserId()) return false;
 
     const remoteOperation = {
-        ...Ops._clone(operation),
+        ...structuredClone(operation),
         source: "remote"
     };
 
@@ -352,9 +339,9 @@ Ops.invert = (operation) => {
 
     return {
         type      : inverseType,
-        target    : Ops._clone(operation.target),
-        value     : Ops._clone(operation.prev_value),
-        prev_value: Ops._clone(operation.value),
+        target    : structuredClone(operation.target),
+        value     : structuredClone(operation.prev_value),
+        prev_value: structuredClone(operation.value),
         user_id   : operation.user_id,
         timestamp : operation.timestamp,
         source    : operation.source
@@ -364,7 +351,7 @@ Ops.invert = (operation) => {
 Ops.broadcast = (operation) => {
     if (!THOTH.collaborative || !THOTH.firePhoton) return;
 
-    THOTH.firePhoton("thoth.operation", Ops._clone(operation));
+    THOTH.firePhoton("thoth.operation", structuredClone(operation));
 };
 
 

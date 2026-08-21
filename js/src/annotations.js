@@ -55,12 +55,6 @@ const TOP_LEVEL_RUNTIME_FIELDS = new Set([
     "distance_type"
 ]);
 
-const RELATION_FIELDS = [
-    "related_rgb_images",
-    "related_multispectral_images",
-    "related_artefacts"
-];
-
 const SHARED_FIELDS = new Set([
     "id",
     "name",
@@ -82,13 +76,6 @@ Annotations.setup = () => {
 
 
 // Utils
-
-Annotations._clone = (value) => {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-
-    return structuredClone(value);
-};
 
 Annotations._isObject = (value) => {
     return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -122,7 +109,7 @@ Annotations._normalizeRelation = (relation) => {
             : relation.gltf_file || relation.path || relation.src || "";
 
     return {
-        ...Annotations._clone(relation),
+        ...structuredClone(relation),
         id  : id,
         name: relation.name || relation.title || relation.image_name || id,
         url : url
@@ -159,7 +146,7 @@ Annotations._stripRuntime = (value) => {
 
 Annotations._getAnnotationPayload = (data = {}) => {
     const payload = Annotations._isObject(data.annotation)
-        ? Annotations._clone(data.annotation)
+        ? structuredClone(data.annotation)
         : {};
 
     for (const key in data) {
@@ -168,10 +155,185 @@ Annotations._getAnnotationPayload = (data = {}) => {
         if (TOP_LEVEL_RUNTIME_FIELDS.has(key)) continue;
         if (data[key]?.trash === true) continue;
 
-        payload[key] = Annotations._clone(data[key]);
+        payload[key] = structuredClone(data[key]);
     }
 
     return Annotations._stripRuntime(payload);
+};
+
+Annotations.normalizePoint = (point) => {
+    if (!point) return point;
+
+    if (!point.meshId && point.mesh) {
+        const meshId = THOTH.Models?.getParent(point.mesh) ?? point.mesh.name;
+        point.meshId = meshId;
+        point.meshName = point.mesh.name;
+        delete point.mesh;
+    }
+    if (!point.coords && point.x !== undefined) {
+        point.coords = new THREE.Vector3(
+            Number(point.x),
+            Number(point.y),
+            Number(point.z)
+        );
+    }
+    if (point.face_id !== undefined && point.faceId === undefined) {
+        point.faceId = point.face_id;
+    }
+
+    return point;
+};
+
+Annotations.toCanonicalPoint = (point) => {
+    const normalized = Annotations.normalizePoint(point);
+    const coords = normalized?.coords || normalized || {};
+
+    return {
+        x      : Number(coords.x ?? 0),
+        y      : Number(coords.y ?? 0),
+        z      : Number(coords.z ?? 0),
+        face_id: normalized?.faceId ?? normalized?.face_id ?? null
+    };
+};
+
+Annotations.fromCanonicalPoint = (point, modelId) => {
+    if (!point) return undefined;
+
+    return Annotations.normalizePoint({
+        meshId  : point.meshId || point.mesh_id || modelId,
+        meshName: point.meshName || point.mesh_name,
+        faceId  : point.face_id ?? point.faceId ?? null,
+        coords  : new THREE.Vector3(
+            Number(point.x ?? point.coords?.x ?? 0),
+            Number(point.y ?? point.coords?.y ?? 0),
+            Number(point.z ?? point.coords?.z ?? 0)
+        )
+    });
+};
+
+Annotations.getModelNode = (modelId, create = false) => {
+    if (!modelId) return null;
+
+    return THOTH.Models?.modelMap?.get(modelId) ||
+        ATON.getSceneNode?.(modelId) ||
+        (create ? ATON.getOrCreateSceneNode?.(modelId) : null);
+};
+
+Annotations._coordsToVector3 = (coords) => {
+    if (coords instanceof THREE.Vector3) return coords.clone();
+
+    return new THREE.Vector3(
+        Number(coords?.x ?? coords?.[0] ?? 0),
+        Number(coords?.y ?? coords?.[1] ?? 0),
+        Number(coords?.z ?? coords?.[2] ?? 0)
+    );
+};
+
+Annotations.worldToModelLocal = (modelId, coords) => {
+    const model = Annotations.getModelNode(modelId);
+    const point = Annotations._coordsToVector3(coords);
+    if (!model) return point;
+
+    model.updateMatrixWorld(true);
+    return model.worldToLocal(point);
+};
+
+Annotations.modelLocalToWorld = (modelId, coords) => {
+    const model = Annotations.getModelNode(modelId);
+    const point = Annotations._coordsToVector3(coords);
+    if (!model) return point;
+
+    model.updateMatrixWorld(true);
+    return model.localToWorld(point);
+};
+
+Annotations.pointWorldToModelLocal = (modelId, point) => {
+    if (!point) return point;
+
+    const normalized = Annotations.normalizePoint(point);
+    return {
+        ...normalized,
+        coords: Annotations.worldToModelLocal(
+            modelId || Annotations.getPointModelId(normalized),
+            normalized.coords
+        )
+    };
+};
+
+Annotations.createPointFromHit = () => {
+    if (!ATON._hitsScene || ATON._hitsScene.length === 0) return undefined;
+
+    const hit = ATON._hitsScene[0];
+    const mesh = hit.object;
+    const meshId = THOTH.Models?.getParent(mesh) ?? mesh.name;
+    const coords = Annotations.worldToModelLocal(meshId, hit.point);
+
+    return {
+        meshId  : meshId,
+        meshName: mesh.name,
+        faceId  : hit.faceIndex,
+        coords  : coords
+    };
+};
+
+Annotations.getPointModel = (point) => {
+    if (!point?.meshId) return null;
+    return THOTH.Models?.modelMap?.get(point.meshId) ?? null;
+};
+
+Annotations.getPointModelId = (point) => {
+    if (!point) return undefined;
+    if (point.meshId) return point.meshId;
+    if (point.mesh) return THOTH.Models?.getParent(point.mesh) ?? point.mesh.name;
+
+    return undefined;
+};
+
+Annotations.getPointMesh = (point) => {
+    if (!point) return null;
+    if (point.mesh) return point.mesh;
+
+    const model = Annotations.getPointModel(point);
+    if (!model) return null;
+    if (model.isMesh) return model;
+
+    if (point.meshName) {
+        let found = null;
+        model.traverse(node => {
+            if (!found && node.isMesh && node.name === point.meshName) {
+                found = node;
+            }
+        });
+        if (found) return found;
+    }
+
+    let first = null;
+    model.traverse(node => {
+        if (!first && node.isMesh) {
+            first = node;
+        }
+    });
+    return first;
+};
+
+Annotations.getPointMarkerScale = (point) => {
+    const model = Annotations.getPointModel(point) ?? Annotations.getPointMesh(point);
+    let modelScale = model ? THOTH.Utils.getModelScale(model) : THOTH.sceneScale;
+
+    if (!Number.isFinite(modelScale) || modelScale <= 0) {
+        modelScale = Number.isFinite(THOTH.sceneScale) && THOTH.sceneScale > 0
+            ? THOTH.sceneScale
+            : 1;
+    }
+
+    return modelScale * 0.01;
+};
+
+Annotations.applyPointMarkerScale = (marker, point) => {
+    if (!marker || !point) return;
+
+    const scale = Annotations.getPointMarkerScale(point);
+    marker.scale.set(scale, scale, scale);
 };
 
 Annotations._getOperationPrefix = (modality) => {
@@ -394,7 +556,7 @@ Annotations.getActiveSelection = () => {
 // Shape
 
 Annotations.createBaseAnnotation = (id, data = {}) => {
-    const base = Annotations._isObject(data) ? Annotations._clone(data) : {};
+    const base = Annotations._isObject(data) ? structuredClone(data) : {};
 
     return {
         ...base,
@@ -410,17 +572,11 @@ Annotations.createBaseAnnotation = (id, data = {}) => {
 };
 
 Annotations.normalize = (annotation) => {
-    const normalized = Annotations.createBaseAnnotation(annotation?.id, annotation);
-
-    for (const fieldName of RELATION_FIELDS) {
-        normalized[fieldName] = Annotations._normalizeRelations(normalized[fieldName]);
-    }
-
-    return normalized;
+    return Annotations.createBaseAnnotation(annotation?.id, annotation);
 };
 
 Annotations.clone = (annotation) => {
-    return Annotations._clone(annotation);
+    return structuredClone(annotation);
 };
 
 Annotations.toExportAnnotation = (annotation) => {
@@ -506,7 +662,7 @@ Annotations.update = (modelId, modality, annotationId, data) => {
 
     const value = Annotations.toStorageAnnotation(modality, annotationId, {
         ...prevValue,
-        ...Annotations._clone(data),
+        ...structuredClone(data),
         id: annotationId
     });
     const target = Annotations._makeTarget(resolvedModelId, modality, annotationId);

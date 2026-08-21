@@ -150,14 +150,11 @@ Events.setup = () => {
     THOTH.onPhoton   = ATON.Photon.on;
     THOTH.firePhoton = ATON.Photon.fire;
 
-    //Events.setupModelEvents();
-
     Events.setupInputEL();
     Events.setupActiveEL();
     Events.setupWindowEL();
 
     Events.setupCollaborativeEvents();
-    let transformStart = null;
 };
 
 Events.fireWithAuth = (eventName, data, immediate) => {
@@ -409,10 +406,6 @@ Events.setupWindowEL = () => {
         ATON.Nav._camera.updateProjectionMatrix();
         ATON._renderer.setSize(w.innerWidth, w.innerHeight);
     }, false);
-
-    w.addEventListener("blur", () => {
-        // maybe?
-    });
 };
 
 
@@ -854,7 +847,6 @@ Events.setupToolboxEvents = () => {
         }
         if (k === "BracketLeft") {
             THOTH.Toolbox.decreaseSelectorSize();
-            // Todo update the ui as well
         }
         if (k === "BracketRight") {
             THOTH.Toolbox.increaseSelectorSize();

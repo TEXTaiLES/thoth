@@ -2,7 +2,7 @@
 
 <p align="center">
     <a href = "https://github.com/Xenobii/thoth" target="_blank">
-        <img src="res/thoth-logo.png" alt="THOTH" width="250"/>
+        <img src="appicon.png" alt="THOTH" width="250"/>
     </a>
 </p>
 

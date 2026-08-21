@@ -17,13 +17,6 @@ Selections.setup = () => {
 
 // Utils
 
-Selections._clone = (value) => {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-
-    return structuredClone(value);
-};
-
 Selections._makeKey = (modelId, selectionId) => {
     return `${modelId}:${selectionId}`;
 };
@@ -277,7 +270,7 @@ Selections.addFaces = (modelId, selectionId, meshId, faces) => {
     const selection = Selections.getSelection(modelId, selectionId);
     if (!selection || !meshId || !faces?.length) return false;
 
-    const selectedFaces = Selections._clone(Selections._getFaces(selection)) || {};
+    const selectedFaces = structuredClone(Selections._getFaces(selection)) || {};
     selectedFaces[meshId] = Array.from(new Set([
         ...(selectedFaces[meshId] || []),
         ...faces
@@ -291,7 +284,7 @@ Selections.deleteFaces = (modelId, selectionId, meshId, faces) => {
     if (!selection || !meshId || !faces?.length) return false;
 
     const deleteSet = new Set(faces);
-    const selectedFaces = Selections._clone(Selections._getFaces(selection)) || {};
+    const selectedFaces = structuredClone(Selections._getFaces(selection)) || {};
     selectedFaces[meshId] = (selectedFaces[meshId] || []).filter(face => !deleteSet.has(face));
 
     return Selections.updateFaces(modelId, selectionId, selectedFaces);
@@ -302,7 +295,7 @@ Selections.clearFaces = (modelId, selectionId) => {
 };
 
 Selections.updateFaces = (modelId, selectionId, selectedFaces) => {
-    const prevValue = Selections._clone(Selections.getSelection(modelId, selectionId));
+    const prevValue = structuredClone(Selections.getSelection(modelId, selectionId));
     if (!prevValue) return false;
 
     const value = Selections.normalizeSelection(selectionId, prevValue);
@@ -319,7 +312,7 @@ Selections.updateFaces = (modelId, selectionId, selectedFaces) => {
 };
 
 Selections.updateSelection = (modelId, selectionId, data, field) => {
-    const prevValue = Selections._clone(Selections.getSelection(modelId, selectionId));
+    const prevValue = structuredClone(Selections.getSelection(modelId, selectionId));
     if (!prevValue) return false;
 
     const value = Selections.normalizeSelection(selectionId, {
