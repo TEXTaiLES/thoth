@@ -73,21 +73,7 @@ THOTH.artefact_id = THOTH.params.get('artefact_id');
 THOTH.collaborative = false;
 
 
-THOTH.requireAuth = (actionName, onAllowed) => {
-    return THOTH.Auth.requireAuth(actionName, onAllowed);
-};
-
-THOTH.isAuthenticated = () => {
-    return THOTH.Auth.isAuthenticated();
-};
-
-THOTH.setAuthState = (user) => {
-    THOTH.Auth.setAuthState(user);
-};
-
-
-
-// Init 
+// Setup, update, and configuration
 
 THOTH.setup = () => {
     // Realize base ATON and add base UI events
@@ -150,9 +136,13 @@ THOTH.setup = () => {
     })
 };
 
-THOTH._showConfigError = (error) => {
-    const message = error?.message || error || "Unknown error";
-    ATON.UI.showModal(`Error loading THOTH configuration: ${message}`);
+THOTH.update = () => {
+    if (THOTH._bPauseQuery) return;
+
+    THOTH._queryData = ATON._queryDataScene;
+
+    THOTH.hoveredMesh  = THOTH._queryData?.o?.name;
+    THOTH.hoveredModel = THOTH.Models.getParent(THOTH._queryData?.o);
 };
 
 THOTH.loadConfig = () => {
@@ -164,7 +154,8 @@ THOTH.loadConfig = () => {
                 source = DeploymentConfig.getSource(selector);
             }
             catch (error) {
-                THOTH._showConfigError(error);
+                const message = error?.message || error || "Unknown error";
+                ATON.UI.showModal(`Error loading THOTH configuration: ${message}`);
                 return;
             }
 
@@ -176,19 +167,73 @@ THOTH.loadConfig = () => {
                         config = DeploymentConfig.resolve(selector, baseConfig);
                     }
                     catch (error) {
-                        THOTH._showConfigError(error);
+                        const message = error?.message || error || "Unknown error";
+                        ATON.UI.showModal(`Error loading THOTH configuration: ${message}`);
                         return;
                     }
                     THOTH.config = config;
                     THOTH.API.setup(config);
                     ATON.fire("ConfigLoaded");
                 },
-                THOTH._showConfigError
+                error => {
+                    const message = error?.message || error || "Unknown error";
+                    ATON.UI.showModal(`Error loading THOTH configuration: ${message}`);
+                }
             );
         },
-        THOTH._showConfigError
+        error => {
+            const message = error?.message || error || "Unknown error";
+            ATON.UI.showModal(`Error loading THOTH configuration: ${message}`);
+        }
     );
 };
+
+
+// Authentication and user session
+
+THOTH.requireAuth = (actionName, onAllowed) => {
+    return THOTH.Auth.requireAuth(actionName, onAllowed);
+};
+
+THOTH.isAuthenticated = () => {
+    return THOTH.Auth.isAuthenticated();
+};
+
+THOTH.setAuthState = (user) => {
+    THOTH.Auth.setAuthState(user);
+};
+
+THOTH.syncAuthUser = () => {
+    THOTH.Auth.checkAuth(
+        (u) => THOTH.onLogin(u),
+        () => THOTH.setAuthState(null)
+    );
+};
+
+THOTH.onLogin = (u) => {
+    THOTH.setAuthState(u);
+
+    // Allow events
+    THOTH.Events.setupPhotonEvents();
+    THOTH.Events.setupSelectionEvents();
+    THOTH.Events.setupModelEvents();
+    THOTH.Events.setupMeasurementEvents();
+    THOTH.Events.setupSemanticAnnotationEvents();
+    THOTH.Events.setupToolboxEvents();
+
+    // Update FE
+    THOTH.FE.setupToolboxElements();
+
+    // Join collaborative
+    if (THOTH.collaborative) ATON.Photon.connect();
+};
+
+THOTH.getLocalUserId = () => {
+    return THOTH.user?.id || THOTH.user?.username || THOTH.user?.name || "local";
+};
+
+
+// Scene loading and parsing
 
 THOTH.loadScene = async (scene_id) => {
     if (scene_id === undefined) return;
@@ -218,7 +263,25 @@ THOTH.loadScene = async (scene_id) => {
             return;
         }
 
-        const scene = THOTH._parseSceneEndpointResponse(response.data);
+        const rawContent = response.data?.content ??
+            response.data?.scene?.content ??
+            response.data?.scenes?.[0]?.content ??
+            response.data;
+
+        let scene = rawContent;
+        if (typeof rawContent === "string") {
+            try {
+                scene = JSON.parse(rawContent);
+            }
+            catch (err) {
+                console.error("Invalid scene JSON:", err);
+                scene = null;
+            }
+        }
+        else if (!rawContent || typeof rawContent !== "object") {
+            scene = null;
+        }
+
         if (!scene) {
             ATON.SceneHub._bLoading = false;
             THOTH.FE?.showToast?.("Scene endpoint returned invalid content");
@@ -230,61 +293,20 @@ THOTH.loadScene = async (scene_id) => {
         ATON.SceneHub._bLoading = false;
 
         ATON.SceneHub.parseScene(scene);
-        THOTH._syncAuthUser();
+        THOTH.syncAuthUser();
         ATON.fire("SceneJSONLoaded", scene_id);
         return;
     }
 
-    THOTH._loadSceneFallback(scene_id);
-};
-
-THOTH._loadSceneFallback = (scene_id) => {
     ATON.SceneHub.load(
         THOTH.config.ATONSceneUrl + scene_id,
         scene_id,
-        () => THOTH._syncAuthUser()
+        () => THOTH.syncAuthUser()
     );
 };
 
-THOTH._syncAuthUser = () => {
-    THOTH.Auth.checkAuth(
-        (u) => THOTH.onLogin(u),
-        () => THOTH.setAuthState(null)
-    );
-};
 
-THOTH._parseSceneEndpointResponse = (data) => {
-    const rawContent = data?.content ??
-        data?.scene?.content ??
-        data?.scenes?.[0]?.content ??
-        data;
-
-    if (typeof rawContent === "string") {
-        try {
-            return JSON.parse(rawContent);
-        }
-        catch (err) {
-            console.error("Invalid scene JSON:", err);
-            return null;
-        }
-    }
-
-    if (rawContent && typeof rawContent === "object") return rawContent;
-
-    return null;
-};
-
-THOTH.update = () => {
-    if (THOTH._bPauseQuery) return;
-    
-    THOTH._queryData = ATON._queryDataScene;
-    
-    THOTH.hoveredMesh  = THOTH._queryData?.o?.name;
-    THOTH.hoveredModel = THOTH.Models.getParent(THOTH._queryData?.o);
-};
-
-
-// Visualization
+// Visualization and scene appearance
 
 THOTH.highlightSelection = (selection, highlightColor, modelName, meshName) => {
     if (selection === undefined || highlightColor === undefined||
@@ -395,7 +417,7 @@ THOTH.updateSceneScale = (model) => {
 };
 
 
-// Export
+// Scene export
 
 THOTH.exportChanges = async () => {
     if (!THOTH.requireAuth("export changes")) return;
@@ -404,8 +426,8 @@ THOTH.exportChanges = async () => {
 
     const payload = THOTH.getExportData();
     const response = THOTH.API.hasEndpoint("scene")
-        ? await THOTH._exportSceneEndpoint(payload)
-        : await THOTH._exportSceneFallback(payload);
+        ? await THOTH.exportSceneEndpoint(payload)
+        : await THOTH.exportSceneFallback(payload);
 
     if (!response.ok) {
         THOTH.FE.showToast(response.error || "Scene export failed");
@@ -448,14 +470,17 @@ THOTH.getExportData = () => {
 
 THOTH.downloadSceneJSON = () => {
     const payload = THOTH.getExportData();
-    return THOTH._downloadJSON(
+    return THOTH.downloadJSON(
         payload,
         `${THOTH.scene_id || "scene"}.json`,
         "Scene JSON downloaded locally."
     );
 };
 
-THOTH._downloadJSON = (payload, filename, message) => {
+
+// Export and transport utilities
+
+THOTH.downloadJSON = (payload, filename, message) => {
     const exportJson = JSON.stringify(payload, null, 2);
     const exportBlob = new Blob([exportJson], { type: "application/json" });
     const exportUrl = URL.createObjectURL(exportBlob);
@@ -470,7 +495,7 @@ THOTH._downloadJSON = (payload, filename, message) => {
     return true;
 };
 
-THOTH._exportSceneEndpoint = (payload) => {
+THOTH.exportSceneEndpoint = (payload) => {
     return THOTH.API.put("scene", {
         scene_id: THOTH.scene_id,
         body    : {
@@ -479,7 +504,7 @@ THOTH._exportSceneEndpoint = (payload) => {
     });
 };
 
-THOTH._exportSceneFallback = async (payload) => {
+THOTH.exportSceneFallback = async (payload) => {
     if (!THOTH.scene_id) {
         return {
             ok   : false,
@@ -488,7 +513,7 @@ THOTH._exportSceneFallback = async (payload) => {
     }
 
     const sceneUrl = THOTH.config.ATONSceneUrl + THOTH.scene_id;
-    const resetResponse = await THOTH._patchAtonScene(sceneUrl, {
+    const resetResponse = await THOTH.patchAtonScene(sceneUrl, {
         mode: "DEL",
         data: {
             models       : {},
@@ -497,13 +522,13 @@ THOTH._exportSceneFallback = async (payload) => {
     });
     if (!resetResponse.ok) return resetResponse;
 
-    return THOTH._patchAtonScene(sceneUrl, {
+    return THOTH.patchAtonScene(sceneUrl, {
         mode: "ADD",
         data: payload
     });
 };
 
-THOTH._patchAtonScene = async (sceneUrl, body) => {
+THOTH.patchAtonScene = async (sceneUrl, body) => {
     try {
         const response = await fetch(new URL(sceneUrl, window.location.href).toString(), {
             method : "PATCH",
@@ -536,6 +561,9 @@ THOTH._patchAtonScene = async (sceneUrl, body) => {
         };
     }
 };
+
+
+// Model data export
 
 THOTH.getModelDataExportData = (modelId) => {
     const model = THOTH.SceneStore.getModelExportData(modelId);
@@ -597,7 +625,7 @@ THOTH.downloadModelData = (modelId) => {
         return false;
     }
 
-    return THOTH._downloadJSON(
+    return THOTH.downloadJSON(
         payload,
         `${modelId || "model"}_artefact_data.json`,
         "Model data downloaded locally."
@@ -631,6 +659,9 @@ THOTH.exportModelData = async (modelId) => {
     return response;
 };
 
+
+// Model metadata export
+
 THOTH.getModelMetadataExportData = (modelId) => {
     return THOTH.SceneStore.getModelMetadataExportData(modelId);
 };
@@ -642,7 +673,7 @@ THOTH.downloadModelMetadata = (modelId) => {
         return false;
     }
 
-    return THOTH._downloadJSON(
+    return THOTH.downloadJSON(
         payload,
         `${modelId || "model"}_metadata.json`,
         "Model metadata downloaded locally."
@@ -667,25 +698,4 @@ THOTH.exportModelMetadata = async (modelId) => {
 
     THOTH.FE.showToast("Metadata exported successfully!");
     return response;
-};
-
-
-// User 
-
-THOTH.onLogin = (u) => {
-    THOTH.setAuthState(u);
-
-    // Allow events
-    THOTH.Events.setupPhotonEvents();
-    THOTH.Events.setupSelectionEvents();
-    THOTH.Events.setupModelEvents();
-    THOTH.Events.setupMeasurementEvents();
-    THOTH.Events.setupSemanticAnnotationEvents();
-    THOTH.Events.setupToolboxEvents();
-    
-    // Update FE
-    THOTH.FE.setupToolboxElements();
-    
-    // Join collaborative
-    if (THOTH.collaborative) ATON.Photon.connect();
 };

@@ -23,9 +23,7 @@ Ops.setup = () => {
 
 // Utils
 
-Ops._getLocalUserId = () => {
-    return THOTH.user?.id || THOTH.user?.username || THOTH.user?.name || "local";
-};
+
 
 Ops._getTargetKey = (operation) => {
     const target = operation?.target || {};
@@ -301,7 +299,7 @@ Ops.apply = (operation, options = {}) => {
 Ops.applyLocal = (operation) => {
     const localOperation = {
         ...structuredClone(operation),
-        user_id  : Ops._getLocalUserId(),
+        user_id  : THOTH.getLocalUserId(),
         timestamp: Date.now(),
         source   : "local"
     };
@@ -313,7 +311,7 @@ Ops.applyLocal = (operation) => {
 };
 
 Ops.applyRemote = (operation) => {
-    if (operation?.user_id === Ops._getLocalUserId()) return false;
+    if (operation?.user_id === THOTH.getLocalUserId()) return false;
 
     const remoteOperation = {
         ...structuredClone(operation),

@@ -161,7 +161,7 @@ Transforms._ensureGizmo = () => {
     return THOTH.transform;
 };
 
-Transforms._setupGizmoEvents = () => {
+Transforms.setupGizmoEvents = () => {
     if (Transforms._eventsReady || !THOTH.transform) return;
 
     THOTH.transform.addEventListener("dragging-changed", (event) => {
@@ -245,7 +245,7 @@ Transforms.attachGizmo = (modelId) => {
     }
 
     const transform = Transforms._ensureGizmo();
-    Transforms._setupGizmoEvents();
+    Transforms.setupGizmoEvents();
 
     if (transform.getMode() === "scale") {
         transform.setMode("translate");

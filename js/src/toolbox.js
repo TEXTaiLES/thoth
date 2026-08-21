@@ -15,7 +15,7 @@ let Toolbox = {};
 
 // Setup
 
-Toolbox.setup = (toolboxDefaults) => {
+Toolbox.setup = () => {
     // Adjustable params
     Toolbox.lassoPrecision        = 0.1; // between 0.1 and 1
     Toolbox.normalThreshold       = 1;   // between -1 and 1

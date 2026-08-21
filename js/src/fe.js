@@ -12,7 +12,7 @@ let FE = {};
 
 
 
-// Setup
+// Application setup
 
 FE.setup = () => {
     // General
@@ -78,6 +78,9 @@ FE.setupToolboxElements = () => {
     FE.refreshSceneTree();
 };
 
+
+// Authentication controls
+
 FE.syncAuthControls = () => {
     const isAuthenticated = THOTH.isAuthenticated?.() === true;
     const controls = [
@@ -105,7 +108,7 @@ FE.syncAuthControls = () => {
 };
 
 
-// Maps
+// Tool maps
 
 FE.initToolMap = () => {
     const toolMap = new Map();
@@ -311,6 +314,15 @@ FE.setupToolOptToolbar = () => {
 
     return toolOptToolbar;
 };
+
+FE.handleToolOptions = (elToolName) => {
+    const elOptions = FE.toolOptMap.get(elToolName);
+    FE.toolOptToolbar.replaceChildren(elOptions);
+    FE.toolOptToolbar.style.display = 'inline-block';
+};
+
+
+// Scene tree
 
 FE.createSceneTreeAction = (options = {}) => {
     return ATON.UI.createButton({
@@ -664,7 +676,8 @@ FE.countObjectFields = (value = {}) => {
     return Object.keys(value).filter(key => value[key] !== undefined && value[key] !== "").length;
 };
 
-// Panels
+
+// Side panels
 
 FE.setupSettingsPanel = () => {
     const elOptionsBody = ATON.UI.createContainer();
@@ -750,7 +763,7 @@ FE.setupSemAnnotationPanel = (elSemList) => {
 };
 
 
-// Selections
+// Selection UI
 
 FE.addNewSelection = (selectionId, modelId) => {
     const selection = THOTH.Selections.getSelection(modelId, selectionId) ||
@@ -813,7 +826,7 @@ FE.deleteSelection = (selectionId, modelId) => {
 };
 
 
-// Models
+// Model UI
 
 FE.addModel = (modelName) => {
     FE.refreshSceneTree();
@@ -824,7 +837,7 @@ FE.deleteModel = (modelName) => {
 };
 
 
-// Measurements
+// Measurement UI
 
 FE.addMsr = (msrId) => {
     const measurementKey = THOTH.MSR.getMeasurementKey(msrId);
@@ -868,7 +881,7 @@ FE.deleteMsr = (msrId) => {
 };
 
 
-// Semantic annotations
+// Semantic annotation UI
 
 FE.addSemAnnotation = (annotationId) => {
     const annotationKey = THOTH.SemAnnotations.getAnnotationKey(annotationId);
@@ -910,7 +923,7 @@ FE.deleteSemAnnotation = (annotationId) => {
 };
 
 
-// Misc
+// Element state
 
 FE.handleElementHighlight = (elname, elMap) => {
     if (!elMap) return;
@@ -938,14 +951,8 @@ FE.toggleControllerVisibility = (controller, visible) => {
     }
 };
 
-FE.handleToolOptions = (elToolName) => {
-    const elOptions = FE.toolOptMap.get(elToolName);
-    FE.toolOptToolbar.replaceChildren(elOptions);
-    FE.toolOptToolbar.style.display = 'inline-block';
-};
 
-
-// VP
+// Viewpoint card
 
 FE.setupVPCard = () => {
     const elCard = ATON.UI.get("vpCard");
@@ -980,7 +987,7 @@ FE.showVPCard = (id) => {
 };
 
 
-// Toast
+// Toast notifications
 
 FE.createToast = () => {
     const elBody = ATON.UI.get("toastElement");

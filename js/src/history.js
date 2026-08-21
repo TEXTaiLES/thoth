@@ -17,12 +17,8 @@ History.setup = () => {
 
 // Utils
 
-History._getLocalUserId = () => {
-    return THOTH.user?.id || THOTH.user?.username || THOTH.user?.name || "local";
-};
-
 History._isLocalOperation = (operation) => {
-    return operation?.user_id === undefined || operation.user_id === History._getLocalUserId();
+    return operation?.user_id === undefined || operation.user_id === THOTH.getLocalUserId();
 };
 
 

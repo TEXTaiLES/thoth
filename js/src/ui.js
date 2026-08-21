@@ -34,7 +34,7 @@ UI.activeTransformControls = {
 
 // Modules
 
-UI.createTagsComponen = (options = {}) => {
+UI.createTagsComponent = (options = {}) => {
     const baseid = ATON.Utils.generateID("thoth-tags");
     const tags = {};
     let isValid = !options.validator;
@@ -145,8 +145,6 @@ UI.createTagsComponen = (options = {}) => {
 
     return el;
 };
-
-UI.createTagsComponent = UI.createTagsComponen;
 
 UI.createInputListControl = (options = {}) => {
     let items = options.items || [];
@@ -1046,6 +1044,7 @@ UI.createModelTransformEditor = (modelName) => {
     elBody.append(elOptions);
     return elBody;
 };
+
 
 // Options
 
