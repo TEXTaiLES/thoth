@@ -1,4 +1,4 @@
-FROM node:20
+FROM node:24
 
 RUN apt-get update && apt-get install -y git python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
@@ -6,11 +6,14 @@ RUN apt-get update && apt-get install -y git python3 make g++ \
 RUN npm install -g npm
 RUN npm install -g pm2
 
-# 1. Clone ATON
-WORKDIR /
-RUN git clone https://github.com/phoenixbf/aton.git
+# 1. Fetch the verified ATON revision
+ARG ATON_COMMIT=5a7582d7c92d44066f50feddcb3576ed1027d32e
+RUN git init /aton \
+    && git -C /aton remote add origin https://github.com/phoenixbf/aton.git \
+    && git -C /aton fetch --depth 1 origin "${ATON_COMMIT}" \
+    && git -C /aton checkout --detach FETCH_HEAD \
+    && test "$(git -C /aton rev-parse HEAD)" = "${ATON_COMMIT}"
 WORKDIR /aton
-RUN git switch -d 22afaf28bcb6deb57ff1ea8e3737336a5a85d076
 
 # 2. Install ATON dependencies
 RUN npm install

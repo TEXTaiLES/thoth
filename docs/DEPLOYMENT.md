@@ -11,7 +11,7 @@ THOTH supports native ATON, local Docker, and Docker connected to HESTIA. Native
 - THOTH checked out as `wapps/thoth` inside an ATON checkout for native deployment.
 - A running HESTIA/Directus stack and EGI client registration for HESTIA mode.
 
-The Docker image always uses ATON commit `22afaf28bcb6deb57ff1ea8e3737336a5a85d076`.
+The Docker image uses the verified ATON commit `5a7582d7c92d44066f50feddcb3576ed1027d32e` (ATON `3.0.3-18-g5a7582d7`, 2026-08-24). Native deployments should use that commit as well.
 
 ## ATON source boundary and CORS
 
@@ -19,7 +19,7 @@ THOTH does not modify the host ATON checkout automatically. Native ATON and loca
 
 HESTIA mode avoids browser CORS requests with a same-origin `/hestia` gateway owned entirely by THOTH. The browser calls THOTH, and THOTH authenticates the user, injects the service credential, and forwards the allow-listed request to HESTIA.
 
-During a Docker build, THOTH clones the pinned ATON commit into the image and `server/deployment/install-gateway.cjs` adds one loader line to that private image copy. The gateway implementation remains under `server/deployment/gateway-extension.js` in THOTH. No host ATON file is mounted or edited.
+During a Docker build, THOTH shallow-fetches the pinned ATON commit into the image and verifies the exact checkout. Then `server/deployment/install-gateway.cjs` adds one loader line to that private image copy. The gateway implementation remains under `server/deployment/gateway-extension.js` in THOTH. No host ATON file is mounted or edited.
 
 The installer requires an explicit target path and is not run by `npm start`. A maintainer enabling exact geodesic measurements in a non-Docker ATON checkout must run it manually from the ATON root:
 
