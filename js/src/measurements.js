@@ -3,10 +3,6 @@
     THOTH
     Measurement functionalities
 
-    Authors: 
-        Stelios Alvanos (steliosalvanos@gmail.com)
-        Apostolos Kastritsis
-
 ===========================================================================*/
 import Label from "./measurements.label.js"
 
@@ -60,7 +56,6 @@ MSR.setup = () => {
     });
 };
 
-
 MSR.parseMeasurements = (measurements, modelId) => {
     if (measurements === undefined) return;
 
@@ -85,7 +80,7 @@ MSR.parseMeasurements = (measurements, modelId) => {
 };
 
 
-// UTILS
+// Utils
 
 MSR.getLabelScale = () => {
     const sceneScale = THOTH.sceneScale;
@@ -498,6 +493,7 @@ MSR.addMeasurement = (measurementId, point1, point2,  options = {}) => {
     MSR.lastMeasurementId = measurementId;
     MSR.lastMeasurementPoints = [point1, point2];
 };
+
 MSR.deleteMeasurement = (measurementId) => {
     if (measurementId === undefined) return;
 
@@ -1076,6 +1072,7 @@ MSR.getNearestVertexIndex = (mesh, worldPoint) => {
     }
     return closest;
 };
+
 
 // Visibility
 

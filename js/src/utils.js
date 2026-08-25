@@ -3,9 +3,6 @@
     THOTH
     Utility Functions
 
-    Author: 
-        Stelios Alvanos (steliosalvanos@gmail.com)
-
 ===========================================================================*/
 let Utils = {};
 

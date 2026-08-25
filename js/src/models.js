@@ -3,9 +3,6 @@
     THOTH
     Scene model management
 
-    Authors: 
-        Stelios Alvanos (steliosalvanos@gmail.com)
-
 ===========================================================================*/
 let Models = {};
 

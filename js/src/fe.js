@@ -3,10 +3,6 @@
     THOTH
     Front End
 
-    Authors: 
-        Stelios Alvanos (steliosalvanos@gmail.com)
-        Apostolos Kastrisis
-
 ===========================================================================*/
 let FE = {};
 

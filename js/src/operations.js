@@ -24,7 +24,6 @@ Ops.setup = () => {
 // Utils
 
 
-
 Ops._getTargetKey = (operation) => {
     const target = operation?.target || {};
 

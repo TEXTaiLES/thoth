@@ -3,11 +3,9 @@
     THOTH
     Event handling
 
-    Authors: 
-        Stelios Alvanos (steliosalvanos@gmail.com)
-
 ===========================================================================*/
 let Events = {};
+
 
 Events.authRequiredEvents = new Map([
     [ "addModel", "import models" ],
@@ -47,6 +45,28 @@ Events.authRequiredEvents = new Map([
     [ "endAllToolOps", "edit selections" ]
 ]);
 
+
+Events.setup = () => {
+    // Ease of access
+    THOTH.on   = ATON.on;
+    THOTH.fire = Events.fireWithAuth;
+    
+    THOTH.onPhoton   = ATON.Photon.on;
+    THOTH.firePhoton = ATON.Photon.fire;
+
+    Events.setupInputEL();
+    Events.setupActiveEL();
+    Events.setupWindowEL();
+
+    Events.setupCollaborativeEvents();
+};
+
+Events.fireWithAuth = (eventName, data, immediate) => {
+    const actionName = Events.authRequiredEvents.get(eventName);
+    if (actionName && !THOTH.requireAuth(actionName)) return false;
+
+    return ATON.fire(eventName, data, immediate);
+};
 
 Events.clone = (value) => {
     if (value === undefined) return undefined;
@@ -139,29 +159,6 @@ Events.getAnnotationModelId = (modality, annotationId, fallbackModelId) => {
 Events.applyLocal = (type, target, value, prevValue) => {
     const operation = THOTH.Ops.makeOperation(type, target, value, prevValue);
     THOTH.Ops.applyLocal(operation);
-};
-
-
-Events.setup = () => {
-    // Ease of access
-    THOTH.on   = ATON.on;
-    THOTH.fire = Events.fireWithAuth;
-    
-    THOTH.onPhoton   = ATON.Photon.on;
-    THOTH.firePhoton = ATON.Photon.fire;
-
-    Events.setupInputEL();
-    Events.setupActiveEL();
-    Events.setupWindowEL();
-
-    Events.setupCollaborativeEvents();
-};
-
-Events.fireWithAuth = (eventName, data, immediate) => {
-    const actionName = Events.authRequiredEvents.get(eventName);
-    if (actionName && !THOTH.requireAuth(actionName)) return false;
-
-    return ATON.fire(eventName, data, immediate);
 };
 
 
@@ -750,8 +747,15 @@ Events.setupModelEvents = () => {
             THOTH.FE?.showToast?.(glbResponse.error || "Error loading model URL");
             return;
         }
-
-        const modelURL = Events._getGlbModelUrl(glbResponse.data, id);
+        
+        const modelURL = typeof glbResponse.data === "string"
+            ? glbResponse.data
+            : glbResponse.data?.gltf_file ||
+                glbResponse.data?.glb_file ||
+                glbResponse.data?.url ||
+                glbResponse.data?.path ||
+                glbResponse.data?.src ||
+                id;
         if (!modelURL) {
             THOTH.FE?.showToast?.("No model URL found");
             return;
@@ -809,17 +813,6 @@ Events.setupModelEvents = () => {
             field   : "rotation"
         }, value, prevValue);
     }); 
-};
-
-Events._getGlbModelUrl = (data, fallbackUrl) => {
-    if (typeof data === "string") return data;
-
-    return data?.gltf_file ||
-        data?.glb_file ||
-        data?.url ||
-        data?.path ||
-        data?.src ||
-        fallbackUrl;
 };
 
 Events.setupToolboxEvents = () => {

@@ -3,9 +3,6 @@
     THOTH
     Transform control utilities
 
-    Authors: 
-        Apostolos Kastritsis
-
 ===========================================================================*/
 /*
 Modified threes js transform controls so as to work with ATON

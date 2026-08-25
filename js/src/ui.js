@@ -3,11 +3,6 @@
     THOTH
     UI modules
 
-    Author: 
-        Stelios Alvanos (steliosalvanos@gmail.com)
-        Ioannis Giannoukos
-        Apostolos Kastrisis
-
 ===========================================================================*/
 let UI = {};
 

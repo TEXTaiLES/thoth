@@ -3,10 +3,6 @@
     THOTH
     Semantic Viewpoint Components
 
-    Authors:
-        Stelios Alvanos (steliosalvanos@gmail.com)
-        Apostolos Kastritsis   
-
 ===========================================================================*/
 let SVP = {};
 
