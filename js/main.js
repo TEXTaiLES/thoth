@@ -87,6 +87,12 @@ THOTH.setup = () => {
         THOTH.SceneStore.parseScene({ models });
         THOTH.Models.parseModels(THOTH.SceneStore.getScene().models);
     });
+
+    for (const fieldName of ["title", "description", "kwords", "keywords", "visibility"]) {
+        ATON.SceneHub.addSceneParser(fieldName, value => {
+            THOTH.SceneStore.setSceneField(fieldName, value);
+        });
+    }
     
     // Init collaborative
     ATON.SceneHub.addSceneParser("collaborative", data => {
@@ -129,6 +135,13 @@ THOTH.setup = () => {
                 THOTH.FE.showToast(authError, 6000);
                 THOTH.UI.modalUser(authError);
             }
+
+            try {
+                const flash = JSON.parse(window.sessionStorage.getItem("thoth:flash") || "null");
+                window.sessionStorage.removeItem("thoth:flash");
+                if (flash?.message) THOTH.FE.showToast(flash.message, 6000);
+            }
+            catch {}
             
             // Load scene
             THOTH.loadScene(THOTH.scene_id)
@@ -288,6 +301,7 @@ THOTH.loadScene = async (scene_id) => {
             return;
         }
 
+        THOTH.SceneStore.setPresentationData(scene);
         ATON.SceneHub.currData = scene;
         ATON.SceneHub.currID = scene_id;
         ATON.SceneHub._bLoading = false;
@@ -463,7 +477,7 @@ THOTH.exportSceneToHestia = async (artefactId = THOTH.artefact_id, payload) => {
 
 THOTH.getExportData = () => {
     return {
-        models: THOTH.SceneStore.getExportData().models,
+        ...THOTH.SceneStore.getExportData(),
         collaborative: THOTH.collaborative === true
     };
 };

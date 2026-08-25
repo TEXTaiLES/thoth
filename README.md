@@ -59,7 +59,22 @@ This will run and deploy a basic instance of ATON on your machine.
 
 To verify everything runs properly, navigate to [http://localhost:8080/](http://localhost:8080/) on your web browser. 
 
-## Opening a scene with THOTH
+## Opening THOTH
+
+Open the landing page at:
+
+```
+{base_url}/a/thoth/
+```
+
+Authenticated users can manage their local ATON scenes at:
+
+```
+{base_url}/a/thoth/myscenes/
+```
+
+HESTIA deployments support scene creation there, but do not present HESTIA's
+global scene list as a personal list and do not offer scene deletion.
 
 To open a scene using the THOTH web app, open the following url on your web browser.
 

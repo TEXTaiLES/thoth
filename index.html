@@ -1,66 +1,50 @@
 <!doctype html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <link rel="icon" href="appicon.png" sizes="512x512" type="image/png">
-
-    <!-- Add iOS meta tags and icons -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="THOTH">
+    <meta name="theme-color" content="#000000">
+    <meta name="aton:appid" content="thoth">
+    <meta name="title" content="THOTH">
+    <meta name="description" content="THOTH 3D Viewer and Annotator">
+    <meta property="og:title" content="THOTH">
+    <meta property="og:description" content="THOTH 3D Viewer and Annotator">
+    <meta property="og:image" content="appicon.png">
+    <meta property="og:image:secure_url" content="appicon.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="200">
+    <meta property="og:image:height" content="200">
+    <link rel="icon" href="appicon.png" sizes="512x512" type="image/png">
     <link rel="apple-touch-icon" href="appicon.png">
-
-    <!-- OpenGraph tags -->
-    <meta property="og:title" content="THOTH" />
-    <meta property="og:description" content="THOTH Web App" />
-    <meta property="og:image" content="appicon.png" />
-	<meta property="og:image:secure_url" content="appicon.png" />
-	<meta property="og:image:type" content="image/png" />
-	<meta property="og:image:width" content="200" />
-	<meta property="og:image:height" content="200" />
-
-	<!-- PWA manifest -->
-	<link rel="manifest" href="app.webmanifest">
-
-	<!-- Web-app ID -->
-	<meta name="aton:appid" content="app_template">
-
-	<meta name="title" content="THOTH">
-	<meta name="description" content="THOTH Web app">
-
-    <!-- Add meta theme-color -->
-    <meta name="theme-color" content="#000000" />
-
+    <link rel="manifest" href="app.webmanifest">
     <title>THOTH</title>
-    <link rel="stylesheet" type="text/css" href="/vendors/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" type="text/css" href="/res/css/main.css">
-
-    <!-- Custom styling -->
-    <link rel="stylesheet" type="text/css" href="js/res/css/main.css">
-
-    <!-- Vendors -->
-    <script type="text/javascript" src="/vendors/vendors.min.js"></script>
-    <script type="text/javascript" src="/vendors/bootstrap/js/bootstrap.bundle.min.js"></script>
-
-    <script type="text/javascript" src="/dist/THREE.bundle.js"></script>
-    <script type="text/javascript" src="/dist/ATON.min.js"></script>
-
-	<!-- Main js entry -->
-	<script type="module" src="js/main.js"></script>
-<body>
-    <div id="topToolbar" class="thoth-top-toolbar"></div>
-    <div id="mainToolbar" class="aton-toolbar-left thoth-main-toolbar"></div>
-    <div id="userToolbar" class="thoth-user-toolbar"></div>
-    <div id="rightToolbar" class="thoth-right-toolbar"></div>
-    <div id="toolOptToolbar" class="thoth-tool-options-toolbar position-fixed start-0 bottom-0 w-auto"></div>
-    <div id="vpCard" class="thoth-vp-preview" style="display: block; opacity: 1"></div>
-    <div id="toastElement" class="position-fixed bottom-0 start-50 translate-middle-x p-3" style="z-index: 1100"></div>
-        <div class="aton-poweredby" style="right:0px; left:auto;">
-        Powered by <a href="https://aton.ispc.cnr.it/site/" target="_blank">ATON</a>
-
+    <link rel="stylesheet" href="/vendors/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/vendors/bootstrap/css/bootstrap-icons/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/res/css/main.css">
+    <link rel="stylesheet" href="js/res/css/main.css">
+    <script src="/vendors/vendors.min.js"></script>
+    <script src="/vendors/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/dist/THREE.bundle.js"></script>
+    <script src="/dist/ATON.min.js"></script>
+    <script type="module" src="js/bootstrap.js"></script>
+</head>
+<body data-thoth-page="landing">
+    <div id="thothSiteApp" class="thoth-site-app" hidden></div>
+    <div id="viewerApp" hidden>
+        <div id="topToolbar" class="thoth-top-toolbar"></div>
+        <div id="mainToolbar" class="aton-toolbar-left thoth-main-toolbar"></div>
+        <div id="userToolbar" class="thoth-user-toolbar"></div>
+        <div id="rightToolbar" class="thoth-right-toolbar"></div>
+        <div id="toolOptToolbar" class="thoth-tool-options-toolbar position-fixed start-0 bottom-0 w-auto"></div>
+        <div id="vpCard" class="thoth-vp-preview" style="display:block; opacity:1"></div>
+        <div id="toastElement" class="position-fixed bottom-0 start-50 translate-middle-x p-3" style="z-index:1100"></div>
+        <div class="aton-poweredby" style="right:0; left:auto">
+            Powered by <a href="https://aton.ispc.cnr.it/site/" target="_blank" rel="noopener noreferrer">ATON</a>
+        </div>
     </div>
 </body>
 </html>

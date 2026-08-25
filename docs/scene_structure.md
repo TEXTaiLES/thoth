@@ -27,12 +27,15 @@ Canonical top-level shape:
 
 ```ts
 {
+  title?: string,
   models: Record<string, Model>,
   collaborative: boolean
 }
 ```
 
 `models` is an object keyed by model ID, not an array. An empty scene is `{ "models": {}, "collaborative": false }`.
+`title` is optional presentation metadata. THOTH preserves it when loading and
+exporting a scene so scene-management pages can display a user-facing name.
 
 </details>
 

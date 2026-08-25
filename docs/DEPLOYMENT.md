@@ -60,7 +60,13 @@ For PM2 deployments:
 pm2 start ecosystem.config.js
 ```
 
-Open THOTH at:
+Open the THOTH landing page at:
+
+```text
+http://localhost:8080/a/thoth/
+```
+
+Open a scene directly at:
 
 ```text
 http://localhost:8080/a/thoth/?scene_id=<scene-id>
@@ -76,7 +82,13 @@ From the THOTH repository root:
 docker compose up --build -d
 ```
 
-Open:
+Open the landing page at:
+
+```text
+http://localhost:8054/a/thoth/
+```
+
+Open a scene directly at:
 
 ```text
 http://localhost:8054/a/thoth/?scene_id=<scene-id>

@@ -1170,6 +1170,16 @@ UI.modalUser = (msg) => {
             let elBody = ATON.UI.createContainer({ classes: "d-grid gap-2" });
             elBody.append(
                 ATON.UI.createButton({
+                    text   : "My Scenes",
+                    icon   : "gallery",
+                    onpress: () => {
+                        window.location.href = new URL(
+                            `${THOTH.BASE_URL}/myscenes/`,
+                            window.location.href
+                        ).href;
+                    }
+                }),
+                ATON.UI.createButton({
                     text   : "Logout",
                     icon   : "exit",
                     classes: "aton-btn-highlight",

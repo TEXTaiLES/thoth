@@ -19,18 +19,29 @@ const REASON_MESSAGES = {
     AUTH_SERVICE_UNAVAILABLE: "The authentication service is unavailable. Please try again later."
 };
 
-Auth.setup = () => {
+Auth.setup = (options = {}) => {
     Auth.user = null;
     Auth._checkPromise = null;
+    Auth.options = options;
 };
 
-Auth.getMode = () => THOTH.config?.auth?.mode || "aton";
+Auth._app = () => Auth.options?.app || globalThis.THOTH || {};
+Auth._aton = () => Auth.options?.aton || globalThis.ATON;
+Auth.getMode = () => Auth.options?.config?.auth?.mode || Auth._app().config?.auth?.mode || "aton";
 Auth.isHestiaMode = () => Auth.getMode() === "hestia";
-Auth._url = (name) => new URL(`${THOTH.BASE_URL}/${name}`, window.location.href).href;
+Auth._url = (name) => new URL(
+    `${Auth.options?.baseURL || Auth._app().BASE_URL || "../thoth"}/${name}`,
+    window.location.href
+).href;
 Auth._currentPath = () => window.location.pathname + window.location.search + window.location.hash;
 
 Auth._checkAton = () => new Promise(resolve => {
-    ATON.checkAuth(user => resolve(user || null), () => resolve(null));
+    const aton = Auth._aton();
+    if (!aton?.checkAuth) {
+        resolve(null);
+        return;
+    }
+    aton.checkAuth(user => resolve(user || null), () => resolve(null));
 });
 
 Auth._checkHestia = async () => {
@@ -67,29 +78,52 @@ Auth.checkAuth = (onLogged, onNotLogged) => Auth.getUser()
         return user;
     })
     .catch(error => {
-        if (THOTH.FE?.showToast) THOTH.FE.showToast(error.message);
+        Auth._notify(error.message);
         if (onNotLogged) onNotLogged(error);
         return null;
     });
 
-Auth.startEgiLogin = () => {
+Auth.startEgiLogin = (redirect = Auth._currentPath()) => {
     const target = new URL(Auth._url("egi-login"));
-    target.searchParams.set("redirect", Auth._currentPath());
+    target.searchParams.set("redirect", redirect);
     window.location.assign(target.href);
 };
 
-Auth.startHestiaLogin = () => {
+Auth.startHestiaLogin = (redirect = Auth._currentPath()) => {
     const target = new URL(Auth._url("hestia-login"));
-    target.searchParams.set("redirect", Auth._currentPath());
+    target.searchParams.set("redirect", redirect);
     window.location.assign(target.href);
 };
 
 Auth.startLogin = Auth.startEgiLogin;
 
+Auth.loginAton = (username, password) => new Promise(resolve => {
+    const aton = Auth._aton();
+    if (Auth.isHestiaMode() || !aton?.REQ?.login) {
+        resolve({ ok: false, error: "ATON login is unavailable" });
+        return;
+    }
+
+    aton.REQ.login(
+        username,
+        password,
+        user => {
+            Auth.setAuthState(user);
+            resolve({ ok: true, data: user });
+        },
+        () => resolve({ ok: false, error: "Invalid username or password" })
+    );
+});
+
 Auth.logout = () => {
     Auth.setAuthState(null);
     if (!Auth.isHestiaMode()) {
-        ATON.REQ.logout(() => window.location.reload(), () => window.location.reload());
+        const aton = Auth._aton();
+        if (!aton?.REQ?.logout) {
+            window.location.reload();
+            return;
+        }
+        aton.REQ.logout(() => window.location.reload(), () => window.location.reload());
         return;
     }
 
@@ -100,22 +134,30 @@ Auth.logout = () => {
 
 Auth.setAuthState = (user) => {
     Auth.user = user || null;
-    THOTH.user = Auth.user;
-    if (THOTH.FE?.syncAuthControls) THOTH.FE.syncAuthControls();
+    const app = Auth._app();
+    app.user = Auth.user;
+    if (app.FE?.syncAuthControls) app.FE.syncAuthControls();
+    if (Auth.options?.onUserChange) Auth.options.onUserChange(Auth.user);
 };
 
-Auth.isAuthenticated = () => Boolean(Auth.user || THOTH.user);
+Auth.isAuthenticated = () => Boolean(Auth.user || Auth._app().user);
 
 Auth.requireAuth = (actionName, onAllowed) => {
     if (Auth.isAuthenticated()) {
-        if (onAllowed) onAllowed(Auth.user || THOTH.user);
+        if (onAllowed) onAllowed(Auth.user || Auth._app().user);
         return true;
     }
 
     const message = actionName ? `Login required to ${actionName}.` : "Login required.";
-    if (THOTH.FE?.showToast) THOTH.FE.showToast(message);
-    if (THOTH.UI?.modalUser) THOTH.UI.modalUser(message);
+    Auth._notify(message);
+    if (Auth._app().UI?.modalUser) Auth._app().UI.modalUser(message);
+    if (Auth.options?.onLoginRequired) Auth.options.onLoginRequired(message);
     return false;
+};
+
+Auth._notify = (message) => {
+    if (Auth.options?.notify) Auth.options.notify(message);
+    else if (Auth._app().FE?.showToast) Auth._app().FE.showToast(message);
 };
 
 Auth.consumeRedirectReason = () => {

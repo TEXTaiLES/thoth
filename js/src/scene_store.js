@@ -42,8 +42,9 @@ SceneStore.setup = () => {
     SceneStore.clear();
 };
 
-SceneStore.clear = () => {
+SceneStore.clear = (presentation = {}) => {
     SceneStore.scene = {
+        ...SceneStore._normalizePresentation(presentation),
         models: {}
     };
 };
@@ -112,6 +113,14 @@ SceneStore._normalizeObjectMap = (data) => {
     if (SceneStore._isObject(data)) return structuredClone(data);
 
     return {};
+};
+
+SceneStore._normalizePresentation = (data = {}) => {
+    const presentation = {};
+    for (const field of ["title", "description", "kwords", "keywords", "visibility"]) {
+        if (data[field] !== undefined) presentation[field] = structuredClone(data[field]);
+    }
+    return presentation;
 };
 
 SceneStore._normalizeAnnotationCollection = (data) => {
@@ -229,7 +238,11 @@ SceneStore._getExportModel = (model) => {
 // Scene
 
 SceneStore.parseScene = (data) => {
-    SceneStore.clear();
+    const presentation = {
+        ...SceneStore.getPresentationData(),
+        ...SceneStore._normalizePresentation(data)
+    };
+    SceneStore.clear(presentation);
 
     if (!SceneStore._isObject(data?.models)) return SceneStore.getScene();
 
@@ -244,6 +257,23 @@ SceneStore.getScene = () => {
     return SceneStore.scene;
 };
 
+SceneStore.setSceneField = (fieldName, value) => {
+    if (!["title", "description", "kwords", "keywords", "visibility"].includes(fieldName)) return;
+    if (value === undefined) delete SceneStore.scene[fieldName];
+    else SceneStore.scene[fieldName] = structuredClone(value);
+    return SceneStore.scene[fieldName];
+};
+
+SceneStore.setPresentationData = (data = {}) => {
+    const presentation = SceneStore._normalizePresentation(data);
+    for (const [field, value] of Object.entries(presentation)) {
+        SceneStore.setSceneField(field, value);
+    }
+    return SceneStore.getPresentationData();
+};
+
+SceneStore.getPresentationData = () => SceneStore._normalizePresentation(SceneStore.scene);
+
 SceneStore.getExportData = () => {
     let models = {};
 
@@ -254,7 +284,10 @@ SceneStore.getExportData = () => {
         models[modelId] = SceneStore._getExportModel(model);
     }
 
-    return { models };
+    return {
+        ...SceneStore.getPresentationData(),
+        models
+    };
 };
 
 SceneStore.getModelExportData = (modelId) => {

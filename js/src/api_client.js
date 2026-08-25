@@ -39,8 +39,9 @@ API.endpointNames = [
     "geodesic_load"
 ];
 
-API.setup = (config = {}) => {
+API.setup = (config = {}, options = {}) => {
     API.config = config;
+    API.options = options;
     API.endpoints = {};
 
     const configuredEndpoints =
@@ -135,6 +136,7 @@ API.withAuth = (callback, options = {}) => {
 };
 
 API.listModelsFallback = (user) => {
+    const aton = API.options?.aton || globalThis.ATON;
     return new Promise(resolve => {
         const username = API._getUsername(user);
         if (!username) {
@@ -145,7 +147,7 @@ API.listModelsFallback = (user) => {
             return;
         }
 
-        ATON.REQ.get(
+        aton.REQ.get(
             `items/${username}/models/`,
             entries => resolve({
                 ok  : true,
@@ -169,12 +171,198 @@ API.listModels = async (user) => {
         return {
             ...response,
             data: rows
-                .map(API._normalizeModelEntry)
+                .map(item => API._normalizeModelEntry(item, user))
                 .filter(entry => entry.id && API._isModelEntry(entry))
         };
     }
 
-    return API.listModelsFallback(user);
+    const response = await API.listModelsFallback(user);
+    if (!response.ok) return response;
+    return {
+        ...response,
+        data: (Array.isArray(response.data) ? response.data : [])
+            .map(item => API._normalizeModelEntry(item, user))
+            .filter(entry => entry.id && API._isModelEntry(entry))
+    };
+};
+
+API.hasPersonalSceneList = () => API.config?.deploymentMode !== "hestia";
+
+API.supportsSceneOperation = (method = "GET") => {
+    const normalizedMethod = String(method).toUpperCase();
+    if (API.config?.deploymentMode !== "hestia") {
+        return ["GET", "POST", "DELETE", "PATCH"].includes(normalizedMethod);
+    }
+    return API.supports("scene", normalizedMethod);
+};
+
+API.listScenes = async (user) => {
+    if (!API.hasPersonalSceneList()) {
+        return {
+            ok         : false,
+            unsupported: true,
+            code       : "PERSONAL_SCENE_LIST_UNSUPPORTED",
+            error      : "Personal HESTIA scene listing is not yet supported."
+        };
+    }
+
+    const username = API._getUsername(user);
+    if (!username) return { ok: false, error: "Missing authenticated username" };
+
+    const endpoint = new URL(
+        `${API.config.ATONSceneUrl}${encodeURIComponent(username)}`,
+        API._baseHref()
+    );
+    const response = await API._requestUrl(endpoint, { method: "GET" });
+    if (!response.ok) return response;
+
+    const rows = Array.isArray(response.data) ? response.data : [];
+    return {
+        ...response,
+        data: rows.map(API._normalizeSceneEntry).filter(entry => entry.id)
+    };
+};
+
+API.createScene = async ({ name, models, collaborative = false } = {}) => {
+    const title = String(name || "").trim();
+    const normalizedModels = (Array.isArray(models) ? models : [])
+        .map(API._normalizeSceneModel)
+        .filter(Boolean);
+
+    if (!title) return { ok: false, error: "Scene name is required" };
+    if (normalizedModels.length < 1) return { ok: false, error: "Select at least one model" };
+
+    if (API.config?.deploymentMode === "hestia") {
+        if (!API.supports("scene", "POST")) {
+            return { ok: false, error: "Scene creation is not supported by this deployment" };
+        }
+        const sceneId = API.createSceneId(title);
+        const response = await API.post("scene", {
+            scene_id    : sceneId,
+            collaborative: collaborative === true,
+            models      : normalizedModels.map(model => ({
+                id      : model.id,
+                title   : model.artefact.title,
+                gltf_file: model.artefact.gltf_file,
+                artefact: model.artefact
+            }))
+        });
+        if (!response.ok) return response;
+        return {
+            ...response,
+            data: {
+                ...(response.data || {}),
+                scene_id: response.data?.scene_id || sceneId
+            }
+        };
+    }
+
+    const modelMap = {};
+    for (const model of normalizedModels) modelMap[model.id] = model;
+    const descriptor = {
+        title,
+        models: modelMap,
+        collaborative: collaborative === true
+    };
+    const endpoint = new URL(API.config.ATONSceneUrl, API._baseHref());
+    const response = await API._requestUrl(endpoint, {
+        method: "POST",
+        body  : { data: descriptor }
+    });
+    if (!response.ok) return response;
+    const sceneId = typeof response.data === "string"
+        ? response.data
+        : response.data?.scene_id || response.data?.sid;
+    if (!sceneId) return { ok: false, error: "Scene creation returned no scene ID" };
+    return { ...response, data: { scene_id: sceneId, content: descriptor } };
+};
+
+API.deleteScene = async (sceneId) => {
+    const id = String(sceneId || "").trim();
+    if (!id) return { ok: false, error: "Missing scene ID" };
+
+    if (API.config?.deploymentMode === "hestia") {
+        if (!API.supports("scene", "DELETE")) {
+            return {
+                ok         : false,
+                unsupported: true,
+                code       : "SCENE_DELETE_UNSUPPORTED",
+                error      : "Scene deletion is not yet supported by HESTIA."
+            };
+        }
+        return API._request("scene", {
+            method: "DELETE",
+            path  : `/${API._encodePath(id)}`
+        });
+    }
+
+    const endpoint = new URL(
+        `${API.config.ATONSceneUrl}${API._encodePath(id)}`,
+        API._baseHref()
+    );
+    return API._requestUrl(endpoint, { method: "DELETE" });
+};
+
+API.createSceneId = (name) => {
+    const slug = String(name || "scene")
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9_.-]+/g, "-")
+        .replace(/^[._-]+|[._-]+$/g, "")
+        .slice(0, 48) || "scene";
+    const suffix = globalThis.crypto?.randomUUID
+        ? globalThis.crypto.randomUUID().split("-")[0]
+        : Math.random().toString(36).slice(2, 10);
+    return `${slug}-${suffix}`;
+};
+
+API._normalizeSceneEntry = (entry = {}) => {
+    if (typeof entry === "string") return { id: entry, sid: entry, title: entry, raw: entry };
+    const id = entry.sid || entry.scene_id || entry.id || "";
+    return {
+        id: String(id),
+        sid: String(id),
+        title: String(entry.title || entry.name || id),
+        creationDate: entry.creationDate || entry.creation_date || entry.created_at || "",
+        keywords: entry.kwords || entry.keywords || {},
+        cover: entry.cover || entry.cover_url || "",
+        raw: entry
+    };
+};
+
+API._normalizeSceneModel = (entry) => {
+    if (!entry) return null;
+    const normalized = entry.artefact
+        ? entry
+        : API._normalizeModelEntry(entry);
+    const id = String(normalized.id || normalized.artifact_id || "").trim();
+    const artefact = normalized.artefact || {};
+    const title = String(artefact.title || normalized.title || id).trim();
+    const gltfFile = artefact.gltf_file || normalized.gltf_file || normalized.url || "";
+    if (!id || !gltfFile) return null;
+    return {
+        id,
+        artefact: {
+            ...artefact,
+            title,
+            gltf_file: gltfFile,
+            description: artefact.description || "",
+            owner: artefact.owner || "",
+            keywords: Array.isArray(artefact.keywords) ? artefact.keywords : [],
+            copyright: artefact.copyright || ""
+        },
+        metadata: normalized.metadata || {
+            schema: { name: "puc_schema", version: "", description: "", url: "" },
+            attributes: {}
+        },
+        transforms: normalized.transforms || {
+            translation: { x: 0, y: 0, z: 0 },
+            rotation: { x: 0, y: 0, z: 0 }
+        },
+        annotations: normalized.annotations || {},
+        sensors: Array.isArray(normalized.sensors) ? normalized.sensors : []
+    };
 };
 
 API.getGlbModel = async (modelName) => {
@@ -462,15 +650,22 @@ API._request = async (name, options = {}) => {
         };
     }
 
+    const requestUrl = API._buildUrl(endpoint + (options.path || ""), options.params);
+    return API._requestUrl(requestUrl, {
+        ...options,
+        timeout_seconds: endpointConfig?.timeout_seconds
+    });
+};
+
+API._requestUrl = async (requestUrl, options = {}) => {
+    let timeoutId;
     try {
-        const requestUrl = API._buildUrl(endpoint + (options.path || ""), options.params);
         const fetchOptions = {
             method : options.method || "GET",
             headers: API._buildHeaders(options.headers),
             credentials: "include"
         };
-        const timeoutSeconds = Number(endpointConfig?.timeout_seconds);
-        let timeoutId;
+        const timeoutSeconds = Number(options.timeout_seconds);
 
         if (
             Number.isFinite(timeoutSeconds) &&
@@ -519,6 +714,9 @@ API._request = async (name, options = {}) => {
             error: err?.message || String(err)
         };
     }
+    finally {
+        if (timeoutId) clearTimeout(timeoutId);
+    }
 };
 
 API._readJSON = async (response) => {
@@ -529,7 +727,7 @@ API._readJSON = async (response) => {
 };
 
 API._buildUrl = (endpoint, params = {}) => {
-    const url = new URL(endpoint, window.location.href);
+    const url = new URL(endpoint, API._baseHref());
 
     for (const key of Object.keys(params || {})) {
         const value = params[key];
@@ -540,6 +738,8 @@ API._buildUrl = (endpoint, params = {}) => {
 
     return url.toString();
 };
+
+API._baseHref = () => API.options?.baseURL || window.location.href;
 
 API._buildHeaders = (headers = {}) => {
     return {
@@ -555,9 +755,13 @@ API._getModelId = (model) => {
     return model;
 };
 
-API._normalizeModelEntry = (item = {}) => {
+API._normalizeModelEntry = (item = {}, user) => {
     if (typeof item === "string") {
-        return { id: item, title: item, url: API._proxyAssetUrl(item), raw: item };
+        const username = API._getUsername(user);
+        const prefix = username ? `${username}/models/` : "";
+        const title = prefix && item.startsWith(prefix) ? item.slice(prefix.length) : item;
+        const id = title.split("/").filter(Boolean).pop() || title;
+        return { id, title, url: API._proxyAssetUrl(item), gltf_file: item, raw: item };
     }
     const id = item.artifact_id || item.id || item["artefact.ID"] || item.title || item.name || "";
     const title = item.title || item.Title || item["artefact.Title"] || item.name || id;
@@ -634,11 +838,18 @@ API._rewriteAssetUrls = (value, key = "") => {
 };
 
 API._getUsername = (user) => {
-    return user?.username || user?.id || user?.name || THOTH.user?.username;
+    return user?.username || user?.id || user?.name || globalThis.THOTH?.user?.username;
 };
 
 API._showToast = (message) => {
-    if (THOTH.FE?.showToast) THOTH.FE.showToast(message);
+    if (API.options?.notify) API.options.notify(message);
+    else if (globalThis.THOTH?.FE?.showToast) globalThis.THOTH.FE.showToast(message);
 };
+
+API._encodePath = (value) => String(value || "")
+    .split("/")
+    .filter(Boolean)
+    .map(encodeURIComponent)
+    .join("/");
 
 export default API;
