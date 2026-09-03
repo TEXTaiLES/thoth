@@ -665,6 +665,15 @@ MSR.createExactGeodesicMeasurement = async function (measurementId, point1, poin
     const localP1 = point1.coords.clone().applyMatrix4(inv);
     const localP2 = point2.coords.clone().applyMatrix4(inv);
 
+    const startTime = performance.now();
+    let timer = null;
+    timer = setInterval(() => {
+        const elapsed = (performance.now() - startTime) / 1000;
+
+    THOTH.FE.showToast(
+        `Computing geodesic distance... ${elapsed.toFixed(1)} s`);}, 250);
+
+
    const result = await THOTH.API.geodesicExact({
     model_id  : THOTH.Events.getPointModelId(point1),
     x1: localP1.x,
@@ -678,6 +687,12 @@ MSR.createExactGeodesicMeasurement = async function (measurementId, point1, poin
      if (!result) {
         throw new Error("Exact geodesic computation failed.");
     }
+
+    const elapsed = (performance.now() - startTime) / 1000;
+
+    console.log(`Exact geodesic computation: ${elapsed.toFixed(3)} s`);
+    clearInterval(timer);
+
 
     const worldPoints = result.path.map(
     p => new THREE.Vector3(p.x,p.y,p.z)
