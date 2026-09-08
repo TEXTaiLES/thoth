@@ -11,6 +11,11 @@ SiteUtils.getPageMode = (search = "") => {
     return sceneId !== null && sceneId.trim() !== "" ? "viewer" : "landing";
 };
 
+SiteUtils.startLoadedAtonApp = (readyState, aton = globalThis.ATON) => {
+    if (readyState !== "complete" || typeof aton?.App?.run !== "function") return false;
+    return aton.App.run();
+};
+
 SiteUtils.getAppBasePath = (pathname = "/a/thoth/") => {
     const marker = "/a/thoth";
     const index = pathname.toLowerCase().indexOf(marker);

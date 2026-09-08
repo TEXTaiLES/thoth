@@ -12,6 +12,16 @@ test("root dispatch selects landing unless scene_id is non-empty", () => {
     assert.equal(SiteUtils.getPageMode("?scene_id=user%2Fscene&artefact_id=abc"), "viewer");
 });
 
+test("a dynamically imported ATON app starts when window load already completed", () => {
+    let starts = 0;
+    const aton = { App: { run: () => { starts += 1; return true; } } };
+
+    assert.equal(SiteUtils.startLoadedAtonApp("loading", aton), false);
+    assert.equal(starts, 0);
+    assert.equal(SiteUtils.startLoadedAtonApp("complete", aton), true);
+    assert.equal(starts, 1);
+});
+
 test("scene URLs encode IDs without losing slashes or spaces", () => {
     const url = SiteUtils.sceneUrl("alice/fabric study", "/a/thoth/");
     assert.equal(url, "/a/thoth/?scene_id=alice%2Ffabric+study");
