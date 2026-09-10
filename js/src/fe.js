@@ -1020,12 +1020,14 @@ FE.showToast = (msg, timeout=2000) => {
     // Handle timeout
     if (FE._toastTimeout) {
         clearTimeout(FE._toastTimeout);
-    }
-
-    FE._toastTimeout = setTimeout(() => {
-        FE.toast.replaceChildren();
         FE._toastTimeout = null;
-    }, timeout);
+    }
+    if (timeout > 0) {
+        FE._toastTimeout = setTimeout(() => {
+            FE.toast.replaceChildren();
+            FE._toastTimeout = null;
+        }, timeout);
+    }
 };
 
 

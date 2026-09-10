@@ -679,7 +679,7 @@ MSR.prepareExactGeodesicMesh = (mesh, modelId, force = false) => {
     });
     return loading;
 };
-
+/*
 MSR.createExactGeodesicMeasurement = async (measurementId, point1, point2, options = {}) => {
     const mesh = MSR.getPointMesh(point1);
     const secondMesh = MSR.getPointMesh(point2);
@@ -687,6 +687,12 @@ MSR.createExactGeodesicMeasurement = async (measurementId, point1, point2, optio
         throw new Error("Exact geodesic requires both points on the same mesh.");
     }
 
+    const startTime = performance.now();
+    let timer = null;
+    timer = setInterval(() => {
+        const elapsed = (performance.now() - startTime) / 1000;
+    THOTH.FE.showToast( `Computing geodesic distance... ${elapsed.toFixed(1)} s`,0);}, 250)
+   
     const modelId = options.model_id || MSR.getPointModelId(point1);
     const firstLocalPoint = MSR._coordsToVector3(point1.coords);
     const secondLocalPoint = MSR._coordsToVector3(point2.coords);
@@ -715,6 +721,10 @@ MSR.createExactGeodesicMeasurement = async (measurementId, point1, point2, optio
     if (!Number.isFinite(result.distance) || !Array.isArray(result.path) || result.path.length === 0) {
         throw new Error("Exact geodesic computation returned an invalid path.");
     }
+    
+    const elapsed = (performance.now() - startTime) / 1000;
+    console.log(`Exact geodesic computation: ${elapsed.toFixed(3)} s`);
+    clearInterval(timer);
 
     const modelLocalPath = result.path.map(point => MSR._coordsToVector3(point));
 
@@ -730,7 +740,95 @@ MSR.createExactGeodesicMeasurement = async (measurementId, point1, point2, optio
         visible     : true
     });
 };
+*/
 
+MSR.createExactGeodesicMeasurement = async (measurementId,point1,point2,options = {}) => {
+
+    const mesh = MSR.getPointMesh(point1);
+    const secondMesh = MSR.getPointMesh(point2);
+
+    if (!mesh || mesh !== secondMesh) {
+        throw new Error(
+            "Exact geodesic requires both points on the same mesh."
+        );
+    }
+
+    const startTime = performance.now();
+    const timer = setInterval(() => {
+    const elapsed = (performance.now() - startTime) / 1000;
+    THOTH.FE.showToast(`Computing geodesic distance: ${elapsed.toFixed(1)} s`, 0);
+    }, 250);
+
+    try {
+        const modelId = options.model_id ||  MSR.getPointModelId(point1);
+        const firstLocalPoint =  MSR._coordsToVector3(point1.coords);
+        const secondLocalPoint =  MSR._coordsToVector3(point2.coords);
+        let meshId =  await MSR.prepareExactGeodesicMesh(  mesh, modelId );
+
+        const query = () => THOTH.API.geodesicExact({
+            mesh_id: meshId,
+            x1: firstLocalPoint.x,
+            y1: firstLocalPoint.y,
+            z1: firstLocalPoint.z,
+
+            x2: secondLocalPoint.x,
+            y2: secondLocalPoint.y,
+            z2: secondLocalPoint.z
+        });
+
+        let result;
+        try {
+            result = await query();
+        }
+        catch (error) {
+            if (error.code !== "GEODESIC_MESH_NOT_FOUND") {
+                throw error;
+            }
+            meshId = await MSR.prepareExactGeodesicMesh(mesh,modelId,true);
+            result = await query();
+        }
+        if (!Number.isFinite(result.distance) ||
+            !Array.isArray(result.path) ||
+            result.path.length === 0
+        ) {
+            throw new Error("Exact geodesic computation returned an invalid path.");
+        }
+
+        const elapsed =(performance.now() - startTime) / 1000;
+        console.log(`Exact geodesic computation: ${elapsed.toFixed(3)} s`);
+
+        const modelLocalPath = result.path.map(point =>
+                MSR._coordsToVector3(point)
+            );
+
+        return MSR.normalizeMeasurement( measurementId,
+            {
+                description: options.description || "",
+                distanceType: "geodesicExact",
+                distance: result.distance,
+                points: [point1, point2],
+                model_id: modelId,
+                path: modelLocalPath,
+                trash: false,
+                name:
+                    options.name ||
+                    `Measurement ${measurementId}`,
+                visible: true
+            }
+        );
+    }
+    finally {
+        // ALWAYS stop the timer, including errors
+        clearInterval(timer);
+        // Remove the "Computing..." toast
+        THOTH.FE.toast.replaceChildren();
+
+        if (THOTH.FE._toastTimeout) {
+            clearTimeout(THOTH.FE._toastTimeout);
+            THOTH.FE._toastTimeout = null;
+        }
+    }
+};
 
 // SUI
 
@@ -861,7 +959,7 @@ MSR.addMeasurementSem = (measurementId) => {
     });
     node.setOnSelect(() => {
         THOTH.Annotations?.select?.("measurements", measurementKey);
-        THOTH.UI.modalMsrDetails(measurementKey);
+        //THOTH.UI.modalMsrDetails(measurementKey);
     });
     node.setOnLeave(() => {
         //label.setScale(0.0);

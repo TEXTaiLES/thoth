@@ -609,23 +609,32 @@ API.getSensor = async (sensorId) => {
 };
 
 API.geodesicLoad = async payload => {
+
     const response = await API.post("geodesic_load", payload);
-    if (!response.ok || response.data?.status !== true) {
-        const error = new Error(response.error || "Exact geodesic mesh loading failed");
-        error.code = response.code;
+    const result = response.data;
+
+    if (!response.ok || result?.ok !== true || result?.data?.status !== "ok") {
+
+        const error = new Error(result?.error ||response.error ||"Exact geodesic mesh loading failed" );
+        error.code = result?.code || response.code;
         throw error;
     }
-    return response.data;
+    return result.data;
 };
 
 API.geodesicExact = async payload => {
+
     const response = await API.post("geodesic_exact", payload);
-    if (!response.ok || response.data?.status !== true) {
-        const error = new Error(response.error || response.data?.error || "Exact geodesic computation failed");
-        error.code = response.code;
+    const result = response.data;
+
+    if (!response.ok || result?.ok !== true || result?.data?.status !== true) {
+
+        const error = new Error(result?.error||result?.data?.error||response.error||"Exact geodesic computation failed");
+        error.code = result?.code || response.code;
         throw error;
     }
-    return response.data;
+
+    return result.data;
 };
 
 API._request = async (name, options = {}) => {

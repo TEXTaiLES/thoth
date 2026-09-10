@@ -449,6 +449,7 @@ Events.setupMeasurementEvents = () => {
 
         let measurementData;
         if (THOTH.MSR.distanceType === "geodesicExact") {
+           
             try {
                 measurementData = await THOTH.MSR.createExactGeodesicMeasurement(
                     msrId,
@@ -470,10 +471,11 @@ Events.setupMeasurementEvents = () => {
             });
         }
         if (!measurementData) return;
-
+        
         THOTH.UI.modalMsrDetails(msrId, measurementData, {
             isNew: true
         });
+        
     });
 
     THOTH.on("deleteMeasurement", (data) => {
@@ -526,6 +528,7 @@ Events.setupMeasurementEvents = () => {
             item_id   : id
         }, data, prevData);
     });
+    
 
     THOTH.on("toggleMeasurementVisibility", (measurementId) => {
         const prevData = Events.getMeasurementData(measurementId);
