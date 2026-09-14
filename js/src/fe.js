@@ -1022,10 +1022,18 @@ FE.showToast = (msg, timeout=2000) => {
         clearTimeout(FE._toastTimeout);
     }
 
+    if (timeout > 0) {
+        FE._toastTimeout = setTimeout(() => {
+            FE.toast.replaceChildren();
+            FE._toastTimeout = null;
+        }, timeout);
+    }
+
+    /*
     FE._toastTimeout = setTimeout(() => {
         FE.toast.replaceChildren();
         FE._toastTimeout = null;
-    }, timeout);
+    }, timeout);*/
 };
 
 
