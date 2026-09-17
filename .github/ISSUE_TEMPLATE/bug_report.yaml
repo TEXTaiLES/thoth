@@ -1,0 +1,66 @@
+name: Bug report
+description: Report unexpected behavior in THOTH.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve THOTH. Please search existing issues first.
+        This report is public: remove credentials, cookies, personal data, and confidential or restricted collection material.
+        Do not report security vulnerabilities or conduct complaints here. See [support guidance](https://github.com/TEXTaiLES/thoth/blob/main/SUPPORT.md).
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened, and what did you expect?
+      description: Describe the task you were trying to complete and the unexpected result.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Describe the actions leading to the problem. If intermittent, explain when it occurs.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: THOTH version or commit
+      description: Use the release tag or `git rev-parse HEAD` from the THOTH checkout. Write unknown if unavailable.
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment method
+      options:
+        - Native ATON
+        - Native ATON with PM2
+        - Local Docker
+        - HESTIA Docker
+        - Hosted installation — deployment unknown
+        - Other or unknown
+    validations:
+      required: true
+  - type: input
+    id: browser_os
+    attributes:
+      label: Browser and operating system
+      description: Include versions if known; write unknown for details you cannot identify.
+    validations:
+      required: true
+  - type: input
+    id: aton
+    attributes:
+      label: ATON revision (optional)
+      description: For native installations, run `git rev-parse HEAD` in the ATON checkout. Do not guess.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs, screenshots, and sample scene (optional)
+      description: Share only material you are authorized to publish. Prefer a small synthetic or redistributable scene. Do not attach complete environment files, cookies, tokens, or unredacted configuration output.
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context (optional)
+      description: Does it affect all scenes or one scene? Did an update trigger it? For measurements, include units and measurement mode; for access problems, state whether you were logged in without disclosing credentials.

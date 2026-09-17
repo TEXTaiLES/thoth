@@ -1,0 +1,15 @@
+# IMPORTANT: Update this on paper release!
+cff-version: 1.2.0
+message: "If you use THOTH, please cite this software and the ATON publication linked in the README."
+type: software
+title: "THOTH 3D Viewer and Annotator"
+authors:
+  - name: "Athena Research Center"
+repository-code: "https://github.com/TEXTaiLES/thoth"
+url: "https://textailes.github.io/thoth-documentation/"
+abstract: "THOTH is an ATON-based web application for 3D viewing and annotation, developed as part of the TEXTaiLES cultural-heritage toolbox."
+keywords:
+  - cultural heritage
+  - 3D visualization
+  - annotation
+  - textiles
