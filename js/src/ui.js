@@ -1077,12 +1077,26 @@ UI.createMeasureOptions = () => {
         }
     });
     distanceTypeMap.set('geodesicExact', elBtnGeodesicExact);
+
+    const elBtnGeodesicHeat = ATON.UI.createButton({
+        text: "Heat Method",
+        onpress: () => {
+            THOTH.MSR.distanceType = 'geodesicHeat';
+            THOTH.FE.handleElementHighlight('geodesicHeat', distanceTypeMap);
+        }
+    });
+    distanceTypeMap.set('geodesicHeat', elBtnGeodesicHeat);
+
+
+
+
+
     //initial highlight
     THOTH.FE.handleElementHighlight(THOTH.MSR.distanceType,distanceTypeMap);
 
     const elOptions = ATON.UI.createContainer();
     elOptions.classList.add("d-flex", "align-items-center", "gap-1", "justify-content-end");
-    elOptions.append(elBtnEuclidean,elBtnGeodesic,elBtnGeodesicExact);
+    elOptions.append(elBtnEuclidean,elBtnGeodesic,elBtnGeodesicExact,elBtnGeodesicHeat);
 
     const elDistance = UI.createToolOptionRow(
         "Type of distance",

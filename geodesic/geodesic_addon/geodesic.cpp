@@ -1,5 +1,4 @@
 #include "geodesic.h"
-
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
@@ -13,6 +12,7 @@
 #include <vector>
 
 #include "geodesic_algorithm_exact.h"
+#include "geodesic_heat.h"
 
 namespace
 {
@@ -47,12 +47,7 @@ double lengthSquared(const Vec3& value)
     return dot(value, value);
 }
 
-Vec3 closestPointOnTriangle(
-    const Vec3& point,
-    const Vec3& first,
-    const Vec3& second,
-    const Vec3& third
-)
+Vec3 closestPointOnTriangle(const Vec3& point, const Vec3& first, const Vec3& second, const Vec3& third)
 {
     const Vec3 firstSecond = second - first;
     const Vec3 firstThird = third - first;
@@ -100,12 +95,7 @@ Vec3 closestPointOnTriangle(
     return first * firstWeight + second * secondWeight + third * thirdWeight;
 }
 
-geodesic::SurfacePoint findNearestSurfacePoint(
-    geodesic::Mesh& mesh,
-    double x,
-    double y,
-    double z
-)
+geodesic::SurfacePoint findNearestSurfacePoint( geodesic::Mesh& mesh, double x, double y, double z)
 {
     const Vec3 queryPoint(x, y, z);
     double bestDistanceSquared = DBL_MAX;
@@ -141,12 +131,8 @@ bool isFiniteVector(const std::vector<double>& values)
     });
 }
 }
-
-bool loadMesh(
-    const std::string& mesh_id,
-    const std::vector<double>& vertices,
-    const std::vector<unsigned>& faces
-)
+//WORKING KIRKANOV VERSION
+bool loadMesh( const std::string& mesh_id, const std::vector<double>& vertices, const std::vector<unsigned>& faces)
 {
     if (
         mesh_id.empty() ||
@@ -176,10 +162,91 @@ bool loadMesh(
     {
         return false;
     }
+	
 }
+/*
+bool loadMesh(
+	const std::string& model_id,
+	const std::vector<double>& vertices,
+	const std::vector<unsigned>& faces
+)
+{
+	unsigned maxIndex = 0;
 
-QueryResult query(
-    const std::string& mesh_id,
+	for (auto i : faces)
+	{
+		if (i > maxIndex)
+			maxIndex = i;
+	}
+
+
+	if (maxIndex >= vertices.size() / 3)
+	{
+		std::cerr
+			<< "[CPP][LOAD] INVALID INDEX\n";
+
+		return false;
+	}
+
+
+	MeshData data;
+
+	data.points = vertices;
+	data.faces = faces;
+
+
+	try
+	{
+		// ====================================================
+		// KIRSANOV
+		// ====================================================
+
+		data.mesh =
+			std::make_unique<geodesic::Mesh>();
+
+		data.mesh->initialize_mesh_data(
+			data.points,
+			data.faces
+		);
+
+		data.algorithm =
+			std::make_unique<
+			geodesic::GeodesicAlgorithmExact
+			>(
+				data.mesh.get()
+				);
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr
+			<< "[CPP][LOAD] Geodesic init failed: "
+			<< e.what()
+			<< std::endl;
+
+		return false;
+	}
+
+
+	// ========================================================
+	// CGAL HEAT METHOD
+	// ========================================================
+
+	if (!loadHeatMesh(model_id,vertices,faces))
+	{
+		std::cerr
+			<< "[CPP][LOAD] Heat mesh initialization failed\n";
+
+		return false;
+	}
+	meshDB[model_id] =std::move(data);
+
+
+	return true;
+}
+*/
+
+
+QueryResult query( const std::string& mesh_id,
     double x1,
     double y1,
     double z1,

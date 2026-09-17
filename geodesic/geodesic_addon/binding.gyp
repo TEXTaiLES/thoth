@@ -4,7 +4,8 @@
       "target_name": "geodesic_addon",
       "sources": [
         "geodesic_addon.cpp",
-        "geodesic.cpp"
+        "geodesic.cpp",
+        "geodesic_heat.cpp"
       ],
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")",

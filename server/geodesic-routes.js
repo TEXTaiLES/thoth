@@ -132,6 +132,39 @@ const registerGeodesicRoutes = (app, options = {}) => {
             response.status(503).json({ error: error.message, code: 'GEODESIC_ADDON_UNAVAILABLE' });
         }
     });
+
+    app.post(`${GEODESIC_BASE}/heat`, (request, response) => {
+        const validationError = validateQueryPayload(request.body);
+        if (validationError) {
+            response.status(400).json({ error: validationError, code: 'INVALID_GEODESIC_QUERY' });
+            return;
+        }
+
+        try {
+            const payload = request.body;
+            const result = getAddon().heat(
+                payload.mesh_id,
+                payload.x1,
+                payload.y1,
+                payload.z1,
+                payload.x2,
+                payload.y2,
+                payload.z2
+            );
+            if (!result?.status) {
+                const meshMissing = result?.error === 'mesh not found';
+                response.status(meshMissing ? 404 : 422).json({
+                    error: result?.error || 'heat method path was not found',
+                    code: meshMissing ? 'GEODESIC_MESH_NOT_FOUND' : 'GEODESIC_PATH_NOT_FOUND'
+                });
+                return;
+            }
+            response.json(result);
+        }
+        catch (error) {
+            response.status(503).json({ error: error.message, code: 'GEODESIC_ADDON_UNAVAILABLE' });
+        }
+    });
 };
 
 module.exports = {

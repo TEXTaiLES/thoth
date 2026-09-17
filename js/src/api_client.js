@@ -16,6 +16,11 @@ API.localEndpoints = {
         endpoint_url  : "/api/v2/geodesic/load",
         methods       : ["POST"],
         timeout_seconds: 120
+    },
+    geodesic_heat: {
+        endpoint_url  : "/api/v2/geodesic/heat",
+        methods       : ["POST"],
+        timeout_seconds: 120
     }
 };
 
@@ -36,7 +41,8 @@ API.endpointNames = [
     "echoes",
     "authentication",
     "geodesic_exact",
-    "geodesic_load"
+    "geodesic_load",
+    "geodesic_heat"
 ];
 
 API.setup = (config = {}, options = {}) => {
@@ -622,6 +628,16 @@ API.geodesicExact = async payload => {
     const response = await API.post("geodesic_exact", payload);
     if (!response.ok || response.data?.status !== true) {
         const error = new Error(response.error || response.data?.error || "Exact geodesic computation failed");
+        error.code = response.code;
+        throw error;
+    }
+    return response.data;
+};
+
+API.geodesicHeat = async payload => {
+    const response = await API.post("geodesic_heat", payload);
+    if (!response.ok || response.data?.status !== true) {
+        const error = new Error(response.error || response.data?.error || "Heat method failed");
         error.code = response.code;
         throw error;
     }

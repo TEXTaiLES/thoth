@@ -397,7 +397,7 @@ MSR.createMeasurementData = (measurementId, point1, point2, options = {}) => {
         });
     }
 
-    if (distanceType !== "geodesic" && distanceType !== "geodesicExact") {
+    if (distanceType !== "geodesic" && distanceType !== "geodesicExact"&& distanceType !== "geodesicHeat") {
         console.warn("Unsupported distanceType", distanceType);
         return;
     }
@@ -420,6 +420,7 @@ MSR.createMeasurementData = (measurementId, point1, point2, options = {}) => {
     // New exact measurements are asynchronous and are created by
     // createExactGeodesicMeasurement().
     if (distanceType === "geodesicExact") return;
+    if (distanceType === "geodesicHeat") return;
 
     const mesh = MSR.getPointMesh(point1);
     const secondMesh = MSR.getPointMesh(point2);
@@ -679,20 +680,28 @@ MSR.prepareExactGeodesicMesh = (mesh, modelId, force = false) => {
     });
     return loading;
 };
-/*
-MSR.createExactGeodesicMeasurement = async (measurementId, point1, point2, options = {}) => {
+
+MSR.createHeatMethodMeasurement = async (measurementId, point1, point2, options = {}) => {
     const mesh = MSR.getPointMesh(point1);
     const secondMesh = MSR.getPointMesh(point2);
     if (!mesh || mesh !== secondMesh) {
-        throw new Error("Exact geodesic requires both points on the same mesh.");
+        throw new Error("Heat method requires both points on the same mesh.");
     }
+
+    const startTime = performance.now();
+    const timer = setInterval(() => {
+    const elapsed = (performance.now() - startTime) / 1000;
+    THOTH.FE.showToast(`Computing  heat method distance: ${elapsed.toFixed(1)} s`, 0);
+    }, 250);
+
+    try {
 
     const modelId = options.model_id || MSR.getPointModelId(point1);
     const firstLocalPoint = MSR._coordsToVector3(point1.coords);
     const secondLocalPoint = MSR._coordsToVector3(point2.coords);
     let meshId = await MSR.prepareExactGeodesicMesh(mesh, modelId);
 
-    const query = () => THOTH.API.geodesicExact({
+    const query = () => THOTH.API.geodesicHeat({
         mesh_id: meshId,
         x1     : firstLocalPoint.x,
         y1     : firstLocalPoint.y,
@@ -713,14 +722,15 @@ MSR.createExactGeodesicMeasurement = async (measurementId, point1, point2, optio
     }
 
     if (!Number.isFinite(result.distance) || !Array.isArray(result.path) || result.path.length === 0) {
-        throw new Error("Exact geodesic computation returned an invalid path.");
+        throw new Error("Heat method returned an invalid path.");
     }
+    const elapsed =(performance.now() - startTime) / 1000;
 
     const modelLocalPath = result.path.map(point => MSR._coordsToVector3(point));
 
     return MSR.normalizeMeasurement(measurementId, {
         description : options.description || "",
-        distanceType: "geodesicExact",
+        distanceType: "geodesicHeat",
         distance    : result.distance,
         points      : [point1, point2],
         model_id    : modelId,
@@ -729,17 +739,27 @@ MSR.createExactGeodesicMeasurement = async (measurementId, point1, point2, optio
         name        : options.name || `Measurement ${measurementId}`,
         visible     : true
     });
+    }
+      finally {
+        // ALWAYS stop the timer, including errors
+        clearInterval(timer);
+        // Remove the "Computing..." toast
+        THOTH.FE.toast.replaceChildren();
+
+        if (THOTH.FE._toastTimeout) {
+            clearTimeout(THOTH.FE._toastTimeout);
+            THOTH.FE._toastTimeout = null;
+        }
+    }
 };
-*/
+
 MSR.createExactGeodesicMeasurement = async (measurementId,point1,point2,options = {}) => {
 
     const mesh = MSR.getPointMesh(point1);
     const secondMesh = MSR.getPointMesh(point2);
 
     if (!mesh || mesh !== secondMesh) {
-        throw new Error(
-            "Exact geodesic requires both points on the same mesh."
-        );
+        throw new Error("Exact geodesic requires both points on the same mesh.");
     }
 
     const startTime = performance.now();
@@ -776,19 +796,14 @@ MSR.createExactGeodesicMeasurement = async (measurementId,point1,point2,options 
             meshId = await MSR.prepareExactGeodesicMesh(mesh,modelId,true);
             result = await query();
         }
-        if (!Number.isFinite(result.distance) ||
-            !Array.isArray(result.path) ||
-            result.path.length === 0
-        ) {
+        if (!Number.isFinite(result.distance) ||!Array.isArray(result.path) ||result.path.length === 0) {
             throw new Error("Exact geodesic computation returned an invalid path.");
         }
 
         const elapsed =(performance.now() - startTime) / 1000;
-        console.log(`Exact geodesic computation: ${elapsed.toFixed(3)} s`);
+       // console.log(`Exact geodesic computation: ${elapsed.toFixed(3)} s`);
 
-        const modelLocalPath = result.path.map(point =>
-                MSR._coordsToVector3(point)
-            );
+        const modelLocalPath = result.path.map(point => MSR._coordsToVector3(point));
 
         return MSR.normalizeMeasurement( measurementId,
             {
@@ -924,9 +939,10 @@ MSR.addMeasurementSem = (measurementId) => {
         // Line
         line = MSR.createLineSem(point1, point2);
      }
-    if (measurement.distanceType == "geodesic" || measurement.distanceType == "geodesicExact") {
+    if (measurement.distanceType == "geodesic" || measurement.distanceType == "geodesicExact"|| measurement.distanceType == "geodesicHeat") {
         line  = MSR.drawGeodesicPath(measurement.path);
     }
+    
     
     // Label
     const label = MSR.createLabelSem(measurementKey);

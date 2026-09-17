@@ -19,6 +19,15 @@ const addon = {
             error: '',
             path: [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }]
         };
+    },
+    heat(meshId) {
+        if (meshId === 'missing') return { status: false, distance: 0, path: [], error: 'mesh not found' };
+        return {
+            status: true,
+            distance: 1,
+            error: '',
+            path: [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }]
+        };
     }
 };
 registerGeodesicRoutes(app, { addon });
@@ -42,8 +51,10 @@ const invoke = (route, body) => {
 
 assert.deepStrictEqual([...routes.keys()].sort(), [
     '/api/v2/geodesic/exact',
-    '/api/v2/geodesic/load'
+    '/api/v2/geodesic/load',
+    '/api/v2/geodesic/heat'
 ]);
+
 const invalidLoad = invoke('/api/v2/geodesic/load', {});
 assert.strictEqual(invalidLoad.statusCode, 400);
 assert.strictEqual(invalidLoad.body.code, 'INVALID_GEODESIC_MESH');
@@ -54,6 +65,7 @@ const loaded = invoke('/api/v2/geodesic/load', {
 });
 assert.strictEqual(loaded.statusCode, 200);
 assert.strictEqual(loaded.body.status, true);
+
 const exact = invoke('/api/v2/geodesic/exact', {
     mesh_id: 'mesh',
     x1: 0,

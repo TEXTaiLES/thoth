@@ -463,6 +463,21 @@ Events.setupMeasurementEvents = () => {
                 return;
             }
         }
+        else if (THOTH.MSR.distanceType === "geodesicHeat") {
+            try {
+                measurementData = await THOTH.MSR.createHeatMethodMeasurement (
+                    msrId,
+                    point1,
+                    point2,
+                    { model_id: modelId1 }
+                );
+            }
+            catch (error) {
+                console.error("Heat method computation failed", error);
+                THOTH.FE.showToast(error?.message || "Heat method computation failed");
+                return;
+            }
+        }
         else {
             measurementData = THOTH.MSR.createMeasurementData(msrId, point1, point2, {
                 model_id    : modelId1,
