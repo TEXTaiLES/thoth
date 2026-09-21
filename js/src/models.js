@@ -67,7 +67,7 @@ Models.parseModels = (models) => {
         if (modelURL) {
             G.load(Models.resolveLoadURL(modelURL), () => {
                 G.attachToRoot();
-                Models.onLoad(G);
+                Models.onLoad(G, { sourceURL: modelURL });
             });
         }
         else {
@@ -77,6 +77,7 @@ Models.parseModels = (models) => {
 };
 
 Models.onLoad = (model, options = {}) => {
+    Models.setReconstructionMetalness(model, options.sourceURL);
     model.traverse(N => {
         if (N.isMesh) {
             Models.initMeshColors(N);
@@ -98,6 +99,27 @@ Models.onLoad = (model, options = {}) => {
 Models.resolveLoadURL = (url) => {
     if (typeof url !== "string" || !url.startsWith("/") || url.startsWith("//")) return url;
     return new URL(url, window.location.href).href;
+};
+
+Models.setReconstructionMetalness = (model, sourceURL) => {
+    if (typeof sourceURL !== "string") return;
+    try {
+        const page = new URL(window.location.href);
+        const asset = new URL(sourceURL, page);
+        if (asset.origin !== page.origin ||
+            !asset.pathname.startsWith("/hestia/storage/reconstructions/") ||
+            !asset.pathname.toLowerCase().endsWith(".glb")) return;
+    }
+    catch {
+        return;
+    }
+
+    model.traverse(node => {
+        if (!node.isMesh) return;
+        for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
+            if (material && "metalness" in material) material.metalness = 0;
+        }
+    });
 };
 
 Models.getModelURL = (modelName) => {
@@ -203,8 +225,9 @@ Models.addModelFromURL = (modelURL, modelId, options = {}) => {
     N.load(Models.resolveLoadURL(modelURL), () => {
         N.attachToRoot();
         Models.onLoad(N, {
-            focus   : options.focus === true,
-            duration: options.duration
+            focus    : options.focus === true,
+            duration : options.duration,
+            sourceURL: modelURL
         });
     });
 
