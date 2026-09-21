@@ -408,7 +408,6 @@ namespace
 	static bool buildHeatMesh(HeatMesh& mesh)
 	{
 		mesh.vertexCount =static_cast<unsigned>(mesh.vertices.size());
-		mesh.vertexCount /= 1;
 		mesh.faceCount =static_cast<unsigned>(mesh.faces.size() / 3);
 
 		if (mesh.vertexCount == 0)
@@ -734,24 +733,14 @@ namespace
 		{
 			return false;
 		}
-
 		if (source == target)
 		{
 			const Vec3& p =mesh.vertices[source];
-
-			path.push_back(
-				{
-					p.x,
-					p.y,
-					p.z
-				}
-			);
-
+			path.push_back({p.x,p.y,p.z});
 			return true;
 		}
 
 		//Determine the direction in which phi leads toward source.
-
 		const double sourcePhi =phi[source];
 		const double targetPhi =phi[target];
 
@@ -768,7 +757,6 @@ namespace
 			We keep this generic because our Laplacian/divergence
 			convention may produce the opposite sign.
 		*/
-
 		const bool moveToLowerPhi =targetPhi > sourcePhi;
 		unsigned current = target;
 		std::vector<bool> visited(mesh.vertexCount,false);
@@ -784,14 +772,7 @@ namespace
 		for (unsigned step = 0;step < maxGradientSteps;++step)
 		{
 			const Vec3& currentPoint =mesh.vertices[current];
-
-			path.push_back(
-				{
-					currentPoint.x,
-					currentPoint.y,
-					currentPoint.z
-				}
-			);
+			path.push_back({currentPoint.x,currentPoint.y,currentPoint.z});
 
 			if (current == source)
 			{
@@ -827,7 +808,6 @@ namespace
 				if (moveToLowerPhi)
 				{	
 				//We want smaller phi.
-
 					if (neighborPhi < currentPhi &&neighborPhi < bestPhi)
 					{
 						bestPhi =neighborPhi;
@@ -888,7 +868,6 @@ namespace
 			For 7637 vertices this is perfectly acceptable as
 			a fallback and avoids adding another dependency.
 		*/
-
 		for (unsigned iteration = 0;iteration < n;++iteration)
 		{
 			unsigned currentNode = std::numeric_limits<unsigned>::max();
@@ -953,10 +932,8 @@ namespace
 
 		/*
 			Reconstruct fallback path:
-
 				source -> ... -> fallbackStart
 		*/
-
 		std::vector<unsigned> fallbackVertices;
 
 		unsigned node = source;
@@ -974,7 +951,6 @@ namespace
 			{
 				return false;
 			}
-
 			node = previousNode;
 		}
 
@@ -992,14 +968,7 @@ namespace
 		for (auto it =fallbackVertices.rbegin();it != fallbackVertices.rend();++it)
 		{
 			const Vec3& p = mesh.vertices[*it];
-
-			path.push_back(
-				{
-					p.x,
-					p.y,
-					p.z
-				}
-			);
+			path.push_back({p.x,p.y,p.z});
 		}
 
 		if (path.size() < 2)
@@ -1017,7 +986,6 @@ namespace
 
 	// ============================================================
 	// Main Heat Method query
-	// ============================================================
 
 	static HeatResult calculateHeatDistance(HeatMesh& mesh,unsigned source,unsigned target)
 	{

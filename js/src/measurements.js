@@ -30,6 +30,7 @@ MSR.setup = () => {
     MSR.meshCache = new WeakMap();  //cache meshes
     MSR.pathCache = new WeakMap();  //cache paths
     MSR.exactMeshLoads = new WeakMap();
+    MSR.heatMeshLoads = new WeakMap();
 
     MSR.labelScaleFactor = 0.05;
     MSR.lastSceneScale = null;
@@ -650,6 +651,81 @@ MSR.getExactGeodesicMeshData = (mesh, modelId, tolerance = 1e-5) => {
     return { vertices, faces };
 };
 
+MSR.getHeatGeodesicMeshData = (mesh, modelId, tolerance = 1e-5) => {
+    const position = mesh?.geometry?.getAttribute?.("position");
+    if (!position || position.itemSize < 3 || position.count < 3) {
+        throw new Error("Heat geodesic requires a triangular position geometry.");
+    }
+
+    const geometryIndex = mesh.geometry.getIndex?.();
+    const indexCount = geometryIndex?.count ?? position.count;
+    if (indexCount < 3 || indexCount % 3 !== 0) {
+        throw new Error("Heat geodesic requires a triangle index count divisible by three.");
+    }
+
+    const vertices = [];
+    const faces = [];
+    const weldedVertices = new Map();
+    const triangles = new Set();
+    const model = MSR.getModelNode(modelId);
+    mesh.updateMatrixWorld(true);
+    model?.updateMatrixWorld?.(true);
+    const meshToModel = model
+        ? model.matrixWorld.clone().invert().multiply(mesh.matrixWorld)
+        : mesh.matrixWorld.clone();
+    const transformedPosition = new THREE.Vector3();
+
+    const getSourceIndex = offset => geometryIndex ? geometryIndex.getX(offset) : offset;
+    const getWeldedIndex = sourceIndex => {
+        transformedPosition.fromBufferAttribute(position, sourceIndex).applyMatrix4(meshToModel);
+        const { x, y, z } = transformedPosition;
+        if (![x, y, z].every(Number.isFinite)) {
+            throw new Error("Heat geodesic mesh contains non-finite vertices.");
+        }
+
+        const hash = [x, y, z]
+            .map(value => Math.round(value / tolerance))
+            .join(":");
+        if (weldedVertices.has(hash)) return weldedVertices.get(hash);
+
+        const weldedIndex = vertices.length / 3;
+        weldedVertices.set(hash, weldedIndex);
+        vertices.push(x, y, z);
+        return weldedIndex;
+    };
+
+    for (let offset = 0; offset < indexCount; offset += 3) {
+        const first = getWeldedIndex(getSourceIndex(offset));
+        const second = getWeldedIndex(getSourceIndex(offset + 1));
+        const third = getWeldedIndex(getSourceIndex(offset + 2));
+        if (first === second || second === third || first === third) continue;
+
+        const triangleKey = [first, second, third].sort((a, b) => a - b).join(":");
+        if (triangles.has(triangleKey)) continue;
+
+        const ax = vertices[first * 3];
+        const ay = vertices[first * 3 + 1];
+        const az = vertices[first * 3 + 2];
+        const abx = vertices[second * 3] - ax;
+        const aby = vertices[second * 3 + 1] - ay;
+        const abz = vertices[second * 3 + 2] - az;
+        const acx = vertices[third * 3] - ax;
+        const acy = vertices[third * 3 + 1] - ay;
+        const acz = vertices[third * 3 + 2] - az;
+        const nx = aby * acz - abz * acy;
+        const ny = abz * acx - abx * acz;
+        const nz = abx * acy - aby * acx;
+        if (nx * nx + ny * ny + nz * nz < 1e-20) continue;
+
+        triangles.add(triangleKey);
+        faces.push(first, second, third);
+    }
+
+    if (faces.length === 0) throw new Error("Heat geodesic mesh has no valid triangles.");
+ 
+    return { vertices, faces };
+};
+
 MSR.getExactGeodesicMeshId = (mesh, modelId) => {
     mesh.userData = mesh.userData || {};
     if (!mesh.userData.thothExactGeodesicId) {
@@ -681,6 +757,35 @@ MSR.prepareExactGeodesicMesh = (mesh, modelId, force = false) => {
     return loading;
 };
 
+MSR.prepareHeatGeodesicMesh = (mesh, modelId, force = false ) => {
+
+        if (!mesh) { return Promise.reject(   new Error( "Heat geodesic mesh is unavailable." ) ); }
+        if (force) { MSR.heatMeshLoads.delete(mesh); }
+        if ( MSR.heatMeshLoads.has(mesh) ) {
+            return MSR.heatMeshLoads.get(mesh);
+        }
+
+        const loading =  (async () => {
+
+                const meshId = MSR.getExactGeodesicMeshId( mesh, modelId );//same id as exact?
+                const meshData = MSR.getHeatGeodesicMeshData( mesh, modelId);
+
+                await THOTH.API.geodesicHeatLoad({
+                    mesh_id:  meshId,
+                    vertices: meshData.vertices,
+                    faces: meshData.faces
+                });
+                return meshId;
+            })();
+
+        MSR.heatMeshLoads.set(mesh, loading );
+        loading.catch(() => {
+
+            if ( MSR.heatMeshLoads.get(mesh) ===loading ) { MSR.heatMeshLoads.delete(mesh); }
+        });
+        return loading;
+    };
+
 MSR.createHeatMethodMeasurement = async (measurementId, point1, point2, options = {}) => {
     const mesh = MSR.getPointMesh(point1);
     const secondMesh = MSR.getPointMesh(point2);
@@ -699,7 +804,7 @@ MSR.createHeatMethodMeasurement = async (measurementId, point1, point2, options 
     const modelId = options.model_id || MSR.getPointModelId(point1);
     const firstLocalPoint = MSR._coordsToVector3(point1.coords);
     const secondLocalPoint = MSR._coordsToVector3(point2.coords);
-    let meshId = await MSR.prepareExactGeodesicMesh(mesh, modelId);
+    let meshId = await MSR.prepareHeatGeodesicMesh(mesh, modelId);
 
     const query = () => THOTH.API.geodesicHeat({
         mesh_id: meshId,
@@ -717,7 +822,7 @@ MSR.createHeatMethodMeasurement = async (measurementId, point1, point2, options 
     }
     catch (error) {
         if (error.code !== "GEODESIC_MESH_NOT_FOUND") throw error;
-        meshId = await MSR.prepareExactGeodesicMesh(mesh, modelId, true);
+        meshId = await MSR.prepareHeatGeodesicMesh(mesh, modelId, true);
         result = await query();
     }
 
@@ -741,9 +846,8 @@ MSR.createHeatMethodMeasurement = async (measurementId, point1, point2, options 
     });
     }
       finally {
-        // ALWAYS stop the timer, including errors
+        //stop the timer, including errors
         clearInterval(timer);
-        // Remove the "Computing..." toast
         THOTH.FE.toast.replaceChildren();
 
         if (THOTH.FE._toastTimeout) {
@@ -772,7 +876,7 @@ MSR.createExactGeodesicMeasurement = async (measurementId,point1,point2,options 
         const modelId = options.model_id ||  MSR.getPointModelId(point1);
         const firstLocalPoint =  MSR._coordsToVector3(point1.coords);
         const secondLocalPoint =  MSR._coordsToVector3(point2.coords);
-        let meshId =  await MSR.prepareExactGeodesicMesh(  mesh, modelId );
+        let meshId =  await MSR.prepareExactGeodesicMesh( mesh, modelId );
 
         const query = () => THOTH.API.geodesicExact({
             mesh_id: meshId,
@@ -822,9 +926,8 @@ MSR.createExactGeodesicMeasurement = async (measurementId,point1,point2,options 
         );
     }
     finally {
-        // ALWAYS stop the timer, including errors
+        //stop the timer
         clearInterval(timer);
-        // Remove the "Computing..." toast
         THOTH.FE.toast.replaceChildren();
 
         if (THOTH.FE._toastTimeout) {

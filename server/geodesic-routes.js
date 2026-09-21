@@ -133,6 +133,30 @@ const registerGeodesicRoutes = (app, options = {}) => {
         }
     });
 
+     app.post(`${GEODESIC_BASE}/heat_load`, (request, response) => {
+        const validationError = validateLoadPayload(request.body);
+        if (validationError) {
+            response.status(400).json({ error: validationError, code: 'INVALID_GEODESIC_MESH' });
+            return;
+        }
+
+        try {
+            const payload = request.body;
+            const loaded = getAddon().loadHeatMesh(payload.mesh_id, payload.vertices, payload.faces);
+            if (!loaded) {
+                response.status(422).json({
+                    error: 'The mesh could not be initialized for heat geodesic computation',
+                    code: 'GEODESIC_MESH_REJECTED'
+                });
+                return;
+            }
+            response.json({ status: true, mesh_id: payload.mesh_id });
+        }
+        catch (error) {
+            response.status(503).json({ error: error.message, code: 'GEODESIC_ADDON_UNAVAILABLE' });
+        }
+    });
+
     app.post(`${GEODESIC_BASE}/heat`, (request, response) => {
         const validationError = validateQueryPayload(request.body);
         if (validationError) {

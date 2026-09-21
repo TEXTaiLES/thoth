@@ -52,9 +52,10 @@ Napi::Value loadMeshBinding(const Napi::CallbackInfo& info)
         const std::vector<unsigned> faces = readFaces(info[2].As<Napi::Array>());
 
 		bool exactLoaded = loadMesh(meshId,vertices,faces);
-		bool heatLoaded = loadHeatMesh(meshId,vertices,faces);
+		//bool heatLoaded = loadHeatMesh(meshId,vertices,faces);
 
-		return Napi::Boolean::New(environment,exactLoaded && heatLoaded);
+		//return Napi::Boolean::New(environment,exactLoaded && heatLoaded);
+		return Napi::Boolean::New(environment, exactLoaded);
     }
     catch (const std::exception& error)
     {
@@ -109,6 +110,32 @@ Napi::Value queryBinding(const Napi::CallbackInfo& info)
         Napi::TypeError::New(environment, error.what()).ThrowAsJavaScriptException();
         return environment.Null();
     }
+}
+
+Napi::Value loadHeatMeshBinding(const Napi::CallbackInfo& info)
+{
+	const Napi::Env environment = info.Env();
+
+	try
+	{
+		if (info.Length() != 3 ||!info[0].IsString() ||!info[1].IsArray() ||!info[2].IsArray())
+		{
+			throw std::invalid_argument("expected mesh_id, vertices, faces");
+		}
+
+		const std::string meshId =info[0].As<Napi::String>().Utf8Value();
+		const std::vector<double> vertices =readVertices(info[1].As<Napi::Array>());
+		const std::vector<unsigned> faces =readFaces(info[2].As<Napi::Array>());
+
+		const bool loaded =loadHeatMesh(meshId,vertices,faces);
+
+		return Napi::Boolean::New(environment,loaded);
+	}
+	catch (const std::exception& error)
+	{
+		Napi::TypeError::New(environment,error.what()).ThrowAsJavaScriptException();
+		return environment.Null();
+	}
 }
 
 Napi::Value heatBinding(const Napi::CallbackInfo& info)
@@ -174,6 +201,7 @@ Napi::Value heatBinding(const Napi::CallbackInfo& info)
 Napi::Object initialize(Napi::Env environment, Napi::Object exports)
 {
     exports.Set("loadMesh", Napi::Function::New(environment, loadMeshBinding));
+	exports.Set("loadHeatMesh", Napi::Function::New(environment, loadHeatMeshBinding));
     exports.Set("query", Napi::Function::New(environment, queryBinding));
 	exports.Set("heat", Napi::Function::New(environment, heatBinding));
     return exports;
