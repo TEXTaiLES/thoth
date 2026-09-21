@@ -21,6 +21,7 @@ services:
       - textailes
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=textailes"
       - "traefik.http.routers.thoth.rule=Host(`${THOTH_HOST_DOMAIN:-thoth.textailes.athenarc.gr}`)"
       - "traefik.http.routers.thoth.entrypoints=websecure"
       - "traefik.http.routers.thoth.tls.certresolver=le"

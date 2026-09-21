@@ -524,8 +524,8 @@ Site.showNewSceneModal = async () => {
         for (const model of selected.values()) {
             const chip = Site.createElement("button", {
                 className: "btn btn-sm btn-secondary",
-                text: `${model.title} ×`,
-                attributes: { type: "button", "aria-label": `Remove ${model.title}` }
+                text: `${model.displayLabel || model.title} ×`,
+                attributes: { type: "button", "aria-label": `Remove ${model.displayLabel || model.title}` }
             });
             chip.addEventListener("click", () => {
                 selected.delete(model.id);
@@ -554,7 +554,7 @@ Site.showNewSceneModal = async () => {
             checkbox.checked = selected.has(model.id);
             const label = Site.createElement("label", {
                 className: "form-check-label w-100",
-                text: model.title === model.id ? model.title : `${model.title} (${model.id})`,
+                text: model.displayLabel || (model.title === model.id ? model.title : `${model.title} (${model.id})`),
                 attributes: { for: inputId }
             });
             checkbox.addEventListener("change", () => {

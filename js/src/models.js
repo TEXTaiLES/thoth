@@ -65,7 +65,7 @@ Models.parseModels = (models) => {
         );
 
         if (modelURL) {
-            G.load(modelURL, () => {
+            G.load(Models.resolveLoadURL(modelURL), () => {
                 G.attachToRoot();
                 Models.onLoad(G);
             });
@@ -94,6 +94,11 @@ Models.onLoad = (model, options = {}) => {
 
 
 // Utils
+
+Models.resolveLoadURL = (url) => {
+    if (typeof url !== "string" || !url.startsWith("/") || url.startsWith("//")) return url;
+    return new URL(url, window.location.href).href;
+};
 
 Models.getModelURL = (modelName) => {
     if (!modelName) return;
@@ -195,7 +200,7 @@ Models.addModelFromURL = (modelURL, modelId, options = {}) => {
     const N = ATON.createSceneNode(modelName);
     ATON.SceneHub._applyJSONTransformToNode(modelName, N);
 
-    N.load(modelURL, () => {
+    N.load(Models.resolveLoadURL(modelURL), () => {
         N.attachToRoot();
         Models.onLoad(N, {
             focus   : options.focus === true,

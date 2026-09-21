@@ -1511,9 +1511,9 @@ UI.modalAddModel = () => {
                 titleCounts.set(option.title, (titleCounts.get(option.title) || 0) + 1);
             }
             for (const option of modelOptions) {
-                option.label = titleCounts.get(option.title) > 1
+                option.label = option.item?.displayLabel || (titleCounts.get(option.title) > 1
                     ? `${option.title} (${option.id})`
-                    : option.title;
+                    : option.title);
                 optionByLabel.set(option.label, option);
             }
             const modelListControl = UI.createInputListControl({

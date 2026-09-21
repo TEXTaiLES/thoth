@@ -19,13 +19,7 @@
             "enabled": true
         },
         "list_models": {
-            "endpoint_url": "/hestia/artifacts",
-            "methods": ["GET"],
-            "enabled": true
-        },
-        "glb_model": {
-            "endpoint_url": "/hestia/artifacts",
-            "item_path": true,
+            "endpoint_url": "/hestia/reconstructions",
             "methods": ["GET"],
             "enabled": true
         },

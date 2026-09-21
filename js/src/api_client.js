@@ -168,11 +168,12 @@ API.listModels = async (user) => {
         const rows = Array.isArray(response.data)
             ? response.data
             : response.data?.artifacts || response.data?.data || [];
+        const models = rows
+            .map(item => API._normalizeModelEntry(item, user))
+            .filter(entry => entry.id && API._isModelEntry(entry));
         return {
             ...response,
-            data: rows
-                .map(item => API._normalizeModelEntry(item, user))
-                .filter(entry => entry.id && API._isModelEntry(entry))
+            data: API.config?.deploymentMode === "hestia" ? API._withDisplayLabels(models) : models
         };
     }
 
@@ -370,6 +371,23 @@ API.getGlbModel = async (modelName) => {
         return {
             ok   : false,
             error: "Missing model name"
+        };
+    }
+
+    if (API.config?.deploymentMode === "hestia") {
+        const response = await API.listModels();
+        if (!response.ok) return response;
+        const id = String(API._getModelId(modelName));
+        const entry = response.data.find(model => model.id === id);
+        if (!entry) return { ok: false, error: "Reconstruction GLB not found" };
+        return {
+            ...response,
+            data: {
+                ...entry.raw,
+                id: entry.id,
+                title: entry.title,
+                gltf_file: entry.url
+            }
         };
     }
 
@@ -755,6 +773,19 @@ API._getModelId = (model) => {
     return model;
 };
 
+API._reconstructionGlbUrl = (location) => {
+    if (typeof location !== "string" || API.config?.deploymentMode !== "hestia") return "";
+    try {
+        const parsed = new URL(location);
+        if (parsed.protocol !== "s3:" || parsed.hostname !== "reconstructions" ||
+            !parsed.pathname.toLowerCase().endsWith(".glb")) return "";
+        return `/hestia/storage/reconstructions${parsed.pathname}`;
+    }
+    catch {
+        return "";
+    }
+};
+
 API._normalizeModelEntry = (item = {}, user) => {
     if (typeof item === "string") {
         const username = API._getUsername(user);
@@ -763,12 +794,28 @@ API._normalizeModelEntry = (item = {}, user) => {
         const id = title.split("/").filter(Boolean).pop() || title;
         return { id, title, url: API._proxyAssetUrl(item), gltf_file: item, raw: item };
     }
-    const id = item.artifact_id || item.id || item["artefact.ID"] || item.title || item.name || "";
-    const title = item.title || item.Title || item["artefact.Title"] || item.name || id;
-    const url = API._proxyAssetUrl(
-        item.gltf_file || item.glb_file || item.public_url || item.url || item.path || item.src || ""
+    const id = item.object_id || item.artifact_id || item.id || item["artefact.ID"] || item.title || item.name || "";
+    const title = item.scan_id || item.title || item.Title || item["artefact.Title"] || item.name || item.filename || id;
+    const url = API._reconstructionGlbUrl(item.glb_location) || API._proxyAssetUrl(
+        item.gltf_file || item.glb_file || item.public_url_glb || item.public_url ||
+        item.url || item.path || item.src || ""
     );
     return { id: String(id), title: String(title), url, gltf_file: url, raw: item };
+};
+
+API._withDisplayLabels = (entries) => {
+    const counts = new Map();
+    for (const entry of entries) counts.set(entry.title, (counts.get(entry.title) || 0) + 1);
+    const used = new Set();
+    return entries.map(entry => {
+        let displayLabel = entry.title;
+        if (counts.get(entry.title) > 1) {
+            displayLabel = `${entry.title} (${entry.id.slice(0, 8)})`;
+            if (used.has(displayLabel)) displayLabel = `${entry.title} (${entry.id})`;
+        }
+        used.add(displayLabel);
+        return { ...entry, displayLabel };
+    });
 };
 
 API._isModelEntry = (entry = {}) => {
@@ -805,6 +852,7 @@ API._normalizeHestiaArtefact = (data = {}) => {
 
 API._proxyAssetUrl = (value, allowApiRoute = false) => {
     if (typeof value !== "string" || API.config?.deploymentMode !== "hestia") return value;
+    if (value.startsWith("/hestia/")) return value;
     try {
         const publicBase = new URL(API.config.hestiaApiPublicUrl, window.location.href);
         const asset = new URL(value, publicBase);

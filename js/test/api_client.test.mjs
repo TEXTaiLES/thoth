@@ -131,3 +131,63 @@ test("model normalization strips the local collection prefix but preserves its U
     assert.equal(model.title, "subfolder/cloth.glb");
     assert.equal(model.url, "alice/models/subfolder/cloth.glb");
 });
+
+test("HESTIA reconstruction listing resolves its GLBs through the protected storage proxy", async () => {
+    const rows = [
+        {
+            object_id: "scan-1",
+            scan_id: "statue",
+            filename: "model.glb",
+            glb_location: "s3://reconstructions/scan-1/model.glb",
+            public_url_glb: "http://localhost:9000/reconstructions/scan-1/model.glb"
+        },
+        {
+            object_id: "scan-3",
+            scan_id: "statue",
+            filename: "model.glb",
+            glb_location: "s3://reconstructions/scan-3/model.glb"
+        },
+        {
+            object_id: "scan-4",
+            scan_id: "rock",
+            filename: "model.glb",
+            glb_location: "s3://reconstructions/scan-4/model.glb"
+        },
+        {
+            object_id: "scan-2",
+            scan_id: "box",
+            filename: "model.obj",
+            glb_location: null,
+            public_url_glb: null
+        }
+    ];
+    const requests = [];
+    globalThis.fetch = async url => {
+        requests.push(String(url));
+        return response(rows);
+    };
+    API.setup({
+        deploymentMode: "hestia",
+        hestiaApiPublicUrl: "https://api.textailes.athenarc.gr",
+        use_endpoints: true,
+        endpoints: {
+            list_models: { endpoint_url: "/hestia/reconstructions", methods: ["GET"], enabled: true }
+        }
+    });
+
+    const listed = await API.listModels({ username: "alice" });
+    assert.equal(listed.ok, true);
+    assert.deepEqual(listed.data.map(model => model.id), ["scan-1", "scan-3", "scan-4"]);
+    assert.deepEqual(listed.data.map(model => model.title), ["statue", "statue", "rock"]);
+    assert.deepEqual(listed.data.map(model => model.displayLabel), ["statue (scan-1)", "statue (scan-3)", "rock"]);
+    assert.equal(listed.data[0].url, "/hestia/storage/reconstructions/scan-1/model.glb");
+    assert.equal(API._proxyAssetUrl(listed.data[0].url), listed.data[0].url);
+
+    const selected = await API.getGlbModel("scan-1");
+    assert.equal(selected.ok, true);
+    assert.equal(selected.data.gltf_file, "/hestia/storage/reconstructions/scan-1/model.glb");
+    assert.deepEqual(requests, [
+        "http://localhost:8080/hestia/reconstructions",
+        "http://localhost:8080/hestia/reconstructions"
+    ]);
+});

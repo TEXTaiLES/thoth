@@ -20,6 +20,7 @@ const REQUIRED_ENV = [
 const ALLOWED_API_ROUTES = [
     { methods: ['GET', 'POST', 'PUT'], pattern: /^\/scenes(?:\/[^/]+)?\/?$/ },
     { methods: ['GET'], pattern: /^\/artifacts(?:\/[^/]+)?\/?$/ },
+    { methods: ['GET'], pattern: /^\/reconstructions\/?$/ },
     { methods: ['GET'], pattern: /^\/artefacts\/[^/]+\/?$/ },
     { methods: ['GET'], pattern: /^\/rgb\/(?:image|images)(?:\/.*)?$/ },
     { methods: ['GET'], pattern: /^\/multispectral\/(?:image|images|file)(?:\/.*)?$/ },
