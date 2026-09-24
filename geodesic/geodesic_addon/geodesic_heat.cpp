@@ -432,7 +432,7 @@ namespace
 			unsigned i1 =mesh.faces[f * 3 + 1];
 			unsigned i2 =mesh.faces[f * 3 + 2];
 
-			if (i0 >= mesh.vertexCount ||i1 >= mesh.vertexCount ||i2 >= mesh.vertexCount)
+			if (i0 >= mesh.vertexCount || i1 >= mesh.vertexCount || i2 >= mesh.vertexCount)
 			{
 				return false;
 			}
@@ -471,7 +471,6 @@ namespace
 
 			// ----------------------------------------------------
 			// Cotangent Laplacian
-			//
 			// L_ij = -1/2 cot(theta)
 			// L_ii = -sum(off-diagonal)
 
@@ -489,7 +488,6 @@ namespace
 			mesh.laplacian.add(i1, i1, w01 + w12);
 			mesh.laplacian.add(i2, i2, w12 + w20);
 
-			// ----------------------------------------------------
 			// Edge statistics
 			totalEdgeLength += length(e01);
 			totalEdgeLength += length(e12);
@@ -500,7 +498,7 @@ namespace
 		if (edgeCount == 0)
 			return false;
 
-		mesh.meanEdgeLength =totalEdgeLength /static_cast<double>(edgeCount);
+		mesh.meanEdgeLength = totalEdgeLength /static_cast<double>(edgeCount);
 
 		for (unsigned f = 0;f < mesh.faceCount;++f)
 		{
@@ -537,7 +535,7 @@ namespace
 	// ============================================================
 	// Nearest vertex
 	// ============================================================
-
+	/*
 	static unsigned findNearestVertex(const HeatMesh& mesh,double x,double y,double z)
 	{
 		Vec3 query(x, y, z);
@@ -557,12 +555,187 @@ namespace
 
 		return nearest;
 	}
+	*/
+	// ============================================================
+// Closest point on mesh surface
+// ============================================================
+	//still brute force
+	struct SurfacePoint
+	{
+		unsigned face = 0;
+
+		unsigned i0 = 0;
+		unsigned i1 = 0;
+		unsigned i2 = 0;
+
+		Vec3 point;
+
+		double w0 = 0.0;
+		double w1 = 0.0;
+		double w2 = 0.0;
+
+		double distance2 = std::numeric_limits<double>::max();
+	};
+
+	static Vec3 closestPointOnTriangle(const Vec3& p,const Vec3& a,const Vec3& b,const Vec3& c)
+	{
+		const Vec3 ab = b - a;
+		const Vec3 ac = c - a;
+		const Vec3 ap = p - a;
+
+		const double d1 = dot(ab, ap);
+		const double d2 = dot(ac, ap);
+
+		if (d1 <= 0.0 && d2 <= 0.0)
+			return a;
+
+		const Vec3 bp = p - b;
+
+		const double d3 = dot(ab, bp);
+		const double d4 = dot(ac, bp);
+
+		if (d3 >= 0.0 && d4 <= d3)
+			return b;
+
+		const double vc = d1 * d4 - d3 * d2;
+
+		if (vc <= 0.0 && d1 >= 0.0 && d3 <= 0.0)
+		{
+			const double v = d1 / (d1 - d3);
+			return a + ab * v;
+		}
+
+		const Vec3 cp = p - c;
+
+		const double d5 = dot(ab, cp);
+		const double d6 = dot(ac, cp);
+
+		if (d6 >= 0.0 && d5 <= d6)
+			return c;
+
+		const double vb = d5 * d2 - d1 * d6;
+
+		if (vb <= 0.0 && d2 >= 0.0 && d6 <= 0.0)
+		{
+			const double w = d2 / (d2 - d6);
+			return a + ac * w;
+		}
+
+		const double va = d3 * d6 - d5 * d4;
+
+		if (va <= 0.0 && (d4 - d3) >= 0.0 && (d5 - d6) >= 0.0)
+		{
+			const Vec3 bc = c - b;
+			const double w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+
+			return b + bc * w;
+		}
+
+		const double denominator = 1.0 / (va + vb + vc);
+
+		const double v = vb * denominator;
+		const double w = vc * denominator;
+
+		return a + ab * v + ac * w;
+	}
+
+
+	static void computeBarycentric(const Vec3& p,const Vec3& a,const Vec3& b,const Vec3& c,double& w0,double& w1,double& w2)
+	{
+		const Vec3 v0 = b - a;
+		const Vec3 v1 = c - a;
+		const Vec3 v2 = p - a;
+
+		const double d00 = dot(v0, v0);
+		const double d01 = dot(v0, v1);
+		const double d11 = dot(v1, v1);
+		const double d20 = dot(v2, v0);
+		const double d21 = dot(v2, v1);
+
+		const double denominator = d00 * d11 - d01 * d01;
+
+		if (std::abs(denominator) < 1e-20)
+		{
+			w0 = 1.0;
+			w1 = 0.0;
+			w2 = 0.0;
+			return;
+		}
+
+		w1 = (d11 * d20 - d01 * d21) / denominator;
+		w2 = (d00 * d21 - d01 * d20) / denominator;
+		w0 = 1.0 - w1 - w2;
+
+		// Protect against tiny floating-point errors.
+		w0 = std::max(0.0, std::min(1.0, w0));
+		w1 = std::max(0.0, std::min(1.0, w1));
+		w2 = std::max(0.0, std::min(1.0, w2));
+
+		const double sum = w0 + w1 + w2;
+
+		if (sum > 1e-20)
+		{
+			w0 /= sum;
+			w1 /= sum;
+			w2 /= sum;
+		}
+	}
+
+	static SurfacePoint findClosestSurfacePoint(const HeatMesh& mesh, double x, double y, double z)
+	{
+		SurfacePoint result;
+
+		const Vec3 query(x, y, z);
+
+		for (unsigned f = 0; f < mesh.faceCount; ++f)
+		{
+			const unsigned i0 = mesh.faces[f * 3 + 0];
+			const unsigned i1 = mesh.faces[f * 3 + 1];
+			const unsigned i2 = mesh.faces[f * 3 + 2];
+
+			if (i0 >= mesh.vertexCount || i1 >= mesh.vertexCount || i2 >= mesh.vertexCount)
+			{
+				continue;
+			}
+
+			const Vec3& a = mesh.vertices[i0];
+			const Vec3& b = mesh.vertices[i1];
+			const Vec3& c = mesh.vertices[i2];
+
+			const Vec3 closest = closestPointOnTriangle(query,a,b,c);
+
+			const Vec3 delta = closest - query;
+			const double dist2 = dot(delta, delta);
+
+			if (dist2 < result.distance2)
+			{
+				result.face = f;
+
+				result.i0 = i0;
+				result.i1 = i1;
+				result.i2 = i2;
+
+				result.point = closest;
+				result.distance2 = dist2;
+
+				computeBarycentric(closest,a,b,c,result.w0,result.w1,result.w2);
+			}
+		}
+		return result;
+	}
+
 	// ============================================================
 	// Heat diffusion
-	//
 	// (M - tL) u = M delta
 
-	static bool solveHeat(const HeatMesh& mesh,unsigned source,std::vector<double>& u)
+	static bool solveHeat(const HeatMesh& mesh, 
+		unsigned source0,
+		unsigned source1,
+		unsigned source2,
+		double w0,
+		double w1,
+		double w2, 
+		std::vector<double>& u)
 	{
 		const unsigned n =mesh.vertexCount;
 		SparseMatrix A(n);
@@ -602,13 +775,23 @@ namespace
 
 		//M delta_source
 
-		b[source] = mesh.mass[source];
+		//b[source] = mesh.mass[source];
+		// Point source represented by barycentric coordinates.
+		b[source0] += w0;
+		b[source1] += w1;
+		b[source2] += w2;
+
 		std::cerr
 			<< "[HEAT] solving diffusion system"
-			<< " n="
-			<< n
-			<< " source="
-			<< source
+			<< " n=" << n
+			<< " sourceTriangle=("
+			<< source0 << ","
+			<< source1 << ","
+			<< source2 << ")"
+			<< " weights=("
+			<< w0 << ","
+			<< w1 << ","
+			<< w2 << ")"
 			<< " t="
 			<< mesh.timeStep
 			<< std::endl;
@@ -638,7 +821,6 @@ namespace
 
 	// ============================================================
 	// Divergence of normalized vector field
-
 
 	static void computeDivergence(const HeatMesh& mesh, const std::vector<double>& u, std::vector<double>& divergence)
 	{
@@ -690,11 +872,8 @@ namespace
 
 	// ============================================================
 	// Poisson solve
-	//
 	// L phi = divergence
-	// The Laplacian has a null space, so we pin
-	// one vertex to zero.
-
+	// The Laplacian has a null space, so we pin one vertex to zero.
 	static bool solvePoisson(const HeatMesh& mesh,const std::vector<double>& divergence,unsigned source,std::vector<double>& phi)
 	{
 		const unsigned n = mesh.vertexCount;
@@ -725,10 +904,252 @@ namespace
 	}
 
 	//This function simply extracts an approximate vertex path from the resulting scalar field.
-	static bool reconstructHeatPath(const HeatMesh& mesh,unsigned source,unsigned target,const std::vector<double>& phi,std::vector<PathPoint>& path)
+	//TRYING TO FIX THE STRANGE ANGLE
+	/*static bool reconstructHeatPath(const HeatMesh& mesh,const SurfacePoint& sourcePoint,const SurfacePoint& targetPoint,const std::vector<double>& phi,std::vector<PathPoint>& path)
 	{
 		path.clear();
+		if (phi.size() != mesh.vertexCount)
+			return false;
+		if (sourcePoint.face >= mesh.faceCount ||targetPoint.face >= mesh.faceCount)
+		{
+			return false;
+		}
+		// ------------------------------------------------------------
+		// Build face adjacency locally.
+		// edge -> faces sharing that edge
+		// ------------------------------------------------------------
+		std::unordered_map<unsigned long long, std::vector<unsigned>> edgeFaces;
+		auto edgeKey = [](unsigned a, unsigned b) -> unsigned long long
+		{
+			unsigned lo = std::min(a, b);
+			unsigned hi = std::max(a, b);
 
+			return	(static_cast<unsigned long long>(lo) << 32) |static_cast<unsigned long long>(hi);
+		};
+		for (unsigned f = 0; f < mesh.faceCount; ++f)
+		{
+			unsigned i0 = mesh.faces[f * 3 + 0];
+			unsigned i1 = mesh.faces[f * 3 + 1];
+			unsigned i2 = mesh.faces[f * 3 + 2];
+
+			edgeFaces[edgeKey(i0, i1)].push_back(f);
+			edgeFaces[edgeKey(i1, i2)].push_back(f);
+			edgeFaces[edgeKey(i2, i0)].push_back(f);
+		}
+		// ------------------------------------------------------------
+		// Find the face on the other side of an edge.
+		// ------------------------------------------------------------
+		auto findNeighborFace =[&](unsigned face, unsigned a, unsigned b) -> unsigned
+		{
+			auto it = edgeFaces.find(edgeKey(a, b));
+
+			if (it == edgeFaces.end())
+				return std::numeric_limits<unsigned>::max();
+
+			for (unsigned candidate : it->second)
+			{
+				if (candidate != face)
+					return candidate;
+			}
+			return std::numeric_limits<unsigned>::max();
+		};
+		// ------------------------------------------------------------
+		// Barycentric coordinates.
+		// ------------------------------------------------------------
+		auto barycentric =[](const Vec3& p,const Vec3& p0,const Vec3& p1,const Vec3& p2,double& w0,double& w1,double& w2) -> bool
+		{
+			Vec3 v0 = p1 - p0;
+			Vec3 v1 = p2 - p0;
+			Vec3 v2 = p - p0;
+
+			double d00 = dot(v0, v0);
+			double d01 = dot(v0, v1);
+			double d11 = dot(v1, v1);
+			double d20 = dot(v2, v0);
+			double d21 = dot(v2, v1);
+			double denom = d00 * d11 - d01 * d01;
+			if (std::abs(denom) < 1e-20)
+				return false;
+
+			w1 = (d11 * d20 - d01 * d21) / denom;
+			w2 = (d00 * d21 - d01 * d20) / denom;
+			w0 = 1.0 - w1 - w2;
+			return true;
+		};
+		// ------------------------------------------------------------
+		// Trace from target toward source through triangle interiors.
+		// ------------------------------------------------------------
+		Vec3 currentPoint = targetPoint.point;
+		unsigned currentFace = targetPoint.face;
+		std::vector<PathPoint> reversePath;
+		reversePath.push_back({currentPoint.x,currentPoint.y,currentPoint.z});
+		std::vector<bool> visitedFaces(mesh.faceCount,false);
+		const unsigned maxSteps = mesh.faceCount * 2 + 100;
+		const double epsilon = 1e-10;
+		for (unsigned step = 0; step < maxSteps; ++step)
+		{
+			if (currentFace == sourcePoint.face)
+			{
+				reversePath.push_back({sourcePoint.point.x,sourcePoint.point.y,sourcePoint.point.z});
+				break;
+			}
+
+			if (currentFace >= mesh.faceCount)
+				return false;
+
+			if (visitedFaces[currentFace])
+				return false;
+
+			visitedFaces[currentFace] = true;
+			unsigned i0 = mesh.faces[currentFace * 3 + 0];
+			unsigned i1 = mesh.faces[currentFace * 3 + 1];
+			unsigned i2 = mesh.faces[currentFace * 3 + 2];
+			const Vec3& p0 = mesh.vertices[i0];
+			const Vec3& p1 = mesh.vertices[i1];
+			const Vec3& p2 = mesh.vertices[i2];
+			// --------------------------------------------------------
+			// Gradient of phi on this triangle.
+			// --------------------------------------------------------
+			Vec3 grad =triangleGradient(p0,p1,p2,phi[i0],phi[i1],phi[i2]);
+			double gradLength = length(grad);
+			if (gradLength < 1e-14)
+				return false;
+
+				//Normally phi increases away from the source,
+				//so move in -gradient direction.
+			
+			Vec3 direction = grad * (-1.0 / gradLength);
+			// --------------------------------------------------------
+			// Current barycentric coordinates.
+			// --------------------------------------------------------
+			double w0, w1, w2;
+			if (!barycentric(currentPoint,p0,p1,p2,w0,w1,w2))
+			{
+				return false;
+			}
+			// Clamp tiny numerical errors.
+			w0 = std::max(0.0, std::min(1.0, w0));
+			w1 = std::max(0.0, std::min(1.0, w1));
+			w2 = std::max(0.0, std::min(1.0, w2));
+			double sum = w0 + w1 + w2;
+			if (sum < 1e-20)
+				return false;
+
+			w0 /= sum;
+			w1 /= sum;
+			w2 /= sum;
+			// --------------------------------------------------------
+			// Barycentric gradients.
+			// --------------------------------------------------------
+			Vec3 normal =cross(p1 - p0,p2 - p0);
+			double normal2 =dot(normal, normal);
+			if (normal2 < 1e-20)
+				return false;
+
+			Vec3 gradW0 =cross(normal,p2 - p1) / normal2;
+			Vec3 gradW1 =cross(normal,p0 - p2) / normal2;
+			Vec3 gradW2 =cross(normal,p1 - p0) / normal2;
+			double dw0 = dot(gradW0, direction);
+			double dw1 = dot(gradW1, direction);
+			double dw2 = dot(gradW2, direction);
+			// --------------------------------------------------------
+			// Find first triangle edge hit by the gradient ray.
+			// --------------------------------------------------------
+			double bestT =std::numeric_limits<double>::max();
+			int crossedEdge = -1;
+
+			if (dw0 < -epsilon)
+			{
+				double t = -w0 / dw0;
+
+				if (t > epsilon && t < bestT)
+				{
+					bestT = t;
+					crossedEdge = 0;
+				}
+			}
+			if (dw1 < -epsilon)
+			{
+				double t = -w1 / dw1;
+
+				if (t > epsilon && t < bestT)
+				{
+					bestT = t;
+					crossedEdge = 1;
+				}
+			}
+			if (dw2 < -epsilon)
+			{
+				double t = -w2 / dw2;
+
+				if (t > epsilon && t < bestT)
+				{
+					bestT = t;
+					crossedEdge = 2;
+				}
+			}
+			if (crossedEdge < 0 || !std::isfinite(bestT))
+			{
+				return false;
+			}
+
+			Vec3 nextPoint =currentPoint +direction * bestT;
+			// --------------------------------------------------------
+			// Determine which edge was crossed.
+			//
+			// lambda0 = 0 -> edge (i1,i2)
+			// lambda1 = 0 -> edge (i2,i0)
+			// lambda2 = 0 -> edge (i0,i1)
+			// --------------------------------------------------------
+
+			unsigned edgeA;
+			unsigned edgeB;
+
+			if (crossedEdge == 0)
+			{
+				edgeA = i1;
+				edgeB = i2;
+			}
+			else if (crossedEdge == 1)
+			{
+				edgeA = i2;
+				edgeB = i0;
+			}
+			else
+			{
+				edgeA = i0;
+				edgeB = i1;
+			}
+
+			unsigned nextFace = findNeighborFace(currentFace,edgeA,edgeB);
+			if (nextFace == std::numeric_limits<unsigned>::max())
+			{
+				// Boundary.
+				return false;
+			}
+
+			reversePath.push_back({nextPoint.x,nextPoint.y,nextPoint.z});
+			currentPoint = nextPoint;
+			currentFace = nextFace;
+		}
+		// ------------------------------------------------------------
+		// Did we actually reach the source triangle?
+		// ------------------------------------------------------------
+		if (currentFace != sourcePoint.face)
+			return false;
+		// ------------------------------------------------------------
+		// reverse target -> source into source -> target.
+		// ------------------------------------------------------------
+		std::reverse(reversePath.begin(),reversePath.end());
+		path = std::move(reversePath);
+		return path.size() >= 2;
+	}
+	*/
+
+	// working but makes a strange angle from th epicked point to the start of the path	
+	static bool reconstructHeatPath(const HeatMesh& mesh, unsigned source, unsigned target, const std::vector<double>& phi, std::vector<PathPoint>& path)
+	{
+		path.clear();
 		if (source >= mesh.vertexCount ||target >= mesh.vertexCount ||phi.size() != mesh.vertexCount)
 		{
 			return false;
@@ -739,7 +1160,6 @@ namespace
 			path.push_back({p.x,p.y,p.z});
 			return true;
 		}
-
 		//Determine the direction in which phi leads toward source.
 		const double sourcePhi =phi[source];
 		const double targetPhi =phi[target];
@@ -748,7 +1168,6 @@ namespace
 		{
 			return false;
 		}
-
 		/*
 			Normally phi should increase away from the source.
 			Therefore:
@@ -757,17 +1176,15 @@ namespace
 			We keep this generic because our Laplacian/divergence
 			convention may produce the opposite sign.
 		*/
-		const bool moveToLowerPhi =targetPhi > sourcePhi;
+		const bool moveToLowerPhi = targetPhi > sourcePhi;
 		unsigned current = target;
 		std::vector<bool> visited(mesh.vertexCount,false);
 		path.reserve(mesh.vertexCount);
-
 		/*
 			--------------------------------------------------------
 			Stage 1:
 			Follow the Heat/Poisson scalar field.
 		*/
-
 		const unsigned maxGradientSteps =mesh.vertexCount * 2;
 		for (unsigned step = 0;step < maxGradientSteps;++step)
 		{
@@ -784,30 +1201,24 @@ namespace
 				break;
 
 			visited[current] = true;
-
-			const double currentPhi =phi[current];
-			unsigned bestNeighbor =current;
-			double bestPhi =moveToLowerPhi ? std::numeric_limits<double>::max() : -std::numeric_limits<double>::max();
+			const double currentPhi = phi[current];
+			unsigned bestNeighbor = current;
+			double bestPhi = moveToLowerPhi ? std::numeric_limits<double>::max() : -std::numeric_limits<double>::max();
 			bool foundGradientNeighbor =false;
 
 			//Find the neighbor that makes the strongest movement toward the source in phi.
-
-
 			for (unsigned neighbor :mesh.adjacency[current])
 			{
-				if (neighbor >= mesh.vertexCount ||visited[neighbor])
+				if (neighbor >= mesh.vertexCount || visited[neighbor])
 				{
 					continue;
 				}
-
 				const double neighborPhi =phi[neighbor];
-
 				if (!std::isfinite(neighborPhi))
 					continue;
 
 				if (moveToLowerPhi)
-				{	
-				//We want smaller phi.
+				{ //We want smaller phi.
 					if (neighborPhi < currentPhi &&neighborPhi < bestPhi)
 					{
 						bestPhi =neighborPhi;
@@ -816,8 +1227,7 @@ namespace
 					}
 				}
 				else
-				{					
-					//We want larger phi.				
+				{ //We want larger phi.				
 					if (neighborPhi > currentPhi && neighborPhi > bestPhi)
 					{
 						bestPhi =neighborPhi;
@@ -832,29 +1242,22 @@ namespace
 				current = bestNeighbor;
 				continue;
 			}
-
 			/*
 				----------------------------------------------------
-				The Heat field has reached a local plateau/minimum.
-				Do NOT fail.
-				Fall back to a graph shortest path from here
-				to the source.
+				The Heat field has reached a local plateau/minimum.Do NOT fail.
+				Fall back to a graph shortest path from hereto the source.
 				----------------------------------------------------
 			*/
 			break;
 		}
 		/*
 			--------------------------------------------------------
-			Stage 2:
-			Robust fallback.
-			Find a shortest path over the mesh edges from the
-			current vertex to the source.
-			This guarantees that a valid surface-connected path
-			can still be returned when the discrete phi field
+			Stage 2: Robust fallback.
+			Find a shortest path over the mesh edges from the current vertex to the source.
+			This guarantees that a valid surface-connected path can still be returned when the discrete phi field
 			has a local plateau.
 			--------------------------------------------------------
 		*/
-
 		const unsigned fallbackStart = current;
 		const unsigned n = mesh.vertexCount;
 		std::vector<double> distance(n,std::numeric_limits<double>::max());
@@ -864,7 +1267,6 @@ namespace
 
 		/*
 			Simple O(V^2) Dijkstra.
-
 			For 7637 vertices this is perfectly acceptable as
 			a fallback and avoids adding another dependency.
 		*/
@@ -908,7 +1310,7 @@ namespace
 				const double dx = b.x - a.x;
 				const double dy = b.y - a.y;
 				const double dz = b.z - a.z;
-				const double edgeLength =std::sqrt(dx * dx +dy * dy +dz * dz);
+				const double edgeLength = std::sqrt(dx * dx +dy * dy +dz * dz);
 
 				if (!std::isfinite(edgeLength) ||edgeLength <= 0.0)
 				{
@@ -930,30 +1332,22 @@ namespace
 			return false;
 		}
 
-		/*
-			Reconstruct fallback path:
-				source -> ... -> fallbackStart
-		*/
+		//Reconstruct fallback path: source -> ... -> fallbackStart
 		std::vector<unsigned> fallbackVertices;
-
 		unsigned node = source;
-
 		while (true)
 		{
 			fallbackVertices.push_back(node);
-
 			if (node == fallbackStart)
 				break;
 
 			unsigned previousNode =previous[node];
-
 			if (previousNode ==std::numeric_limits<unsigned>::max())
 			{
 				return false;
 			}
 			node = previousNode;
 		}
-
 		/*
 			fallbackVertices is: source -> ... -> fallbackStart
 			Our existing path is: target -> ... -> fallbackStart
@@ -983,82 +1377,184 @@ namespace
 
 		return true;
 	}
+	
+	//continuous phi interpolation
+	static double interpolatePhi(const std::vector<double>& phi, const SurfacePoint& point)
+	{
+		if (point.i0 >= phi.size() ||point.i1 >= phi.size() ||point.i2 >= phi.size())
+		{
+			return std::numeric_limits<double>::quiet_NaN();
+		}
+		return
+			point.w0 * phi[point.i0] + point.w1 * phi[point.i1] + point.w2 * phi[point.i2];
+	}
 
 	// ============================================================
 	// Main Heat Method query
 
-	static HeatResult calculateHeatDistance(HeatMesh& mesh,unsigned source,unsigned target)
+static HeatResult calculateHeatDistance(HeatMesh& mesh,const SurfacePoint& sourcePoint,const SurfacePoint& targetPoint)
+{
+	HeatResult result;
+
+	std::vector<double> u;
+	std::vector<double> divergence;
+	std::vector<double> phi;
+
+	// Choose the source triangle vertex closest to the actual source point.
+	unsigned sourceAnchor = sourcePoint.i0;
+
+	Vec3 sourceDelta0 =sourcePoint.point - mesh.vertices[sourcePoint.i0];
+	Vec3 sourceDelta1 =sourcePoint.point - mesh.vertices[sourcePoint.i1];
+	Vec3 sourceDelta2 =sourcePoint.point - mesh.vertices[sourcePoint.i2];
+
+	double d0 = dot(sourceDelta0, sourceDelta0);
+	double d1 = dot(sourceDelta1, sourceDelta1);
+	double d2 = dot(sourceDelta2, sourceDelta2);
+
+	if (d1 < d0 && d1 <= d2)
+		sourceAnchor = sourcePoint.i1;
+	else if (d2 < d0 && d2 < d1)
+		sourceAnchor = sourcePoint.i2;
+
+	// Step 1: heat diffusion from the actual surface point.
+	if (!solveHeat(mesh,sourcePoint.i0,sourcePoint.i1,sourcePoint.i2,sourcePoint.w0,sourcePoint.w1,sourcePoint.w2,u))
 	{
-		HeatResult result;
-
-		if (source >= mesh.vertexCount ||target >= mesh.vertexCount)
-		{
-			result.error ="invalid source or target";
-			return result;
-		}
-
-		// Step 1: heat diffusion
-		std::vector<double> u;
-
-		if (!solveHeat(mesh,source,u))
-		{
-			result.error ="heat diffusion solver failed";
-			return result;
-		}
-		
-		// Step 2: normalized vector field + divergence
-		std::vector<double> divergence;
-		computeDivergence(mesh,u,divergence);
-
-		// Step 3: Poisson solve
-		std::vector<double> phi;
-
-		if (!solvePoisson(mesh,divergence,source,phi))
-		{
-			result.error ="Poisson solver failed";
-			return result;
-		}
-
-		// Step 4: normalize distances
-		double sourceValue = phi[source];
-		double targetValue = phi[target];
-		
-		//Sign depends on Laplacian/divergenceconvention.We want distance >= 0.
-		
-		double distance = targetValue - sourceValue;
-
-		if (distance < 0.0)
-			distance = -distance;
-
-		//Heat method can accumulate a smallnumerical offset.
-		
-		if (!std::isfinite(distance))
-		{
-			result.error ="invalid heat distance";
-			return result;
-		}
-
-		result.status = true;
-		result.distance = distance;
-
-		if (!reconstructHeatPath(mesh, source, target, phi, result.path))
-		{
-			result.status = false;
-			result.distance = 0.0;
-			result.error = "heat path reconstruction failed";
-			return result;
-		}
-
-		if (result.path.size() < 2)
-		{
-			result.status = false;
-			result.distance = 0.0;
-			result.path.clear();
-			result.error = "heat path is too short";
-			return result;
-		}
+		result.error = "Heat diffusion solve failed.";
 		return result;
 	}
+	// Step 2: normalized vector field + divergence.
+	/*if (!computeDivergence(mesh, u, divergence))
+	{
+		result.error = "Heat divergence computation failed.";
+		return result;
+	}*/
+	computeDivergence(mesh, u, divergence);
+
+	// Step 3: Poisson solve.
+	if (!solvePoisson(mesh, divergence, sourceAnchor, phi))
+	{
+		result.error = "Heat Poisson solve failed.";
+		return result;
+	}
+
+	// Choose the target triangle vertex with the highest heat distance.
+	unsigned targetAnchor = targetPoint.i0;
+	/*
+	if (phi[targetPoint.i1] > phi[targetAnchor])
+		targetAnchor = targetPoint.i1;
+
+	if (phi[targetPoint.i2] > phi[targetAnchor])
+		targetAnchor = targetPoint.i2;
+
+	// Interpolate the scalar field at the actual surface points.
+	const double sourcePhi =interpolatePhi(phi, sourcePoint);
+	const double targetPhi =interpolatePhi(phi, targetPoint);
+
+	double distance = std::abs(targetPhi - sourcePhi);
+
+	if (!std::isfinite(distance))
+	{
+		result.error = "Heat distance is invalid.";
+		return result;
+	}
+
+	// Reconstruct vertex path.
+	if (!reconstructHeatPath(mesh,sourceAnchor,targetAnchor,phi,result.path))
+	{
+		result.error = "Heat path reconstruction failed.";
+		return result;
+	}
+
+	// The reconstructed path uses vertices.
+	// Replace its endpoints with the actual selected surface points.
+	std::vector<PathPoint> finalPath;
+
+	finalPath.reserve(result.path.size() + 2);
+
+	finalPath.push_back({sourcePoint.point.x,sourcePoint.point.y,sourcePoint.point.z});
+
+	for (const auto& point : result.path)
+	{
+		finalPath.push_back(point);
+	}
+
+	finalPath.push_back({targetPoint.point.x,targetPoint.point.y,targetPoint.point.z});
+
+	result.path = std::move(finalPath);
+
+	result.sourceSnapDistance =std::sqrt(sourcePoint.distance2);
+
+	result.targetSnapDistance =std::sqrt(targetPoint.distance2);
+
+	result.status = true;
+	result.distance = distance;
+
+	return result;
+	*/
+
+	Vec3 targetDelta0 = targetPoint.point - mesh.vertices[targetPoint.i0];
+	Vec3 targetDelta1 = targetPoint.point - mesh.vertices[targetPoint.i1];
+	Vec3 targetDelta2 = targetPoint.point - mesh.vertices[targetPoint.i2];
+
+	double targetD0 = dot(targetDelta0, targetDelta0);
+	double targetD1 = dot(targetDelta1, targetDelta1);
+	double targetD2 = dot(targetDelta2, targetDelta2);
+
+	if (targetD1 < targetD0 && targetD1 <= targetD2)
+	{
+		targetAnchor = targetPoint.i1;
+	}
+	else if (targetD2 < targetD0 && targetD2 < targetD1)
+	{
+		targetAnchor = targetPoint.i2;
+	}
+	// ------------------------------------------------------------
+	// Distance at actual surface points
+	// ------------------------------------------------------------
+	const double sourcePhi = interpolatePhi(phi, sourcePoint);
+	const double targetPhi = interpolatePhi(phi, targetPoint);
+	double distance = std::abs(targetPhi - sourcePhi);
+
+	if (!std::isfinite(distance))
+	{
+		result.error = "Heat distance is invalid.";
+		return result;
+	}
+	// ------------------------------------------------------------
+	// Reconstruct vertex path
+	// ------------------------------------------------------------
+	
+	//if (!reconstructHeatPath(mesh, sourcePoint, targetPoint, phi, result.path))
+	if (!reconstructHeatPath(mesh, sourceAnchor, targetAnchor, phi, result.path))
+	{
+		result.error = "Heat path reconstruction failed.";
+		return result;
+	}
+	// ------------------------------------------------------------
+	// Replace vertex endpoints with the actual picked points.
+	// ------------------------------------------------------------
+	std::vector<PathPoint> finalPath;
+	finalPath.reserve(result.path.size() + 2);
+
+	finalPath.push_back({sourcePoint.point.x,sourcePoint.point.y,sourcePoint.point.z});
+
+	for (const auto& point : result.path)
+	{
+		finalPath.push_back(point);
+	}
+
+	finalPath.push_back({targetPoint.point.x,targetPoint.point.y,targetPoint.point.z});
+
+	result.path = std::move(finalPath);
+	
+
+	result.sourceSnapDistance = std::sqrt(sourcePoint.distance2);
+	result.targetSnapDistance = std::sqrt(targetPoint.distance2);
+	result.status = true;
+	result.distance = distance;
+
+	return result;
+}
 
 } // namespace
 
@@ -1123,14 +1619,49 @@ HeatResult heatQuery(const std::string& model_id,double x1,double y1,double z1,d
 	}
 
 	HeatMesh& mesh = it->second;
+
+	/*
 	unsigned source = findNearestVertex(mesh,x1,y1,z1);
 	unsigned target = findNearestVertex(mesh,x2,y2,z2);
-
 	std::cout
 		<< "[HEAT] query "
 		<< "source=" << source
 		<< " target=" << target
 		<< std::endl;
-
 	return calculateHeatDistance(mesh,source,target);
+	*/
+	SurfacePoint sourcePoint = findClosestSurfacePoint(mesh,x1,y1,z1);
+	SurfacePoint targetPoint = findClosestSurfacePoint(mesh,x2,y2,z2);
+
+	if (sourcePoint.distance2 == std::numeric_limits<double>::max() || targetPoint.distance2 == std::numeric_limits<double>::max())
+	{
+		result.error = "could not find surface point";
+		return result;
+	}
+
+	std::cout
+		<< "[HEAT] query"
+		<< " sourceFace=" << sourcePoint.face
+		<< " targetFace=" << targetPoint.face
+		<< " sourceSnap="
+		<< std::sqrt(sourcePoint.distance2)
+		<< " targetSnap="
+		<< std::sqrt(targetPoint.distance2)
+		<< std::endl;
+
+	std::cout
+		<< "[HEAT] source barycentric="
+		<< sourcePoint.w0 << ","
+		<< sourcePoint.w1 << ","
+		<< sourcePoint.w2
+		<< std::endl;
+
+	std::cout
+		<< "[HEAT] target barycentric="
+		<< targetPoint.w0 << ","
+		<< targetPoint.w1 << ","
+		<< targetPoint.w2
+		<< std::endl;
+
+	return calculateHeatDistance(mesh,sourcePoint,targetPoint);
 }

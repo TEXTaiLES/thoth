@@ -131,7 +131,7 @@ bool isFiniteVector(const std::vector<double>& values)
     });
 }
 }
-//WORKING KIRKANOV VERSION
+
 bool loadMesh( const std::string& mesh_id, const std::vector<double>& vertices, const std::vector<unsigned>& faces)
 {
     if (
@@ -161,90 +161,8 @@ bool loadMesh( const std::string& mesh_id, const std::vector<double>& vertices, 
     catch (const std::exception&)
     {
         return false;
-    }
-	
+    }	
 }
-/*
-bool loadMesh(
-	const std::string& model_id,
-	const std::vector<double>& vertices,
-	const std::vector<unsigned>& faces
-)
-{
-	unsigned maxIndex = 0;
-
-	for (auto i : faces)
-	{
-		if (i > maxIndex)
-			maxIndex = i;
-	}
-
-
-	if (maxIndex >= vertices.size() / 3)
-	{
-		std::cerr
-			<< "[CPP][LOAD] INVALID INDEX\n";
-
-		return false;
-	}
-
-
-	MeshData data;
-
-	data.points = vertices;
-	data.faces = faces;
-
-
-	try
-	{
-		// ====================================================
-		// KIRSANOV
-		// ====================================================
-
-		data.mesh =
-			std::make_unique<geodesic::Mesh>();
-
-		data.mesh->initialize_mesh_data(
-			data.points,
-			data.faces
-		);
-
-		data.algorithm =
-			std::make_unique<
-			geodesic::GeodesicAlgorithmExact
-			>(
-				data.mesh.get()
-				);
-	}
-	catch (const std::exception& e)
-	{
-		std::cerr
-			<< "[CPP][LOAD] Geodesic init failed: "
-			<< e.what()
-			<< std::endl;
-
-		return false;
-	}
-
-
-	// ========================================================
-	// CGAL HEAT METHOD
-	// ========================================================
-
-	if (!loadHeatMesh(model_id,vertices,faces))
-	{
-		std::cerr
-			<< "[CPP][LOAD] Heat mesh initialization failed\n";
-
-		return false;
-	}
-	meshDB[model_id] =std::move(data);
-
-
-	return true;
-}
-*/
-
 
 QueryResult query( const std::string& mesh_id,
     double x1,
@@ -252,8 +170,7 @@ QueryResult query( const std::string& mesh_id,
     double z1,
     double x2,
     double y2,
-    double z2
-)
+    double z2)
 {
     QueryResult result;
     const auto meshEntry = meshDatabase.find(mesh_id);
@@ -282,6 +199,7 @@ QueryResult query( const std::string& mesh_id,
     {
         geodesic::Mesh& mesh = *meshEntry->second.mesh;
         geodesic::GeodesicAlgorithmExact algorithm(&mesh);
+		//geodesic::GeodesicAlgorithmExact& algo = *data.algorithm;
         geodesic::SurfacePoint source = findNearestSurfacePoint(mesh, x1, y1, z1);
         geodesic::SurfacePoint target = findNearestSurfacePoint(mesh, x2, y2, z2);
         std::vector<geodesic::SurfacePoint> sources { source };

@@ -12,6 +12,9 @@ struct HeatResult
 	std::string error;
 	std::vector<PathPoint> path;
 
+	double sourceSnapDistance = 0.0;
+	double targetSnapDistance = 0.0;
+
 };
 
 bool loadHeatMesh(
