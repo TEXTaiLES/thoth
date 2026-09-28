@@ -33,6 +33,7 @@ FE.setup = () => {
         THOTH.Transforms?.detachGizmo();
         return originalHideSidePanel(options);
     };
+
 };
 
 FE.setupSelectionElements = () => {
@@ -328,12 +329,25 @@ FE.createSceneTreeAction = (options = {}) => {
 };
 
 FE.createModelRowActions = (modelId) => {
-   
+       //wireframe
+    let _wireframe=false;
     return [
         FE.createSceneTreeAction({
             icon   : ATON.PATH_RES + "icons/focus.png",
             tooltip: "Focus model",
             onpress: () => THOTH.Models.focusModel(modelId)
+        }),
+           FE.createSceneTreeAction({
+            icon   : ATON.PATH_RES + "icons/devori.png",
+            tooltip: "Toggle wireframe mode",
+            onpress: () => {
+                  _wireframe = !_wireframe;
+                    if (_wireframe) {
+                        ATON.getRootScene().setMaterial(ATON.MatHub.materials.wireframe);
+                    } else {
+                        ATON.getRootScene().restoreMaterials();
+                    } 
+            }
         }),
         FE.createSceneTreeAction({
             icon   : "download",
@@ -347,7 +361,7 @@ FE.createModelRowActions = (modelId) => {
                 THOTH.Models.deactivateTransformControls();
                 THOTH.fire("deleteModel", modelId);
             }
-        })
+        })     
     ];
 };
 
