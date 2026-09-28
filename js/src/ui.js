@@ -1053,43 +1053,47 @@ UI.createMeasureOptions = () => {
     
     const elBtnEuclidean = ATON.UI.createButton({
         text: "Euclidean",
+        tooltip: "Euclidian distance computation",
         onpress: () => {
             THOTH.MSR.distanceType = 'euclidean';
             THOTH.FE.handleElementHighlight('euclidean', distanceTypeMap);
         }
     });
+    elBtnEuclidean.style.minWidth = "72px";
     distanceTypeMap.set(THOTH.MSR.distanceType, elBtnEuclidean);
 
     const elBtnGeodesic = ATON.UI.createButton({
-        text: "Geodesic",
+        text: "Djikstra",
+        tooltip: "Geodesic Approximation using Djikstra's algorithm with heuristics",
         onpress: () => {         
             THOTH.MSR.distanceType = 'geodesic';
             THOTH.FE.handleElementHighlight('geodesic', distanceTypeMap);
         }
     });
+    elBtnGeodesic.style.minWidth = "65px";
     distanceTypeMap.set('geodesic', elBtnGeodesic);
 
     const elBtnGeodesicExact = ATON.UI.createButton({
-        text: "Exact Geodesic",
+        text: "Exact",
+        tooltip: "Exact geodesic measurement using MMP algorithm",
         onpress: () => {
             THOTH.MSR.distanceType = 'geodesicExact';
             THOTH.FE.handleElementHighlight('geodesicExact', distanceTypeMap);
         }
     });
+    elBtnGeodesicExact.style.minWidth = "65px";
     distanceTypeMap.set('geodesicExact', elBtnGeodesicExact);
 
     const elBtnGeodesicHeat = ATON.UI.createButton({
-        text: "Heat Method",
+        text: "Heat",
+        tooltip: "Geodesic approximation using the Heat method",
         onpress: () => {
             THOTH.MSR.distanceType = 'geodesicHeat';
             THOTH.FE.handleElementHighlight('geodesicHeat', distanceTypeMap);
         }
     });
+    elBtnGeodesicHeat.style.minWidth = "65px";
     distanceTypeMap.set('geodesicHeat', elBtnGeodesicHeat);
-
-
-
-
 
     //initial highlight
     THOTH.FE.handleElementHighlight(THOTH.MSR.distanceType,distanceTypeMap);

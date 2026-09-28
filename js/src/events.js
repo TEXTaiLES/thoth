@@ -458,7 +458,7 @@ Events.setupMeasurementEvents = () => {
                 );
             }
             catch (error) {
-                console.error("Exact geodesic computation failed", error);
+                //console.error("Exact geodesic computation failed", error);
                 THOTH.FE.showToast(error?.message || "Exact geodesic computation failed");
                 return;
             }
@@ -473,7 +473,7 @@ Events.setupMeasurementEvents = () => {
                 );
             }
             catch (error) {
-                console.error("Heat method computation failed", error);
+                //console.error("Heat method computation failed", error);
                 THOTH.FE.showToast(error?.message || "Heat method computation failed");
                 return;
             }
