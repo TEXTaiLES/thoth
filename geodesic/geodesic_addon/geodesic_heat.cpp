@@ -99,11 +99,9 @@ namespace
 		return dot(a, b) / denominator;
 	}
 
-
 	// ============================================================
 	// Sparse matrix
 	// ============================================================
-
 	struct SparseMatrix
 	{
 		unsigned n = 0;
@@ -170,18 +168,12 @@ namespace
 		std::vector<double> p(n, 0.0);
 		std::vector<double> Ap(n, 0.0);
 		/*
-			Initial residual:
-
-				r = b - A*x
-			x starts at zero, therefore:
-				r = b
+			Initial residual: r = b - A*x
+			x starts at zero, therefore: r = b
 		*/
 		r = b;
 		/*
-			Jacobi preconditioner:
-
-				z = M^-1 r
-
+			Jacobi preconditioner: z = M^-1 r
 			where M is the diagonal of A.
 		*/
 
@@ -193,16 +185,15 @@ namespace
 				std::abs(diagonal) < 1e-20)
 			{
 				//A zero diagonal means the system is singular or invalid.				
-				std::cerr
+				/*std::cerr
 					<< "[HEAT][CG] invalid diagonal at "
 					<< i
 					<< " value="
 					<< diagonal
 					<< std::endl;
-
+					*/
 				return false;
 			}
-
 			z[i] =r[i] / diagonal;
 		}
 
@@ -214,10 +205,7 @@ namespace
 
 		if (!std::isfinite(rzOld))
 		{
-			std::cerr
-				<< "[HEAT][CG] invalid initial residual"
-				<< std::endl;
-
+			//std::cerr<< "[HEAT][CG] invalid initial residual"<< std::endl;
 			return false;
 		}
 
@@ -230,14 +218,6 @@ namespace
 
 		if (initialResidual < tolerance)
 			return true;
-
-		/*
-			Relative tolerance.
-
-			This is much more appropriate for the
-			differently-scaled matrices produced by
-			triangle meshes.
-		*/
 
 		const double targetResidual =std::max(tolerance * initialResidual,1e-12);
 
@@ -252,7 +232,7 @@ namespace
 				//For a positive definite system: p^T A p > 0
 
 			if (!std::isfinite(denominator) || denominator <= 1e-30)
-			{
+			{/*
 				std::cerr
 					<< "[HEAT][CG] invalid denominator"
 					<< " iteration="
@@ -260,20 +240,20 @@ namespace
 					<< " denominator="
 					<< denominator
 					<< std::endl;
-
+				*/
 				return false;
 			}
 
 			double alpha =rzOld / denominator;
 
 			if (!std::isfinite(alpha))
-			{
+			{/*
 				std::cerr
 					<< "[HEAT][CG] invalid alpha"
 					<< " iteration="
 					<< iteration
 					<< std::endl;
-
+				*/
 				return false;
 			}
 
@@ -291,18 +271,18 @@ namespace
 			residual = std::sqrt(residual);
 
 			if (!std::isfinite(residual))
-			{
+			{/*
 				std::cerr
 					<< "[HEAT][CG] invalid residual"
 					<< " iteration="
 					<< iteration
 					<< std::endl;
-
+				*/
 				return false;
 			}
 
 			if (residual < targetResidual)
-			{
+			{	/*
 				std::cerr
 					<< "[HEAT][CG] converged"
 					<< " iteration="
@@ -310,7 +290,7 @@ namespace
 					<< " residual="
 					<< residual
 					<< std::endl;
-
+					*/
 				return true;
 			}
 			//Apply Jacobi preconditioner again.
@@ -326,13 +306,8 @@ namespace
 				rzNew += r[i] * z[i];
 
 			if (!std::isfinite(rzNew))
-			{
-				std::cerr
-					<< "[HEAT][CG] invalid rz"
-					<< " iteration="
-					<< iteration
-					<< std::endl;
-
+			{	
+				//std::cerr<< "[HEAT][CG] invalid rz"<< " iteration="<< iteration << std::endl;				
 				return false;
 			}
 
@@ -340,12 +315,7 @@ namespace
 
 			if (!std::isfinite(beta))
 			{
-				std::cerr
-					<< "[HEAT][CG] invalid beta"
-					<< " iteration="
-					<< iteration
-					<< std::endl;
-
+				//std::cerr<< "[HEAT][CG] invalid beta"<< " iteration="<< iteration<< std::endl;
 				return false;
 			}
 
@@ -355,11 +325,7 @@ namespace
 			}
 
 			rzOld = rzNew;
-
-			/*
-				Occasional progress logging.
-			*/
-
+			/* Occasional progress logging.		
 			if (iteration == 0 ||iteration % 500 == 0)
 			{
 				std::cerr
@@ -370,13 +336,9 @@ namespace
 					<< residual
 					<< std::endl;
 			}
-		}
-
-		std::cerr
-			<< "[HEAT][CG] did not converge"
-			<< " maxIterations="
-			<< maxIterations
-			<< std::endl;
+			*/
+		}		
+		//std::cerr<< "[HEAT][CG] did not converge"<< " maxIterations="<< maxIterations<< std::endl;			
 		return false;
 	}
 
@@ -465,9 +427,9 @@ namespace
 			Vec3 v4 = p0 - p2;
 			Vec3 v5 = p1 - p2;
 
-			double cot0 =cotangent(v0, v1);
-			double cot1 =cotangent(v2, v3);
-			double cot2 =cotangent(v4, v5);
+			double cot0 = cotangent(v0, v1);
+			double cot1 = cotangent(v2, v3);
+			double cot2 = cotangent(v4, v5);
 
 			// ----------------------------------------------------
 			// Cotangent Laplacian
@@ -535,7 +497,6 @@ namespace
 	// ============================================================
 	// Nearest vertex
 	// ============================================================
-	/*
 	static unsigned findNearestVertex(const HeatMesh& mesh,double x,double y,double z)
 	{
 		Vec3 query(x, y, z);
@@ -555,7 +516,8 @@ namespace
 
 		return nearest;
 	}
-	*/
+	
+
 	// ============================================================
 // Closest point on mesh surface
 // ============================================================
@@ -632,7 +594,6 @@ namespace
 		}
 
 		const double denominator = 1.0 / (va + vb + vc);
-
 		const double v = vb * denominator;
 		const double w = vc * denominator;
 
@@ -684,7 +645,6 @@ namespace
 	static SurfacePoint findClosestSurfacePoint(const HeatMesh& mesh, double x, double y, double z)
 	{
 		SurfacePoint result;
-
 		const Vec3 query(x, y, z);
 
 		for (unsigned f = 0; f < mesh.faceCount; ++f)
@@ -728,24 +688,15 @@ namespace
 	// Heat diffusion
 	// (M - tL) u = M delta
 
-	static bool solveHeat(const HeatMesh& mesh, 
-		unsigned source0,
-		unsigned source1,
-		unsigned source2,
-		double w0,
-		double w1,
-		double w2, 
-		std::vector<double>& u)
+	static bool solveHeat(const HeatMesh& mesh, unsigned source0, unsigned source1, unsigned source2, double w0, double w1, double w2, std::vector<double>& u)
 	{
 		const unsigned n =mesh.vertexCount;
 		SparseMatrix A(n);
 		std::vector<double> b(n, 0.0);
 
 		for (unsigned i = 0;i < n;++i)
-		{
-			/*
-				M - tL -->ive changed to M+tL
-			*/
+		{			
+			//M - tL --> changed to M+tL			
 			for (const auto& entry :
 				mesh.laplacian.rows[i])
 			{
@@ -753,7 +704,6 @@ namespace
 				double value =mesh.timeStep *entry.second;
 				A.add(i, j, value);
 			}
-
 			A.add(i, i, mesh.mass[i]);
 		}
 		double minDiagonal = std::numeric_limits<double>::max();
@@ -764,15 +714,8 @@ namespace
 			minDiagonal = std::min(minDiagonal, d);
 			maxDiagonal = std::max(maxDiagonal, d);
 		}
-
-		std::cerr
-			<< "[HEAT] diffusion matrix"
-			<< " minDiag="
-			<< minDiagonal
-			<< " maxDiag="
-			<< maxDiagonal
-			<< std::endl;
-
+		
+		//std::cerr<< "[HEAT] diffusion matrix"<< " minDiag="<< minDiagonal<< " maxDiag="<< maxDiagonal<< std::endl;			
 		//M delta_source
 
 		//b[source] = mesh.mass[source];
@@ -780,7 +723,7 @@ namespace
 		b[source0] += w0;
 		b[source1] += w1;
 		b[source2] += w2;
-
+		/*
 		std::cerr
 			<< "[HEAT] solving diffusion system"
 			<< " n=" << n
@@ -795,7 +738,7 @@ namespace
 			<< " t="
 			<< mesh.timeStep
 			<< std::endl;
-
+		*/
 		return conjugateGradient(A,b,u,10000,1e-9);
 	}
 
@@ -845,23 +788,20 @@ namespace
 
 				//X = -grad(u) / |grad(u)|
 
-			Vec3 X =grad * (-1.0 / gradLength);
-			Vec3 e0 =p2 - p1;
-			Vec3 e1 =p0 - p2;
-			Vec3 e2 =p1 - p0;
+			Vec3 X = grad * (-1.0 / gradLength);
+			Vec3 e0 = p2 - p1;
+			Vec3 e1 = p0 - p2;
+			Vec3 e2 = p1 - p0;
 			Vec3 normal = normalize(cross(p1 - p0,p2 - p0));
 			/*
 				Rotated edge vectors.
 			*/
-			Vec3 nxe0 =cross(normal, e0);
-			Vec3 nxe1 =cross(normal, e1);
-			Vec3 nxe2 =cross(normal, e2);
+			Vec3 nxe0 = cross(normal, e0);
+			Vec3 nxe1 = cross(normal, e1);
+			Vec3 nxe2 = cross(normal, e2);
 			/*
-				Cotangent-style divergence
-				accumulation.
-
-				Each vertex receives the
-				contribution associated with
+				Cotangent-style divergence accumulation.
+				Each vertex receives the contribution associated with
 				its opposite edge.
 			*/
 			divergence[i0] += 0.5 * dot(X, nxe0);
@@ -900,253 +840,10 @@ namespace
 		A.set(source,source,1.0);
 		b[source] = 0.0;	
 		//The cotangent Laplacian above ispositive semidefinite.
-		return conjugateGradient(A,b,phi,20000,1e-8);
+		return conjugateGradient(A, b, phi, 20000, 1e-8);
 	}
 
 	//This function simply extracts an approximate vertex path from the resulting scalar field.
-	//TRYING TO FIX THE STRANGE ANGLE
-	/*static bool reconstructHeatPath(const HeatMesh& mesh,const SurfacePoint& sourcePoint,const SurfacePoint& targetPoint,const std::vector<double>& phi,std::vector<PathPoint>& path)
-	{
-		path.clear();
-		if (phi.size() != mesh.vertexCount)
-			return false;
-		if (sourcePoint.face >= mesh.faceCount ||targetPoint.face >= mesh.faceCount)
-		{
-			return false;
-		}
-		// ------------------------------------------------------------
-		// Build face adjacency locally.
-		// edge -> faces sharing that edge
-		// ------------------------------------------------------------
-		std::unordered_map<unsigned long long, std::vector<unsigned>> edgeFaces;
-		auto edgeKey = [](unsigned a, unsigned b) -> unsigned long long
-		{
-			unsigned lo = std::min(a, b);
-			unsigned hi = std::max(a, b);
-
-			return	(static_cast<unsigned long long>(lo) << 32) |static_cast<unsigned long long>(hi);
-		};
-		for (unsigned f = 0; f < mesh.faceCount; ++f)
-		{
-			unsigned i0 = mesh.faces[f * 3 + 0];
-			unsigned i1 = mesh.faces[f * 3 + 1];
-			unsigned i2 = mesh.faces[f * 3 + 2];
-
-			edgeFaces[edgeKey(i0, i1)].push_back(f);
-			edgeFaces[edgeKey(i1, i2)].push_back(f);
-			edgeFaces[edgeKey(i2, i0)].push_back(f);
-		}
-		// ------------------------------------------------------------
-		// Find the face on the other side of an edge.
-		// ------------------------------------------------------------
-		auto findNeighborFace =[&](unsigned face, unsigned a, unsigned b) -> unsigned
-		{
-			auto it = edgeFaces.find(edgeKey(a, b));
-
-			if (it == edgeFaces.end())
-				return std::numeric_limits<unsigned>::max();
-
-			for (unsigned candidate : it->second)
-			{
-				if (candidate != face)
-					return candidate;
-			}
-			return std::numeric_limits<unsigned>::max();
-		};
-		// ------------------------------------------------------------
-		// Barycentric coordinates.
-		// ------------------------------------------------------------
-		auto barycentric =[](const Vec3& p,const Vec3& p0,const Vec3& p1,const Vec3& p2,double& w0,double& w1,double& w2) -> bool
-		{
-			Vec3 v0 = p1 - p0;
-			Vec3 v1 = p2 - p0;
-			Vec3 v2 = p - p0;
-
-			double d00 = dot(v0, v0);
-			double d01 = dot(v0, v1);
-			double d11 = dot(v1, v1);
-			double d20 = dot(v2, v0);
-			double d21 = dot(v2, v1);
-			double denom = d00 * d11 - d01 * d01;
-			if (std::abs(denom) < 1e-20)
-				return false;
-
-			w1 = (d11 * d20 - d01 * d21) / denom;
-			w2 = (d00 * d21 - d01 * d20) / denom;
-			w0 = 1.0 - w1 - w2;
-			return true;
-		};
-		// ------------------------------------------------------------
-		// Trace from target toward source through triangle interiors.
-		// ------------------------------------------------------------
-		Vec3 currentPoint = targetPoint.point;
-		unsigned currentFace = targetPoint.face;
-		std::vector<PathPoint> reversePath;
-		reversePath.push_back({currentPoint.x,currentPoint.y,currentPoint.z});
-		std::vector<bool> visitedFaces(mesh.faceCount,false);
-		const unsigned maxSteps = mesh.faceCount * 2 + 100;
-		const double epsilon = 1e-10;
-		for (unsigned step = 0; step < maxSteps; ++step)
-		{
-			if (currentFace == sourcePoint.face)
-			{
-				reversePath.push_back({sourcePoint.point.x,sourcePoint.point.y,sourcePoint.point.z});
-				break;
-			}
-
-			if (currentFace >= mesh.faceCount)
-				return false;
-
-			if (visitedFaces[currentFace])
-				return false;
-
-			visitedFaces[currentFace] = true;
-			unsigned i0 = mesh.faces[currentFace * 3 + 0];
-			unsigned i1 = mesh.faces[currentFace * 3 + 1];
-			unsigned i2 = mesh.faces[currentFace * 3 + 2];
-			const Vec3& p0 = mesh.vertices[i0];
-			const Vec3& p1 = mesh.vertices[i1];
-			const Vec3& p2 = mesh.vertices[i2];
-			// --------------------------------------------------------
-			// Gradient of phi on this triangle.
-			// --------------------------------------------------------
-			Vec3 grad =triangleGradient(p0,p1,p2,phi[i0],phi[i1],phi[i2]);
-			double gradLength = length(grad);
-			if (gradLength < 1e-14)
-				return false;
-
-				//Normally phi increases away from the source,
-				//so move in -gradient direction.
-			
-			Vec3 direction = grad * (-1.0 / gradLength);
-			// --------------------------------------------------------
-			// Current barycentric coordinates.
-			// --------------------------------------------------------
-			double w0, w1, w2;
-			if (!barycentric(currentPoint,p0,p1,p2,w0,w1,w2))
-			{
-				return false;
-			}
-			// Clamp tiny numerical errors.
-			w0 = std::max(0.0, std::min(1.0, w0));
-			w1 = std::max(0.0, std::min(1.0, w1));
-			w2 = std::max(0.0, std::min(1.0, w2));
-			double sum = w0 + w1 + w2;
-			if (sum < 1e-20)
-				return false;
-
-			w0 /= sum;
-			w1 /= sum;
-			w2 /= sum;
-			// --------------------------------------------------------
-			// Barycentric gradients.
-			// --------------------------------------------------------
-			Vec3 normal =cross(p1 - p0,p2 - p0);
-			double normal2 =dot(normal, normal);
-			if (normal2 < 1e-20)
-				return false;
-
-			Vec3 gradW0 =cross(normal,p2 - p1) / normal2;
-			Vec3 gradW1 =cross(normal,p0 - p2) / normal2;
-			Vec3 gradW2 =cross(normal,p1 - p0) / normal2;
-			double dw0 = dot(gradW0, direction);
-			double dw1 = dot(gradW1, direction);
-			double dw2 = dot(gradW2, direction);
-			// --------------------------------------------------------
-			// Find first triangle edge hit by the gradient ray.
-			// --------------------------------------------------------
-			double bestT =std::numeric_limits<double>::max();
-			int crossedEdge = -1;
-
-			if (dw0 < -epsilon)
-			{
-				double t = -w0 / dw0;
-
-				if (t > epsilon && t < bestT)
-				{
-					bestT = t;
-					crossedEdge = 0;
-				}
-			}
-			if (dw1 < -epsilon)
-			{
-				double t = -w1 / dw1;
-
-				if (t > epsilon && t < bestT)
-				{
-					bestT = t;
-					crossedEdge = 1;
-				}
-			}
-			if (dw2 < -epsilon)
-			{
-				double t = -w2 / dw2;
-
-				if (t > epsilon && t < bestT)
-				{
-					bestT = t;
-					crossedEdge = 2;
-				}
-			}
-			if (crossedEdge < 0 || !std::isfinite(bestT))
-			{
-				return false;
-			}
-
-			Vec3 nextPoint =currentPoint +direction * bestT;
-			// --------------------------------------------------------
-			// Determine which edge was crossed.
-			//
-			// lambda0 = 0 -> edge (i1,i2)
-			// lambda1 = 0 -> edge (i2,i0)
-			// lambda2 = 0 -> edge (i0,i1)
-			// --------------------------------------------------------
-
-			unsigned edgeA;
-			unsigned edgeB;
-
-			if (crossedEdge == 0)
-			{
-				edgeA = i1;
-				edgeB = i2;
-			}
-			else if (crossedEdge == 1)
-			{
-				edgeA = i2;
-				edgeB = i0;
-			}
-			else
-			{
-				edgeA = i0;
-				edgeB = i1;
-			}
-
-			unsigned nextFace = findNeighborFace(currentFace,edgeA,edgeB);
-			if (nextFace == std::numeric_limits<unsigned>::max())
-			{
-				// Boundary.
-				return false;
-			}
-
-			reversePath.push_back({nextPoint.x,nextPoint.y,nextPoint.z});
-			currentPoint = nextPoint;
-			currentFace = nextFace;
-		}
-		// ------------------------------------------------------------
-		// Did we actually reach the source triangle?
-		// ------------------------------------------------------------
-		if (currentFace != sourcePoint.face)
-			return false;
-		// ------------------------------------------------------------
-		// reverse target -> source into source -> target.
-		// ------------------------------------------------------------
-		std::reverse(reversePath.begin(),reversePath.end());
-		path = std::move(reversePath);
-		return path.size() >= 2;
-	}
-	*/
-
-	// working but makes a strange angle from th epicked point to the start of the path	
 	static bool reconstructHeatPath(const HeatMesh& mesh, unsigned source, unsigned target, const std::vector<double>& phi, std::vector<PathPoint>& path)
 	{
 		path.clear();
@@ -1169,8 +866,7 @@ namespace
 			return false;
 		}
 		/*
-			Normally phi should increase away from the source.
-			Therefore:
+			Normally phi should increase away from the source.Therefore:
 			targetPhi > sourcePhi -> move toward smaller phi
 			targetPhi < sourcePhi-> move toward larger phi
 			We keep this generic because our Laplacian/divergence
@@ -1331,7 +1027,6 @@ namespace
 		{
 			return false;
 		}
-
 		//Reconstruct fallback path: source -> ... -> fallbackStart
 		std::vector<unsigned> fallbackVertices;
 		unsigned node = source;
@@ -1368,13 +1063,9 @@ namespace
 		if (path.size() < 2)
 			return false;
 
-		std::reverse(path.begin(),path.end());
-		std::cerr
-			<< "[HEAT] path reconstructed"
-			<< " vertices="
-			<< path.size()
-			<< std::endl;
-
+		std::reverse(path.begin(),path.end());		
+		//std::cerr<< "[HEAT] path reconstructed"<< " vertices="<< path.size()<< std::endl;
+		
 		return true;
 	}
 	
@@ -1392,172 +1083,106 @@ namespace
 	// ============================================================
 	// Main Heat Method query
 
-static HeatResult calculateHeatDistance(HeatMesh& mesh,const SurfacePoint& sourcePoint,const SurfacePoint& targetPoint)
-{
-	HeatResult result;
-
-	std::vector<double> u;
-	std::vector<double> divergence;
-	std::vector<double> phi;
-
-	// Choose the source triangle vertex closest to the actual source point.
-	unsigned sourceAnchor = sourcePoint.i0;
-
-	Vec3 sourceDelta0 =sourcePoint.point - mesh.vertices[sourcePoint.i0];
-	Vec3 sourceDelta1 =sourcePoint.point - mesh.vertices[sourcePoint.i1];
-	Vec3 sourceDelta2 =sourcePoint.point - mesh.vertices[sourcePoint.i2];
-
-	double d0 = dot(sourceDelta0, sourceDelta0);
-	double d1 = dot(sourceDelta1, sourceDelta1);
-	double d2 = dot(sourceDelta2, sourceDelta2);
-
-	if (d1 < d0 && d1 <= d2)
-		sourceAnchor = sourcePoint.i1;
-	else if (d2 < d0 && d2 < d1)
-		sourceAnchor = sourcePoint.i2;
-
-	// Step 1: heat diffusion from the actual surface point.
-	if (!solveHeat(mesh,sourcePoint.i0,sourcePoint.i1,sourcePoint.i2,sourcePoint.w0,sourcePoint.w1,sourcePoint.w2,u))
+	static HeatResult calculateHeatDistance(HeatMesh& mesh,const SurfacePoint& sourcePoint,const SurfacePoint& targetPoint)
 	{
-		result.error = "Heat diffusion solve failed.";
+		HeatResult result;
+
+		std::vector<double> u;
+		std::vector<double> divergence;
+		std::vector<double> phi;
+
+		// Choose the source triangle vertex closest to the actual source point.
+		unsigned sourceAnchor = sourcePoint.i0;
+
+		Vec3 sourceDelta0 =sourcePoint.point - mesh.vertices[sourcePoint.i0];
+		Vec3 sourceDelta1 =sourcePoint.point - mesh.vertices[sourcePoint.i1];
+		Vec3 sourceDelta2 =sourcePoint.point - mesh.vertices[sourcePoint.i2];
+
+		double d0 = dot(sourceDelta0, sourceDelta0);
+		double d1 = dot(sourceDelta1, sourceDelta1);
+		double d2 = dot(sourceDelta2, sourceDelta2);
+
+		if (d1 < d0 && d1 <= d2)
+			sourceAnchor = sourcePoint.i1;
+		else if (d2 < d0 && d2 < d1)
+			sourceAnchor = sourcePoint.i2;
+
+		// Step 1: heat diffusion from the actual surface point.
+		if (!solveHeat(mesh,sourcePoint.i0,sourcePoint.i1,sourcePoint.i2,sourcePoint.w0,sourcePoint.w1,sourcePoint.w2,u))
+		{
+			result.error = "Heat diffusion solve failed.";
+			return result;
+		}
+		// Step 2: normalized vector field + divergence.
+		computeDivergence(mesh, u, divergence);
+
+		// Step 3: Poisson solve.
+		if (!solvePoisson(mesh, divergence, sourceAnchor, phi))
+		{
+			result.error = "Heat Poisson solve failed.";
+			return result;
+		}
+
+		// Choose the target triangle vertex with the highest heat distance.
+		unsigned targetAnchor = targetPoint.i0;
+
+		Vec3 targetDelta0 = targetPoint.point - mesh.vertices[targetPoint.i0];
+		Vec3 targetDelta1 = targetPoint.point - mesh.vertices[targetPoint.i1];
+		Vec3 targetDelta2 = targetPoint.point - mesh.vertices[targetPoint.i2];
+
+		double targetD0 = dot(targetDelta0, targetDelta0);
+		double targetD1 = dot(targetDelta1, targetDelta1);
+		double targetD2 = dot(targetDelta2, targetDelta2);
+
+		if (targetD1 < targetD0 && targetD1 <= targetD2)
+		{
+			targetAnchor = targetPoint.i1;
+		}
+		else if (targetD2 < targetD0 && targetD2 < targetD1)
+		{
+			targetAnchor = targetPoint.i2;
+		}
+		// ------------------------------------------------------------
+		// Distance at actual surface points
+		// ------------------------------------------------------------
+		const double sourcePhi = interpolatePhi(phi, sourcePoint);
+		const double targetPhi = interpolatePhi(phi, targetPoint);
+		double distance = std::abs(targetPhi - sourcePhi);
+
+		if (!std::isfinite(distance))
+		{
+			result.error = "Heat distance is invalid.";
+			return result;
+		}
+		// ------------------------------------------------------------
+		// Reconstruct vertex path
+		// ------------------------------------------------------------	
+		//if (!reconstructHeatPath(mesh, sourcePoint, targetPoint, phi, result.path))
+		if (!reconstructHeatPath(mesh, sourceAnchor, targetAnchor, phi, result.path))
+		{
+			result.error = "Heat path reconstruction failed.";
+			return result;
+		}
+		// ------------------------------------------------------------
+		// Replace vertex endpoints with the actual picked points.
+		// ------------------------------------------------------------
+		std::vector<PathPoint> finalPath;
+		finalPath.reserve(result.path.size() + 2);
+		finalPath.push_back({sourcePoint.point.x,sourcePoint.point.y,sourcePoint.point.z});
+
+		for (const auto& point : result.path)
+		{
+			finalPath.push_back(point);
+		}
+		finalPath.push_back({targetPoint.point.x,targetPoint.point.y,targetPoint.point.z});
+		result.path = std::move(finalPath);
+		result.sourceSnapDistance = std::sqrt(sourcePoint.distance2);
+		result.targetSnapDistance = std::sqrt(targetPoint.distance2);
+		result.status = true;
+		result.distance = distance;
 		return result;
 	}
-	// Step 2: normalized vector field + divergence.
-	/*if (!computeDivergence(mesh, u, divergence))
-	{
-		result.error = "Heat divergence computation failed.";
-		return result;
-	}*/
-	computeDivergence(mesh, u, divergence);
-
-	// Step 3: Poisson solve.
-	if (!solvePoisson(mesh, divergence, sourceAnchor, phi))
-	{
-		result.error = "Heat Poisson solve failed.";
-		return result;
-	}
-
-	// Choose the target triangle vertex with the highest heat distance.
-	unsigned targetAnchor = targetPoint.i0;
-	/*
-	if (phi[targetPoint.i1] > phi[targetAnchor])
-		targetAnchor = targetPoint.i1;
-
-	if (phi[targetPoint.i2] > phi[targetAnchor])
-		targetAnchor = targetPoint.i2;
-
-	// Interpolate the scalar field at the actual surface points.
-	const double sourcePhi =interpolatePhi(phi, sourcePoint);
-	const double targetPhi =interpolatePhi(phi, targetPoint);
-
-	double distance = std::abs(targetPhi - sourcePhi);
-
-	if (!std::isfinite(distance))
-	{
-		result.error = "Heat distance is invalid.";
-		return result;
-	}
-
-	// Reconstruct vertex path.
-	if (!reconstructHeatPath(mesh,sourceAnchor,targetAnchor,phi,result.path))
-	{
-		result.error = "Heat path reconstruction failed.";
-		return result;
-	}
-
-	// The reconstructed path uses vertices.
-	// Replace its endpoints with the actual selected surface points.
-	std::vector<PathPoint> finalPath;
-
-	finalPath.reserve(result.path.size() + 2);
-
-	finalPath.push_back({sourcePoint.point.x,sourcePoint.point.y,sourcePoint.point.z});
-
-	for (const auto& point : result.path)
-	{
-		finalPath.push_back(point);
-	}
-
-	finalPath.push_back({targetPoint.point.x,targetPoint.point.y,targetPoint.point.z});
-
-	result.path = std::move(finalPath);
-
-	result.sourceSnapDistance =std::sqrt(sourcePoint.distance2);
-
-	result.targetSnapDistance =std::sqrt(targetPoint.distance2);
-
-	result.status = true;
-	result.distance = distance;
-
-	return result;
-	*/
-
-	Vec3 targetDelta0 = targetPoint.point - mesh.vertices[targetPoint.i0];
-	Vec3 targetDelta1 = targetPoint.point - mesh.vertices[targetPoint.i1];
-	Vec3 targetDelta2 = targetPoint.point - mesh.vertices[targetPoint.i2];
-
-	double targetD0 = dot(targetDelta0, targetDelta0);
-	double targetD1 = dot(targetDelta1, targetDelta1);
-	double targetD2 = dot(targetDelta2, targetDelta2);
-
-	if (targetD1 < targetD0 && targetD1 <= targetD2)
-	{
-		targetAnchor = targetPoint.i1;
-	}
-	else if (targetD2 < targetD0 && targetD2 < targetD1)
-	{
-		targetAnchor = targetPoint.i2;
-	}
-	// ------------------------------------------------------------
-	// Distance at actual surface points
-	// ------------------------------------------------------------
-	const double sourcePhi = interpolatePhi(phi, sourcePoint);
-	const double targetPhi = interpolatePhi(phi, targetPoint);
-	double distance = std::abs(targetPhi - sourcePhi);
-
-	if (!std::isfinite(distance))
-	{
-		result.error = "Heat distance is invalid.";
-		return result;
-	}
-	// ------------------------------------------------------------
-	// Reconstruct vertex path
-	// ------------------------------------------------------------
-	
-	//if (!reconstructHeatPath(mesh, sourcePoint, targetPoint, phi, result.path))
-	if (!reconstructHeatPath(mesh, sourceAnchor, targetAnchor, phi, result.path))
-	{
-		result.error = "Heat path reconstruction failed.";
-		return result;
-	}
-	// ------------------------------------------------------------
-	// Replace vertex endpoints with the actual picked points.
-	// ------------------------------------------------------------
-	std::vector<PathPoint> finalPath;
-	finalPath.reserve(result.path.size() + 2);
-
-	finalPath.push_back({sourcePoint.point.x,sourcePoint.point.y,sourcePoint.point.z});
-
-	for (const auto& point : result.path)
-	{
-		finalPath.push_back(point);
-	}
-
-	finalPath.push_back({targetPoint.point.x,targetPoint.point.y,targetPoint.point.z});
-
-	result.path = std::move(finalPath);
-	
-
-	result.sourceSnapDistance = std::sqrt(sourcePoint.distance2);
-	result.targetSnapDistance = std::sqrt(targetPoint.distance2);
-	result.status = true;
-	result.distance = distance;
-
-	return result;
 }
-
-} // namespace
-
 
 // ============================================================
 // Public API

@@ -199,7 +199,6 @@ QueryResult query( const std::string& mesh_id,
     {
         geodesic::Mesh& mesh = *meshEntry->second.mesh;
         geodesic::GeodesicAlgorithmExact algorithm(&mesh);
-		//geodesic::GeodesicAlgorithmExact& algo = *data.algorithm;
         geodesic::SurfacePoint source = findNearestSurfacePoint(mesh, x1, y1, z1);
         geodesic::SurfacePoint target = findNearestSurfacePoint(mesh, x2, y2, z2);
         std::vector<geodesic::SurfacePoint> sources { source };
