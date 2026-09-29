@@ -1214,7 +1214,7 @@ bool loadHeatMesh(const std::string& model_id, const std::vector<double>& vertic
 		return false;
 
 	heatDB[model_id] = std::move(mesh);
-	std::cout
+	/*std::cout
 		<< "[HEAT] loaded mesh "
 		<< model_id
 		<< " vertices="
@@ -1226,7 +1226,7 @@ bool loadHeatMesh(const std::string& model_id, const std::vector<double>& vertic
 		<< " t="
 		<< heatDB[model_id].timeStep
 		<< std::endl;
-
+	*/
 	return true;
 }
 
@@ -1264,7 +1264,7 @@ HeatResult heatQuery(const std::string& model_id,double x1,double y1,double z1,d
 		return result;
 	}
 
-	std::cout
+	/*std::cout
 		<< "[HEAT] query"
 		<< " sourceFace=" << sourcePoint.face
 		<< " targetFace=" << targetPoint.face
@@ -1287,6 +1287,6 @@ HeatResult heatQuery(const std::string& model_id,double x1,double y1,double z1,d
 		<< targetPoint.w1 << ","
 		<< targetPoint.w2
 		<< std::endl;
-
+		*/
 	return calculateHeatDistance(mesh,sourcePoint,targetPoint);
 }
